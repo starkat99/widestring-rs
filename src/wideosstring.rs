@@ -40,23 +40,6 @@ impl WideOsString {
         self
     }
 
-    /// Converts the `WideOsString` to a `String` if it contains valid Unicode data.
-    pub fn to_string(&self) -> Result<String, string::FromUtf16Error> {
-        String::from_utf16(&self.inner)
-    }
-
-    /// Converts the `WideOsString` to a `String`.
-    ///
-    /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
-    pub fn to_string_lossy(&self) -> String {
-        String::from_utf16_lossy(&self.inner)
-    }
-
-    /// Converts the `WideOsString` to a `OsString`.
-    pub fn to_os_string(&self) -> OsString {
-        OsString::from_wide(&self.inner)
-    }
-
     /// Extends the string with the given `&WideOsStr` slice.
     pub fn push<T: AsRef<WideOsStr>>(&mut self, s: T) {
         self.inner.extend_from_slice(&s.as_ref().inner)
