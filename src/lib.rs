@@ -15,6 +15,8 @@
 
 mod error;
 mod wideosstring;
+mod widecstring;
 
 pub use error::NulError;
 pub use wideosstring::{WideOsString, WideOsStr};
+pub use widecstring::{WideCString, WideCStr};

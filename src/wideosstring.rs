@@ -24,7 +24,7 @@ impl WideOsString {
     }
 
     /// Constructs a `WideOsString` from a possibly ill-formed UTF-16 slice.
-    pub fn from_raw<R>(raw: R) -> WideOsString
+    pub fn from_vec<R>(raw: R) -> WideOsString
         where R: Into<Vec<u16>>
     {
         WideOsString { inner: raw.into() }
