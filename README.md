@@ -2,6 +2,10 @@
 
 A wide string Rust FFI library for converting to and from Windows Wide "Unicode" strings.
 
+## Documentation
+
+Documentation can be found [online](http://starkat99.github.io/widestring-rs/widestring/).
+
 ## License
 
 This library is distributed under the terms of both the MIT license and the Apache License
