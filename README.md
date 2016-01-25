@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/starkat99/widestring-rs.svg?branch=master)](https://travis-ci.org/starkat99/widestring-rs)
+
 # widestring
 
 A wide string Rust FFI library for converting to and from Windows Wide "Unicode" strings.
