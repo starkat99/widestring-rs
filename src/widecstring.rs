@@ -1,3 +1,5 @@
+#![cfg(target_os = "windows")]
+
 use std;
 use std::mem;
 use super::{WideStr, WideString};
