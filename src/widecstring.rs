@@ -15,6 +15,21 @@ use std::os::windows::ffi::{OsStringExt, OsStrExt};
 ///
 /// `WideCString` values can be converted to and from many other string types, including
 /// `WideString`, `OsString`, and `String`, making proper Unicode windows FFI safe and easy.
+///
+/// # Examples
+///
+/// The following example constructs a `WideCString` and shows how to convert a `WideCString` to a
+/// regular Rust `String`.
+///
+/// ```rust
+/// use widestring::WideCString;
+/// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
+/// // Create a wide string from the vector
+/// let wstr = WideCString::from_vec(v).unwrap();
+/// // Convert to a rust string!
+/// let rust_str = wstr.to_string_lossy();
+/// assert_eq!(rust_str, "The");
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct WideCString {
     inner: Vec<u16>,
@@ -63,6 +78,28 @@ impl WideCString {
     ///
     /// This function will return an error if the data contains a nul value.
     /// The returned error will contain the `Vec<u16>` as well as the position of the nul value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideCString;
+    /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
+    /// # let cloned = v.clone();
+    /// // Create a wide string from the vector
+    /// let wcstr = WideCString::from_vec(v).unwrap();
+    /// # assert_eq!(wcstr.into_vec(), cloned);
+    /// ```
+    ///
+    /// The following example demonstrates errors from nul values in a vector.
+    ///
+    /// ```rust
+    /// use widestring::WideCString;
+    /// let v = vec![84u16, 0u16, 104u16, 101u16]; // 'T' NUL 'h' 'e'
+    /// // Create a wide string from the vector
+    /// let res = WideCString::from_vec(v);
+    /// assert!(res.is_err());
+    /// assert_eq!(res.err().unwrap().nul_position(), 1);
+    /// ```
     pub fn from_vec<T: Into<Vec<u16>>>(v: T) -> Result<WideCString, NulError> {
         let v = v.into();
         // Check for nul vals
@@ -81,6 +118,27 @@ impl WideCString {
     ///
     /// This function will return an error if the data does not contain a nul to terminate the
     /// string. The returned error will contain the consumed `Vec<u16>`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideCString;
+    /// let v = vec![84u16, 104u16, 101u16, 0u16]; // 'T' 'h' 'e' NUL
+    /// # let cloned = v[..3].to_owned();
+    /// // Create a wide string from the vector
+    /// let wcstr = WideCString::from_vec_with_nul(v).unwrap();
+    /// # assert_eq!(wcstr.into_vec(), cloned);
+    /// ```
+    ///
+    /// The following example demonstrates errors from missing nul values in a vector.
+    ///
+    /// ```rust
+    /// use widestring::WideCString;
+    /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
+    /// // Create a wide string from the vector
+    /// let res = WideCString::from_vec_with_nul(v);
+    /// assert!(res.is_err());
+    /// ```
     pub fn from_vec_with_nul<T: Into<Vec<u16>>>(v: T) -> Result<WideCString, MissingNulError> {
         let mut v = v.into();
         // Check for nul vals
@@ -107,7 +165,8 @@ impl WideCString {
     pub unsafe fn from_vec_unchecked(v: Vec<u16>) -> WideCString {
         let mut v = v;
         match v.last() {
-            None | Some(&0) => v.push(0),
+            None => v.push(0),
+            Some(&c) if c != 0 => v.push(0),
             Some(_) => (),
         }
         WideCString::from_vec_with_nul_unchecked(v)
@@ -133,6 +192,27 @@ impl WideCString {
     ///
     /// This function will return an error if the data contains a nul value.
     /// The returned error will contain a `Vec<u16>` as well as the position of the nul value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideCString;
+    /// let s = "MyString";
+    /// // Create a wide string from the string
+    /// let wcstr = WideCString::from_str(s).unwrap();
+    /// # assert_eq!(wcstr.to_string_lossy(), s);
+    /// ```
+    ///
+    /// The following example demonstrates errors from nul values in a vector.
+    ///
+    /// ```rust
+    /// use widestring::WideCString;
+    /// let s = "My\u{0}String";
+    /// // Create a wide string from the string
+    /// let res = WideCString::from_str(s);
+    /// assert!(res.is_err());
+    /// assert_eq!(res.err().unwrap().nul_position(), 2);
+    /// ```
     pub fn from_str<T: AsRef<OsStr>>(s: T) -> Result<WideCString, NulError> {
         let v: Vec<u16> = s.as_ref().encode_wide().collect();
         WideCString::from_vec(v)
@@ -147,6 +227,26 @@ impl WideCString {
     ///
     /// This function will return an error if the data does not contain a nul to terminate the
     /// string. The returned error will contain the consumed `Vec<u16>`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideCString;
+    /// let s = "My\u{0}String";
+    /// // Create a wide string from the string
+    /// let wcstr = WideCString::from_str_with_nul(s).unwrap();
+    /// assert_eq!(wcstr.to_string_lossy(), "My");
+    /// ```
+    ///
+    /// The following example demonstrates errors from missing nul values in a vector.
+    ///
+    /// ```rust
+    /// use widestring::WideCString;
+    /// let s = "MyString";
+    /// // Create a wide string from the string
+    /// let res = WideCString::from_str_with_nul(s);
+    /// assert!(res.is_err());
+    /// ```
     pub fn from_str_with_nul<T: AsRef<OsStr>>(s: T) -> Result<WideCString, MissingNulError> {
         let v: Vec<u16> = s.as_ref().encode_wide().collect();
         WideCString::from_vec_with_nul(v)
@@ -201,11 +301,11 @@ impl WideCString {
     /// string, or by explicit annotation.
     pub unsafe fn from_ptr_str<'a>(p: *const u16) -> WideCString {
         assert!(!p.is_null());
-        let mut s = p;
-        while *s != 0 {
-            s = s.offset(1);
+        let mut i: isize = 0;
+        while *p.offset(i) != 0 {
+            i = i + 1;
         }
-        let slice = std::slice::from_raw_parts(p, (s as usize - p as usize) + 1);
+        let slice = std::slice::from_raw_parts(p, i as usize + 1);
         WideCString::from_vec_with_nul_unchecked(slice.into())
     }
 
@@ -367,11 +467,11 @@ impl WideCStr {
     /// string, or by explicit annotation.
     pub unsafe fn from_ptr_str<'a>(p: *const u16) -> &'a WideCStr {
         assert!(!p.is_null());
-        let mut s = p;
-        while *s != 0 {
-            s = s.offset(1);
+        let mut i: isize = 0;
+        while *p.offset(i) != 0 {
+            i = i + 1;
         }
-        mem::transmute(std::slice::from_raw_parts(p, (s as usize - p as usize) + 1))
+        mem::transmute(std::slice::from_raw_parts(p, i as usize + 1))
     }
 
     /// Constructs a `WideStr` from a `u16` pointer and a length.
@@ -427,15 +527,29 @@ impl WideCStr {
     /// This makes a string copy of the `WideCStr`. Since `WideCStr` makes no guaruntees that it is
     /// valid UTF-16, there is no guaruntee that the resulting `OsString` will be valid UTF-8. The
     /// `OsString` will *not* have a nul terminator.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideCString;
+    /// use std::ffi::OsString;
+    /// let s = "MyString";
+    /// // Create a wide string from the string
+    /// let wstr = WideCString::from_str(s).unwrap();
+    /// // Create an OsString from the wide string
+    /// let osstr = wstr.to_os_string();
+    ///
+    /// assert_eq!(osstr, OsString::from(s));
+    /// ```
     pub fn to_os_string(&self) -> OsString {
-        OsString::from_wide(&self.inner)
+        OsString::from_wide(self.as_slice())
     }
 
     /// Copies the wide string to a new owned `WideString`.
     ///
     /// The `WideString` will *not* have a nul terminator.
     pub fn to_wide_string(&self) -> WideString {
-        WideString::from_vec(&self.inner)
+        WideString::from_vec(self.as_slice())
     }
 
     /// Copies the wide string to a `String` if it contains valid UTF-16 data.
@@ -443,15 +557,41 @@ impl WideCStr {
     /// # Failures
     ///
     /// Returns an error if the string contains any invalid UTF-16 data.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideCString;
+    /// let s = "MyString";
+    /// // Create a wide string from the string
+    /// let wstr = WideCString::from_str(s).unwrap();
+    /// // Create a regular string from the wide string
+    /// let s2 = wstr.to_string().unwrap();
+    ///
+    /// assert_eq!(s2, s);
+    /// ```
     pub fn to_string(&self) -> Result<String, std::string::FromUtf16Error> {
-        String::from_utf16(&self.inner)
+        String::from_utf16(self.as_slice())
     }
 
     /// Copies the wide string to a `String`.
     ///
     /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideCString;
+    /// let s = "MyString";
+    /// // Create a wide string from the string
+    /// let wstr = WideCString::from_str(s).unwrap();
+    /// // Create a regular string from the wide string
+    /// let s2 = wstr.to_string_lossy();
+    ///
+    /// assert_eq!(s2, s);
+    /// ```
     pub fn to_string_lossy(&self) -> String {
-        String::from_utf16_lossy(&self.inner)
+        String::from_utf16_lossy(self.as_slice())
     }
 
     /// Converts to a slice of the wide string.
@@ -532,6 +672,12 @@ impl NulError {
     /// in the first place.
     pub fn into_vec(self) -> Vec<u16> {
         self.1
+    }
+}
+
+impl Into<Vec<u16>> for NulError {
+    fn into(self) -> Vec<u16> {
+        self.into_vec()
     }
 }
 

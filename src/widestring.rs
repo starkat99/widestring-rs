@@ -16,6 +16,21 @@ use std::os::windows::ffi::{OsStringExt, OsStrExt};
 ///
 /// `WideString` values can be converted to and from many other string types, including `OsString`
 /// and `String`, making proper Unicode windows FFI safe and easy.
+///
+/// # Examples
+///
+/// The following example constructs a `WideString` and shows how to convert a `WideString` to a
+/// regular Rust `String`.
+///
+/// ```rust
+/// use widestring::WideString;
+/// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
+/// // Create a wide string from the vector
+/// let wstr = WideString::from_vec(v);
+/// // Convert to a rust string!
+/// let rust_str = wstr.to_string_lossy();
+/// assert_eq!(rust_str, "The");
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct WideString {
     inner: Vec<u16>,
@@ -46,6 +61,17 @@ impl WideString {
     /// Constructs a `WideString` from a vector of possibly invalid or ill-formed UTF-16 data.
     ///
     /// No checks are made on the contents of the vector.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideString;
+    /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
+    /// # let cloned = v.clone();
+    /// // Create a wide string from the vector
+    /// let wstr = WideString::from_vec(v);
+    /// # assert_eq!(wstr.into_vec(), cloned);
+    /// ```
     pub fn from_vec<T: Into<Vec<u16>>>(raw: T) -> WideString {
         WideString { inner: raw.into() }
     }
@@ -54,6 +80,17 @@ impl WideString {
     ///
     /// This makes a wide string copy of the `OsStr`. Since `OsStr` makes no guaruntees that it is
     /// valid UTF-8, there is no guaruntee that the resulting `WideString` will be valid UTF-16.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideString;
+    /// let s = "MyString";
+    /// // Create a wide string from the string
+    /// let wstr = WideString::from_str(s);
+    ///
+    /// assert_eq!(wstr.to_string().unwrap(), s);
+    /// ```
     pub fn from_str<S: AsRef<OsStr> + ?Sized>(s: &S) -> WideString {
         WideString { inner: s.as_ref().encode_wide().collect() }
     }
@@ -93,6 +130,19 @@ impl WideString {
     ///
     /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideString;
+    /// let s = "MyString";
+    /// let mut wstr = WideString::from_str(s);
+    /// let cloned = wstr.clone();
+    /// // Push the clone to the end, repeating the string twice.
+    /// wstr.push(cloned);
+    ///
+    /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
+    /// ```
     pub fn push<T: AsRef<WideStr>>(&mut self, s: T) {
         self.inner.extend_from_slice(&s.as_ref().inner)
     }
@@ -101,6 +151,19 @@ impl WideString {
     ///
     /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideString;
+    /// let s = "MyString";
+    /// let mut wstr = WideString::from_str(s);
+    /// let cloned = wstr.clone();
+    /// // Push the clone to the end, repeating the string twice.
+    /// wstr.push_slice(cloned);
+    ///
+    /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
+    /// ```
     pub fn push_slice<T: AsRef<[u16]>>(&mut self, s: T) {
         self.inner.extend_from_slice(&s.as_ref())
     }
@@ -109,6 +172,18 @@ impl WideString {
     ///
     /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideString;
+    /// let s = "MyString";
+    /// let mut wstr = WideString::from_str(s);
+    /// // Push the original to the end, repeating the string twice.
+    /// wstr.push_str(s);
+    ///
+    /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
+    /// ```
     pub fn push_str<T: AsRef<OsStr>>(&mut self, s: T) {
         self.inner.extend(s.as_ref().encode_wide())
     }
@@ -203,6 +278,20 @@ impl WideStr {
     ///
     /// This makes a string copy of the `WideStr`. Since `WideStr` makes no guaruntees that it is
     /// valid UTF-16, there is no guaruntee that the resulting `OsString` will be valid UTF-8.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideString;
+    /// use std::ffi::OsString;
+    /// let s = "MyString";
+    /// // Create a wide string from the string
+    /// let wstr = WideString::from_str(s);
+    /// // Create an OsString from the wide string
+    /// let osstr = wstr.to_os_string();
+    ///
+    /// assert_eq!(osstr, OsString::from(s));
+    /// ```
     pub fn to_os_string(&self) -> OsString {
         OsString::from_wide(&self.inner)
     }
@@ -217,6 +306,19 @@ impl WideStr {
     /// # Failures
     ///
     /// Returns an error if the string contains any invalid UTF-16 data.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideString;
+    /// let s = "MyString";
+    /// // Create a wide string from the string
+    /// let wstr = WideString::from_str(s);
+    /// // Create a regular string from the wide string
+    /// let s2 = wstr.to_string().unwrap();
+    ///
+    /// assert_eq!(s2, s);
+    /// ```
     pub fn to_string(&self) -> Result<String, std::string::FromUtf16Error> {
         String::from_utf16(&self.inner)
     }
@@ -224,6 +326,19 @@ impl WideStr {
     /// Copies the wide string to a `String`.
     ///
     /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideString;
+    /// let s = "MyString";
+    /// // Create a wide string from the string
+    /// let wstr = WideString::from_str(s);
+    /// // Create a regular string from the wide string
+    /// let lossy = wstr.to_string_lossy();
+    ///
+    /// assert_eq!(lossy, s);
+    /// ```
     pub fn to_string_lossy(&self) -> String {
         String::from_utf16_lossy(&self.inner)
     }
