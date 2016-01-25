@@ -17,4 +17,4 @@ mod widestring;
 mod widecstring;
 
 pub use widestring::{WideString, WideStr};
-pub use widecstring::{WideCString, WideCStr, NulError};
+pub use widecstring::{WideCString, WideCStr, NulError, MissingNulError};

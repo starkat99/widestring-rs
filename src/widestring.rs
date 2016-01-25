@@ -44,8 +44,7 @@ impl WideString {
     /// Constructs a `WideString` from a vector of possibly invalid or ill-formed UTF-16 data.
     ///
     /// No checks are made on the contents of the vector.
-    pub fn from_vec<T: Into<Vec<u16>>>(raw: T) -> WideString
-    {
+    pub fn from_vec<T: Into<Vec<u16>>>(raw: T) -> WideString {
         WideString { inner: raw.into() }
     }
 
@@ -73,7 +72,7 @@ impl WideString {
         if len == 0 {
             return WideString::new();
         }
-        assert!(p != std::ptr::null());
+        assert!(!p.is_null());
         let slice = std::slice::from_raw_parts(p, len);
         WideString::from_vec(slice)
     }
@@ -176,7 +175,9 @@ impl WideStr {
     /// This function is unsafe as there is no guarantee that the given pointer is valid for `len`
     /// elements.
     ///
-    /// `p` must be non-null, even for zero-length strings.
+    /// # Panics
+    ///
+    /// This function panics if `p` is null.
     ///
     /// # Caveat
     ///
@@ -185,6 +186,7 @@ impl WideStr {
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
     pub unsafe fn from_ptr<'a>(p: *const u16, len: usize) -> &'a WideStr {
+        assert!(!p.is_null());
         mem::transmute(std::slice::from_raw_parts(p, len))
     }
 
@@ -203,9 +205,9 @@ impl WideStr {
         OsString::from_wide(&self.inner)
     }
 
-    /// Copies the wide string to an new owned `WideString`.
+    /// Copies the wide string to a new owned `WideString`.
     pub fn to_wide_string(&self) -> WideString {
-        WideString { inner: self.inner.to_owned() }
+        WideString::from_vec(&self.inner)
     }
 
     /// Copies the wide string to a `String` if it contains valid UTF-16 data.
