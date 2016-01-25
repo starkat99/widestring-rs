@@ -13,10 +13,8 @@
 // Confine crate to windows-only
 #![cfg(target_os = "windows")]
 
-mod error;
-mod wideosstring;
+mod widestring;
 mod widecstring;
 
-pub use error::NulError;
-pub use wideosstring::{WideOsString, WideOsStr};
-pub use widecstring::{WideCString, WideCStr};
+pub use widestring::{WideString, WideStr};
+pub use widecstring::{WideCString, WideCStr, NulError};
