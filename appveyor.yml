@@ -74,14 +74,15 @@ environment:
 # See Appveyor documentation for specific details. In short, place any channel or targets you wish
 # to allow build failures on (usually nightly at least is a wise choice). This will prevent a build
 # or test failure in the matching channels/targets from failing the entire build.
-    allow_failures:
-      - channel: nightly
+matrix:
+  allow_failures:
+    - channel: nightly
 
 # If you only care about stable channel build failures, uncomment the following line:
-      #- channel: beta
+    #- channel: beta
 
 # 32-bit MSVC isn't stablized yet, so you may optionally allow failures there (uncomment line):
-      #- target: i686-pc-windows-msvc
+    #- target: i686-pc-windows-msvc
 
 ## Install Script ##
 
