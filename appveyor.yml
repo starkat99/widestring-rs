@@ -115,6 +115,13 @@ install:
 
 ## Build Script ##
 
+# Uses 'cargo build' to build. Alternatively, the project may call rustc directly or perform other
+# build commands. Rust will automatically be placed in the PATH environment variable.
+build_script:
+- cmd: cargo build --verbose
+
+## Build Script ##
+
 # Uses 'cargo test' to run tests. Alternatively, the project may call compiled programs directly or
 # perform other testing commands. Rust will automatically be placed in the PATH environment
 # variable.
