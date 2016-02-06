@@ -1,3 +1,6 @@
+# Appveyor configuration template for Rust
+# https://github.com/starkat99/appveyor-rust
+
 version: '{build}'
 branches:
   except:
@@ -14,6 +17,9 @@ os: Visual Studio 2015
 # combinations in all).
 #
 # There are 3 channels: stable, beta, and nightly.
+#
+# Alternatively, the full version may be specified for the channel to build using that specific
+# version (e.g. channel: 1.5.0)
 #
 # The values for target are the set of windows Rust build targets. Each value is of the form
 #
@@ -109,18 +115,8 @@ install:
 
 ## Build Script ##
 
-# Uses 'cargo build' to build. Alternatively, the project may call rustc directly or perform other
-# build commands. Rust will automatically be placed in the PATH environment variable.
-build_script:
-- cmd: cargo build --verbose
-
-## Build Script ##
-
 # Uses 'cargo test' to run tests. Alternatively, the project may call compiled programs directly or
 # perform other testing commands. Rust will automatically be placed in the PATH environment
 # variable.
 test_script:
 - cmd: cargo test --verbose
-
-# Deployment is disabled, enable and configure if desired
-deploy: off
