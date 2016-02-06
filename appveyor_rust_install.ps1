@@ -1,5 +1,7 @@
 ##### Appveyor Rust Install Script #####
 
+# https://github.com/starkat99/appveyor-rust
+
 # This is the most important part of the Appveyor configuration. This installs the version of Rust
 # specified by the "channel" and "target" environment variables from the build matrix. By default,
 # Rust will be installed to C:\Rust for easy usage, but this path can be overridden by setting the
@@ -33,20 +35,24 @@ if ($env:RUST_INSTALL_DIR) {
     $installUrl = $env:RUST_INSTALL_DIR
 }
 
-# Download manifest so we can find actual filename of installer to download. Needed mostly for
-# stable channel.
-echo "Downloading $channel channel manifest"
-$manifest = "${env:Temp}\channel-rust-${channel}"
-Start-FileDownload "${downloadUrl}channel-rust-${channel}" -FileName "$manifest"
+if ($channel -eq "stable") {
+    # Download manifest so we can find actual filename of installer to download. Needed for stable.
+    echo "Downloading $channel channel manifest"
+    $manifest = "${env:Temp}\channel-rust-${channel}"
+    Start-FileDownload "${downloadUrl}channel-rust-${channel}" -FileName "$manifest"
 
-# Search the manifest lines for the correct filename based on target
-$match = Get-Content "$manifest" | Select-String -pattern "${target}.exe" -simplematch
+    # Search the manifest lines for the correct filename based on target
+    $match = Get-Content "$manifest" | Select-String -pattern "${target}.exe" -simplematch
 
-if (!$match -or !$match.line) {
-    throw "Could not find $target in $channel channel manifest"
+    if (!$match -or !$match.line) {
+        throw "Could not find $target in $channel channel manifest"
+    }
+
+    $installer = $match.line
+} else {
+    # Otherwise download the file specified by channel directly.
+    $installer = "rust-${channel}-${target}.exe"
 }
-
-$installer = $match.line
 
 # Download installer
 echo "Downloading ${downloadUrl}$installer"
