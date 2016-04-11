@@ -397,6 +397,11 @@ impl Into<Vec<u16>> for WideCString {
     }
 }
 
+impl<'a> From<WideCString> for std::borrow::Cow<'a, WideCStr> {
+    fn from(s: WideCString) -> std::borrow::Cow<'a, WideCStr> {
+        std::borrow::Cow::Owned(s)
+    }
+}
 impl From<WideCString> for OsString {
     fn from(s: WideCString) -> OsString {
         s.to_os_string()
@@ -635,6 +640,12 @@ impl ToOwned for WideCStr {
     type Owned = WideCString;
     fn to_owned(&self) -> WideCString {
         self.to_wide_c_string()
+    }
+}
+
+impl<'a> From<&'a WideCStr> for std::borrow::Cow<'a, WideCStr> {
+    fn from(s: &'a WideCStr) -> std::borrow::Cow<'a, WideCStr> {
+        std::borrow::Cow::Borrowed(s)
     }
 }
 
