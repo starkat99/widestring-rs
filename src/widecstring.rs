@@ -10,11 +10,11 @@ use std::os::windows::ffi::{OsStringExt, OsStrExt};
 ///
 /// `WideCString` is aware of nul values. Unless unchecked conversions are used, all `WideCString`
 /// strings end with a nul-terminator in the underlying buffer, and contain no internal nul values.
-/// The strings may still contain invalid or ill-formed UTF-16 data. These values are intended to be
+/// The strings may still contain invalid or ill-formed UTF-16 data. These strings are intended to be
 /// used with windows FFI functions that may require nul-terminated strings.
 ///
-/// `WideCString` values can be converted to and from many other string types, including
-/// `WideString`, `OsString`, and `String`, making proper Unicode windows FFI safe and easy.
+/// `WideCString` can be converted to and from many other string types, including `WideString`,
+/// `OsString`, and `String`, making proper Unicode windows FFI safe and easy.
 ///
 /// # Examples
 ///
@@ -39,11 +39,11 @@ pub struct WideCString {
 ///
 /// `WideCStr` is aware of nul values. Unless unchecked conversions are used, all `WideCStr`
 /// strings end with a nul-terminator in the underlying buffer, and contain no internal nul values.
-/// The strings may still contain invalid or ill-formed UTF-16 data. These values are intended to be
-/// used with windows FFI functions that may require nul-terminated strings.
+/// The strings may still contain invalid or ill-formed UTF-16 data. These strings are intended to
+/// be used with windows FFI functions that may require nul-terminated strings.
 ///
-/// `WideCStr` values can be converted to and from many other string types, including
-/// `WideString`, `OsString`, and `String`, making proper Unicode windows FFI safe and easy.
+/// `WideCStr` can be converted to and from many other string types, including `WideString`,
+/// `OsString`, and `String`, making proper Unicode windows FFI safe and easy.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct WideCStr {
     inner: [u16],
@@ -71,8 +71,8 @@ impl WideCString {
 
     /// Constructs a `WideCString` from a container of UTF-16 data.
     ///
-    /// This method will consume the provided data and use the underlying values to construct a new
-    /// string. The data will be scanned for invalid nul values.
+    /// This method will consume the provided data and use the underlying elements to construct a
+    /// new string. The data will be scanned for invalid nul values.
     ///
     /// # Failures
     ///
@@ -111,8 +111,8 @@ impl WideCString {
 
     /// Constructs a `WideCString` from a nul-terminated container of UTF-16 data.
     ///
-    /// This method will consume the provided data and use the underlying values to construct a new
-    /// string. The string will be truncated at the first nul value in the string.
+    /// This method will consume the provided data and use the underlying elements to construct a
+    /// new string. The string will be truncated at the first nul value in the string.
     ///
     /// # Failures
     ///
@@ -311,7 +311,7 @@ impl WideCString {
 
     /// Constructs a `WideCString` from a `u16` pointer and a length.
     ///
-    /// The `len` argument is the number of *elements*, not the number of bytes.
+    /// The `len` argument is the number of `u16` elements, **not** the number of bytes.
     ///
     /// The string will be scanned for invalid nul values.
     ///
@@ -339,7 +339,7 @@ impl WideCString {
 
     /// Constructs a `WideString` from a `u16` pointer and a length.
     ///
-    /// The `len` argument is the number of *elements*, not the number of bytes.
+    /// The `len` argument is the number of `u16` elements, **not** the number of bytes.
     ///
     /// The string will be truncated at the first nul value in the string.
     ///
@@ -375,7 +375,7 @@ impl WideCString {
     /// Converts the wide string into a `Vec<u16>` without a nul terminator, consuming the string in
     /// the process.
     ///
-    /// The resulting vector will *not* contain a nul-terminator, and will contain no other nul
+    /// The resulting vector will **not** contain a nul-terminator, and will contain no other nul
     /// values.
     pub fn into_vec(self) -> Vec<u16> {
         let mut v = self.inner;
@@ -487,9 +487,9 @@ impl WideCStr {
 
     /// Constructs a `WideStr` from a `u16` pointer and a length.
     ///
-    /// The `len` argument is the number of *elements*, not the number of bytes, and does *not*
-    /// include the nul terminator of the string. Thus, a `len` of 0 is invalid means that `p`
-    /// is a pointer directly to the nul terminator of the string.
+    /// The `len` argument is the number of `u16` elements, **not** the number of bytes, and does
+    /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means that
+    /// `p` is a pointer directly to the nul terminator of the string.
     ///
     /// # Safety
     ///
@@ -536,8 +536,8 @@ impl WideCStr {
     /// Decodes a wide string to an owned `OsString`.
     ///
     /// This makes a string copy of the `WideCStr`. Since `WideCStr` makes no guaruntees that it is
-    /// valid UTF-16, there is no guaruntee that the resulting `OsString` will be valid UTF-8. The
-    /// `OsString` will *not* have a nul terminator.
+    /// valid UTF-16, there is no guaruntee that the resulting `OsString` will be valid data. The
+    /// `OsString` will **not** have a nul terminator.
     ///
     /// # Examples
     ///
@@ -558,7 +558,7 @@ impl WideCStr {
 
     /// Copies the wide string to a new owned `WideString`.
     ///
-    /// The `WideString` will *not* have a nul terminator.
+    /// The `WideString` will **not** have a nul terminator.
     pub fn to_wide_string(&self) -> WideString {
         WideString::from_vec(self.as_slice())
     }
@@ -607,9 +607,9 @@ impl WideCStr {
 
     /// Converts to a slice of the wide string.
     ///
-    /// The slice will *not* include the nul terminator.
+    /// The slice will **not** include the nul terminator.
     pub fn as_slice(&self) -> &[u16] {
-        &self.inner[..self.len()]
+        &self.inner[..self.unit_length()]
     }
 
     /// converts to a slice of the wide string, including the nul terminator.
@@ -624,15 +624,15 @@ impl WideCStr {
         self.inner.as_ptr()
     }
 
-    /// Returns the length of the wide string as number of UTF-16 values *not* including nul
-    /// terminator.
-    pub fn len(&self) -> usize {
+    /// Returns the length of the wide string as number of UTF-16 partial code units (**not** code
+    /// points) **not** including nul terminator.
+    pub fn unit_length(&self) -> usize {
         self.inner.len() - 1
     }
 
     /// Returns whether this wide string contains no data (i.e. is only the nul terminator).
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.unit_length() == 0
     }
 }
 
