@@ -31,7 +31,7 @@ use std::os::windows::ffi::{OsStringExt, OsStrExt};
 /// let rust_str = wstr.to_string_lossy();
 /// assert_eq!(rust_str, "The");
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct WideString {
     inner: Vec<u16>,
 }

@@ -438,6 +438,12 @@ impl std::ops::Deref for WideCString {
     }
 }
 
+impl Default for WideCString {
+    fn default() -> WideCString {
+        WideCString::new()
+    }
+}
+
 impl WideCStr {
     /// Coerces a value into a `WideCStr`.
     pub fn new<'a, S: AsRef<WideCStr> + ?Sized>(s: &'a S) -> &'a WideCStr {
