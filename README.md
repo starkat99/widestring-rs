@@ -1,4 +1,4 @@
-# widestring [![Build status](https://ci.appveyor.com/api/projects/status/97pmbv6kk79bicww?svg=true)](https://ci.appveyor.com/project/starkat99/widestring-rs) [![Crates.io](https://img.shields.io/crates/v/widestring.svg)](https://crates.io/crates/widestring/)
+# widestring [![Build status](https://ci.appveyor.com/api/projects/status/97pmbv6kk79bicww?svg=true)](https://ci.appveyor.com/project/starkat99/widestring-rs) [![Build Status](https://travis-ci.org/starkat99/widestring-rs.svg?branch=master)](https://travis-ci.org/starkat99/widestring-rs) [![Crates.io](https://img.shields.io/crates/v/widestring.svg)](https://crates.io/crates/widestring/)
 
 A wide string Rust FFI library for converting to and from Windows Wide "Unicode" (UTF-16) strings.
 
