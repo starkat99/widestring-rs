@@ -1,9 +1,7 @@
-#![cfg(target_os = "windows")]
-
 use std;
 use std::mem;
 use std::ffi::{OsString, OsStr};
-use std::os::windows::ffi::{OsStringExt, OsStrExt};
+use super::platform;
 
 /// An owned, mutable "wide" string for windows FFI that is **not** nul-aware.
 ///
@@ -92,7 +90,7 @@ impl WideString {
     /// assert_eq!(wstr.to_string().unwrap(), s);
     /// ```
     pub fn from_str<S: AsRef<OsStr> + ?Sized>(s: &S) -> WideString {
-        WideString { inner: s.as_ref().encode_wide().collect() }
+        WideString { inner: platform::os_to_wide(s.as_ref()) }
     }
 
     /// Constructs a `WideString` from a `u16` pointer and a length.
@@ -185,7 +183,7 @@ impl WideString {
     /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
     /// ```
     pub fn push_str<T: AsRef<OsStr>>(&mut self, s: T) {
-        self.inner.extend(s.as_ref().encode_wide())
+        self.inner.extend(platform::os_to_wide(s.as_ref()))
     }
 }
 
@@ -299,7 +297,7 @@ impl WideStr {
     /// assert_eq!(osstr, OsString::from(s));
     /// ```
     pub fn to_os_string(&self) -> OsString {
-        OsString::from_wide(&self.inner)
+        platform::os_from_wide(&self.inner)
     }
 
     /// Copies the wide string to a new owned `WideString`.

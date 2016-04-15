@@ -1,10 +1,8 @@
-#![cfg(target_os = "windows")]
-
 use std;
 use std::mem;
 use super::{WideStr, WideString};
 use std::ffi::{OsString, OsStr};
-use std::os::windows::ffi::{OsStringExt, OsStrExt};
+use super::platform;
 
 /// An owned, mutable C-style "wide" string for windows FFI that is nul-aware and nul-terminated.
 ///
@@ -214,7 +212,7 @@ impl WideCString {
     /// assert_eq!(res.err().unwrap().nul_position(), 2);
     /// ```
     pub fn from_str<T: AsRef<OsStr>>(s: T) -> Result<WideCString, NulError> {
-        let v: Vec<u16> = s.as_ref().encode_wide().collect();
+        let v = platform::os_to_wide(s.as_ref());
         WideCString::from_vec(v)
     }
 
@@ -248,7 +246,7 @@ impl WideCString {
     /// assert!(res.is_err());
     /// ```
     pub fn from_str_with_nul<T: AsRef<OsStr>>(s: T) -> Result<WideCString, MissingNulError> {
-        let v: Vec<u16> = s.as_ref().encode_wide().collect();
+        let v = platform::os_to_wide(s.as_ref());
         WideCString::from_vec_with_nul(v)
     }
 
@@ -553,7 +551,7 @@ impl WideCStr {
     /// assert_eq!(osstr, OsString::from(s));
     /// ```
     pub fn to_os_string(&self) -> OsString {
-        OsString::from_wide(self.as_slice())
+        platform::os_from_wide(self.as_slice())
     }
 
     /// Copies the wide string to a new owned `WideString`.

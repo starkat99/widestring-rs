@@ -148,11 +148,9 @@
         unused_import_braces,
         unused_qualifications)]
 
-// Confine crate to windows-only
-#![cfg(target_os = "windows")]
-
 mod widestring;
 mod widecstring;
+mod platform;
 
 pub use widestring::{WideString, WideStr};
 pub use widecstring::{WideCString, WideCStr, NulError, MissingNulError};
