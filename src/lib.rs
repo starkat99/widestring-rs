@@ -63,14 +63,17 @@
 //! functions so we don't need to worry about nuls.
 //!
 //! ```rust
+//! # #[cfg(not(windows))]
+//! # fn main() {}
 //! # extern crate winapi;
 //! # extern crate kernel32;
 //! # extern crate widestring;
+//! # #[cfg(windows)]
+//! # fn main() {
 //! use winapi::*;
 //! use kernel32::{FormatMessageW, LocalFree};
 //! use std::ptr;
 //! use widestring::WideString;
-//! # fn main() {
 //! # let error_code: DWORD = 0;
 //!
 //! let widestr: WideString;
@@ -102,14 +105,17 @@
 //! The following example is the functionally the same, only using `WideCString` instead.
 //!
 //! ```rust
+//! # #[cfg(not(windows))]
+//! # fn main() {}
 //! # extern crate winapi;
 //! # extern crate kernel32;
 //! # extern crate widestring;
+//! # #[cfg(windows)]
+//! # fn main() {
 //! use winapi::*;
 //! use kernel32::{FormatMessageW, LocalFree};
 //! use std::ptr;
 //! use widestring::WideCString;
-//! # fn main() {
 //! # let error_code: DWORD = 0;
 //!
 //! let widestr: WideCString;
