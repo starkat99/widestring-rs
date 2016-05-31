@@ -114,6 +114,41 @@ impl WideString {
         WideString::from_vec(slice)
     }
 
+    /// Creates a `WideString` with the given capacity.
+    ///
+    /// The string will be able to hold exactly `capacity` partial code units without reallocating.
+    /// If `capacity` is set to 0, the string will not initially allocate.
+    pub fn with_capacity(capacity: usize) -> WideString {
+        WideString { inner: Vec::with_capacity(capacity) }
+    }
+
+    /// Returns the capacity this `WideString` can hold without reallocating.
+    pub fn capacity(&self) -> usize {
+        self.inner.capacity()
+    }
+
+    /// Truncate the `WideString` to zero length.
+    pub fn clear(&mut self) {
+        self.inner.clear()
+    }
+
+    /// Reserves the capacity for at least `additiona` more capacity to be inserted in the given
+    /// `WideString`.
+    ///
+    /// More space may be reserved to avoid frequent allocations.
+    pub fn reserve(&mut self, additional: usize) {
+        self.inner.reserve(additional)
+    }
+
+    /// Reserves the minimum capacity for exactly `additiona` more capacity to be inserted in the
+    /// given `WideString`. Does nothing if the capcity is already sufficient.
+    ///
+    /// Note that the allocator may give more space than is requested. Therefore capacity can not be
+    /// relied upon to be precisely minimal. Prefer `reserve` if future insertions are expected.
+    pub fn reserve_exact(&mut self, additional: usize) {
+        self.inner.reserve_exact(additional)
+    }
+
     /// Converts to a `WideStr` reference.
     pub fn as_wide_str(&self) -> &WideStr {
         self
@@ -241,6 +276,48 @@ impl std::ops::Deref for WideString {
     }
 }
 
+impl PartialEq<WideStr> for WideString {
+    #[inline]
+    fn eq(&self, other: &WideStr) -> bool {
+        self.as_wide_str() == other
+    }
+}
+
+impl PartialOrd<WideStr> for WideString {
+    #[inline]
+    fn partial_cmp(&self, other: &WideStr) -> Option<std::cmp::Ordering> {
+        self.as_wide_str().partial_cmp(other)
+    }
+}
+
+impl<'a> PartialEq<&'a WideStr> for WideString {
+    #[inline]
+    fn eq(&self, other: &&'a WideStr) -> bool {
+        self.as_wide_str() == *other
+    }
+}
+
+impl<'a> PartialOrd<&'a WideStr> for WideString {
+    #[inline]
+    fn partial_cmp(&self, other: &&'a WideStr) -> Option<std::cmp::Ordering> {
+        self.as_wide_str().partial_cmp(*other)
+    }
+}
+
+impl<'a> PartialEq<std::borrow::Cow<'a, WideStr>> for WideString {
+    #[inline]
+    fn eq(&self, other: &std::borrow::Cow<'a, WideStr>) -> bool {
+        self.as_wide_str() == other.as_ref()
+    }
+}
+
+impl<'a> PartialOrd<std::borrow::Cow<'a, WideStr>> for WideString {
+    #[inline]
+    fn partial_cmp(&self, other: &std::borrow::Cow<'a, WideStr>) -> Option<std::cmp::Ordering> {
+        self.as_wide_str().partial_cmp(other.as_ref())
+    }
+}
+
 impl WideStr {
     /// Coerces a value into a `WideStr`.
     pub fn new<'a, S: AsRef<WideStr> + ?Sized>(s: &'a S) -> &'a WideStr {
@@ -360,8 +437,8 @@ impl WideStr {
     }
 
     /// Returns the length of the wide string as number of UTF-16 partial code units (**not** code
-    /// points).
-    pub fn unit_length(&self) -> usize {
+    /// points and **not** number of bytes).
+    pub fn len(&self) -> usize {
         self.inner.len()
     }
 

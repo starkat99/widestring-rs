@@ -607,7 +607,7 @@ impl WideCStr {
     ///
     /// The slice will **not** include the nul terminator.
     pub fn as_slice(&self) -> &[u16] {
-        &self.inner[..self.unit_length()]
+        &self.inner[..self.len()]
     }
 
     /// converts to a slice of the wide string, including the nul terminator.
@@ -623,14 +623,14 @@ impl WideCStr {
     }
 
     /// Returns the length of the wide string as number of UTF-16 partial code units (**not** code
-    /// points) **not** including nul terminator.
-    pub fn unit_length(&self) -> usize {
+    /// points and **not** number of bytes) **not** including nul terminator.
+    pub fn len(&self) -> usize {
         self.inner.len() - 1
     }
 
     /// Returns whether this wide string contains no data (i.e. is only the nul terminator).
     pub fn is_empty(&self) -> bool {
-        self.unit_length() == 0
+        self.len() == 0
     }
 }
 
