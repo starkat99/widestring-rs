@@ -8,8 +8,8 @@ use super::platform;
 ///
 /// `WideCString` is aware of nul values. Unless unchecked conversions are used, all `WideCString`
 /// strings end with a nul-terminator in the underlying buffer, and contain no internal nul values.
-/// The strings may still contain invalid or ill-formed UTF-16 data. These strings are intended to be
-/// used with windows FFI functions that may require nul-terminated strings.
+/// The strings may still contain invalid or ill-formed UTF-16 data. These strings are intended to
+/// be used with windows FFI functions that may require nul-terminated strings.
 ///
 /// `WideCString` can be converted to and from many other string types, including `WideString`,
 /// `OsString`, and `String`, making proper Unicode windows FFI safe and easy.
