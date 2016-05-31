@@ -29,20 +29,22 @@
 //! `OsString` and `OsStr` are also strings for use with FFI. Unlike `CString`, they do no special
 //! handling of nul values, but instead have an OS-specified encoding. While, for example, Linux
 //! systems this is usually UTF-8 encoding, this is not the case for every platform. The encoding
-//! may not even be 8-bit, although the strings are stored as 8-bit sequences. On Windows,
-//! `OsString` is usually encoded in the current Windows codepage, which can change from computer to
-//! computer or even between processes. Like `CString`, these encodings have no additional
+//! may not even be 8-bit: on Windows, `OsString` is 16-bit values, but may not always be
+//! interpreted with UTF-16 encoding. Like `CString`, `OsString` has no additional
 //! guaruntees and may not be well-formed.
 //!
 //! Due to the looser safety of these other string types, conversion to standard Rust `String` is
 //! lossy, and may require knowledge of the underlying encoding, including platform-specific quirks.
 //!
 //! The wide strings in this crate are roughly based on the principles of the string types in
-//! `std::os`, though there are differences. `WideString` and `WideStr` are roughly similar in role
+//! `std::ffi`, though there are differences. `WideString` and `WideStr` are roughly similar in role
 //! to `OsString` and `OsStr`, while `WideCString` and `WideCStr` are roughly similar in role to
-//! `CString` and `CStr`. In fact, conversion to those types is very straight forward and safe,
-//! while conversion directly between standard Rust `String` is a lossy conversion just as
-//! `OsString`.
+//! `CString` and `CStr`. In fact, on Windows, `WideString` is nearly identical to `OsString`. It
+//! can be useful to ensure consistent wide character size across other platforms, and that's where
+//! these wide string types come into play. Conversion to other string types is very straight
+//! forward and safe, while conversion directly between standard Rust `String` is a lossy conversion
+//! just as `OsString` is, where the wide strings are assumed to have some sort of UTF-16 encoding,
+//! but that encoding may be ill-formed.
 //!
 //! # Remarks on Partial Code Units
 //!
@@ -52,7 +54,7 @@
 //! indexing into a wide string, writing to a wide string, or even iterating a wide string should be
 //! handled with care and are greatly discouraged. Some operations have safer alternatives provided,
 //! such as code point iteration instead of partial code unit iteration. Always keep in mind that
-//! the number of partial code units (`unit_length()`) of a wide string is **not** equivalent to the
+//! the number of partial code units (`len()`) of a wide string is **not** equivalent to the
 //! number of Unicode characters in the string, merely the length of the UTF-16 encoding sequence.
 //! In fact, Unicode code points do not even have a one-to-one mapping with characters!
 //!
