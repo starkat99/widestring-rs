@@ -30,7 +30,7 @@ use super::platform;
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct WideCString {
-    inner: Vec<u16>,
+    inner: Box<[u16]>,
 }
 
 /// C-style wide string reference for `WideCString`.
@@ -64,7 +64,7 @@ pub struct MissingNulError(Option<Vec<u16>>);
 impl WideCString {
     /// Constructs a new empty `WideCString`.
     pub fn new() -> WideCString {
-        WideCString { inner: vec![0] }
+        WideCString { inner: vec![0].into_boxed_slice() }
     }
 
     /// Constructs a `WideCString` from a container of UTF-16 data.
@@ -179,7 +179,7 @@ impl WideCString {
     /// that `v` contains no nul values. Providing a vector without interior nul values or without a
     /// terminating nul value will result in an invalid `WideCString`.
     pub unsafe fn from_vec_with_nul_unchecked<T: Into<Vec<u16>>>(v: T) -> WideCString {
-        WideCString { inner: v.into() }
+        WideCString { inner: v.into().into_boxed_slice() }
     }
 
     /// Constructs a `WideCString` from anything that can be converted to an `OsStr`.
@@ -275,7 +275,7 @@ impl WideCString {
         WideCString::from_vec_with_nul(s.as_ref().as_slice())
     }
 
-    /// Constructs a `WideCString` from a `u16` nul-terminated string pointer.
+    /// Constructs a new `WideCString` copied from a `u16` nul-terminated string pointer.
     ///
     /// This will scan for nul values beginning with `p`. The first nul value will be used as the
     /// nul terminator for the string, similar to how libc string functions such as `strlen` work.
@@ -297,7 +297,7 @@ impl WideCString {
     /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
-    pub unsafe fn from_ptr_str<'a>(p: *const u16) -> WideCString {
+    pub unsafe fn from_ptr_str(p: *const u16) -> WideCString {
         assert!(!p.is_null());
         let mut i: isize = 0;
         while *p.offset(i) != 0 {
@@ -307,7 +307,7 @@ impl WideCString {
         WideCString::from_vec_with_nul_unchecked(slice)
     }
 
-    /// Constructs a `WideCString` from a `u16` pointer and a length.
+    /// Constructs a new `WideCString` copied from a `u16` pointer and a length.
     ///
     /// The `len` argument is the number of `u16` elements, **not** the number of bytes.
     ///
@@ -335,7 +335,7 @@ impl WideCString {
         WideCString::from_vec(slice)
     }
 
-    /// Constructs a `WideString` from a `u16` pointer and a length.
+    /// Constructs a new `WideString` copied from a `u16` pointer and a length.
     ///
     /// The `len` argument is the number of `u16` elements, **not** the number of bytes.
     ///
@@ -376,7 +376,7 @@ impl WideCString {
     /// The resulting vector will **not** contain a nul-terminator, and will contain no other nul
     /// values.
     pub fn into_vec(self) -> Vec<u16> {
-        let mut v = self.inner;
+        let mut v = self.inner.into_vec();
         v.pop();
         v
     }
@@ -385,7 +385,38 @@ impl WideCString {
     ///
     /// The resulting vector will contain a nul-terminator and no interior nul values.
     pub fn into_vec_with_nul(self) -> Vec<u16> {
-        self.inner
+        self.inner.into_vec()
+    }
+
+    /// Transfers ownership of the wide string to a C caller.
+    ///
+    /// # Safety
+    ///
+    /// The pointer must be returned to Rust and reconstituted using `from_raw` to be properly
+    /// deallocated. Specifically, one should _not_ use the standard C `free` function to deallocate
+    /// this string.
+    ///
+    /// Failure to call `from_raw` will lead to a memory leak.
+    pub fn into_raw(self) -> *mut u16 {
+        let mut v = self.inner;
+        v.as_mut_ptr()
+    }
+
+    /// Retakes ownership of a CString that was transferred to C.
+    ///
+    /// # Safety
+    ///
+    /// This should only ever be called with a pointer that was earlier obtained by calling
+    /// `into_raw` on a `WideCString`. Additionally, the length of the string will be recalculated
+    /// from the pointer.
+    pub unsafe fn from_raw(p: *mut u16) -> WideCString {
+        assert!(!p.is_null());
+        let mut i: isize = 0;
+        while *p.offset(i) != 0 {
+            i += 1;
+        }
+        let slice = std::slice::from_raw_parts_mut(p, i as usize + 1);
+        WideCString { inner: mem::transmute(slice) }
     }
 }
 
