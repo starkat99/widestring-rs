@@ -160,8 +160,8 @@ impl WideCString {
     /// This method is equivalent to `from_vec` except that no runtime assertion is made that `v`
     /// contains no nul values. Providing a vector with non-terminating nul values will result in an
     /// invalid `WideCString`.
-    pub unsafe fn from_vec_unchecked(v: Vec<u16>) -> WideCString {
-        let mut v = v;
+    pub unsafe fn from_vec_unchecked<T: Into<Vec<u16>>>(v: T) -> WideCString {
+        let mut v = v.into();
         match v.last() {
             None => v.push(0),
             Some(&c) if c != 0 => v.push(0),
@@ -178,8 +178,8 @@ impl WideCString {
     /// This method is equivalent to `from_vec_with_nul` except that no runtime assertion is made
     /// that `v` contains no nul values. Providing a vector without interior nul values or without a
     /// terminating nul value will result in an invalid `WideCString`.
-    pub unsafe fn from_vec_with_nul_unchecked(v: Vec<u16>) -> WideCString {
-        WideCString { inner: v }
+    pub unsafe fn from_vec_with_nul_unchecked<T: Into<Vec<u16>>>(v: T) -> WideCString {
+        WideCString { inner: v.into() }
     }
 
     /// Constructs a `WideCString` from anything that can be converted to an `OsStr`.
@@ -304,7 +304,7 @@ impl WideCString {
             i = i + 1;
         }
         let slice = std::slice::from_raw_parts(p, i as usize + 1);
-        WideCString::from_vec_with_nul_unchecked(slice.into())
+        WideCString::from_vec_with_nul_unchecked(slice)
     }
 
     /// Constructs a `WideCString` from a `u16` pointer and a length.
