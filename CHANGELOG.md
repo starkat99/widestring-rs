@@ -1,3 +1,13 @@
+<a name="v0.2.1"></a>
+### v0.2.1 (2016-08-12)
+
+
+#### Features
+
+* **WideCString:**  implement into_raw/from_raw ([651f3fe5](https://github.com/starkat99/widestring-rs/commit/651f3fe59a0d3754d3458322a6b7fe6fb0ec0dc9), closes [#2](https://github.com/starkat99/widestring-rs/issues/2))
+
+
+
 <a name="v0.2.0"></a>
 ## v0.2.0 (2016-05-31)
 
