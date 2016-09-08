@@ -398,8 +398,7 @@ impl WideCString {
     ///
     /// Failure to call `from_raw` will lead to a memory leak.
     pub fn into_raw(self) -> *mut u16 {
-        let mut v = self.inner;
-        v.as_mut_ptr()
+        Box::into_raw(self.inner) as *mut u16
     }
 
     /// Retakes ownership of a CString that was transferred to C.
