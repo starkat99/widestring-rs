@@ -1,3 +1,13 @@
+<a name="v0.2.2"></a>
+### v0.2.2 (2016-09-09)
+
+
+#### Bug Fixes
+
+*   make `WideCString::into_raw` correctly forget the original self ([0b0ce3f2](https://github.com/starkat99/widestring-rs/commit/0b0ce3f2428c6ee7e07b2939b6d98fcd63b53161))
+
+
+
 <a name="v0.2.1"></a>
 ### v0.2.1 (2016-08-12)
 
