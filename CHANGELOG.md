@@ -1,36 +1,34 @@
-<a name="v0.2.2"></a>
-### v0.2.2 (2016-09-09)
+# Changelog
 
+The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
+and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-#### Bug Fixes
+## [Unreleased]
+### Changed
+- Writing changelog manually.
 
-*   make `WideCString::into_raw` correctly forget the original self ([0b0ce3f2](https://github.com/starkat99/widestring-rs/commit/0b0ce3f2428c6ee7e07b2939b6d98fcd63b53161))
+## [0.2.2] - 2016-09-09 <a name="0.2.2"></a>
+### Fixed
+- Make `WideCString::into_raw` correctly forget the original self.
 
+## [0.2.1] - 2016-08-12 <a name="0.2.1"></a>
+### Added
+- `into_raw`/`from_raw` on `WideCString`. Closes [#2].
 
+## [0.2.0] - 2016-05-31 <a name="0.2.0"></a>
+### Added
+- `Default` trait to wide strings.
+- Traits for conversion of strings to `Cow`.
+### Changed
+- Methods & traits to bring to parity with Rust 1.9 string APIs.
 
-<a name="v0.2.1"></a>
-### v0.2.1 (2016-08-12)
+## 0.1.0 - 2016-02-06 <a name="0.1.0"></a>
+### Added
+- Initial release.
 
+[#2]: https://github.com/starkat99/widestring-rs/issues/2
 
-#### Features
-
-* **WideCString:**  implement into_raw/from_raw ([651f3fe5](https://github.com/starkat99/widestring-rs/commit/651f3fe59a0d3754d3458322a6b7fe6fb0ec0dc9), closes [#2](https://github.com/starkat99/widestring-rs/issues/2))
-
-
-
-<a name="v0.2.0"></a>
-## v0.2.0 (2016-05-31)
-
-
-#### Features
-
-*   add methods & traits to bring to parity with Rust 1.9 string APIs ([7bc687f8](https://github.com/starkat99/widestring-rs/commit/7bc687f8d4ddbeefe626155b10564da950f50eea))
-*   add `Default` trait to wide strings ([976fdf38](https://github.com/starkat99/widestring-rs/commit/976fdf38714bfe7109d101dac68eeb93a6f7df8a))
-*   add traits for conversion of strings to `Cow` ([0209aeb3](https://github.com/starkat99/widestring-rs/commit/0209aeb3d9611be48c9f7e5900810e4ae1a91bdc))
-
-
-
-<a name="v0.1.0"></a>
-### v0.1.0 (2016-02-06)
-
-*   Initial Release
+[Unreleased]: https://github.com/starkat99/widestring-rs/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/starkat99/widestring-rs/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/starkat99/widestring-rs/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/starkat99/widestring-rs/compare/v0.1.0...v0.2.0
