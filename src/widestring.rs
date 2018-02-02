@@ -224,6 +224,25 @@ impl WideString {
     pub fn push_str<T: AsRef<OsStr>>(&mut self, s: T) {
         self.inner.extend(platform::os_to_wide(s.as_ref()))
     }
+
+    /// Shrinks the capacity of the `WideString` to match its length.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideString;
+    ///
+    /// let mut s = WideString::from_str("foo");
+    ///
+    /// s.reserve(100);
+    /// assert!(s.capacity() >= 100);
+    ///
+    /// s.shrink_to_fit();
+    /// assert_eq!(3, s.capacity());
+    /// ```
+    pub fn shrink_to_fit(&mut self) {
+        self.inner.shrink_to_fit();
+    }
 }
 
 impl Into<Vec<u16>> for WideString {
