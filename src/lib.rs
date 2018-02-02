@@ -68,12 +68,10 @@
 //! # #[cfg(not(windows))]
 //! # fn main() {}
 //! # extern crate winapi;
-//! # extern crate kernel32;
 //! # extern crate widestring;
 //! # #[cfg(windows)]
 //! # fn main() {
-//! use winapi::*;
-//! use kernel32::{FormatMessageW, LocalFree};
+//! use winapi::um::winbase::{FormatMessageW, LocalFree};
 //! use std::ptr;
 //! use widestring::WideString;
 //! # let error_code: DWORD = 0;
@@ -110,12 +108,10 @@
 //! # #[cfg(not(windows))]
 //! # fn main() {}
 //! # extern crate winapi;
-//! # extern crate kernel32;
 //! # extern crate widestring;
 //! # #[cfg(windows)]
 //! # fn main() {
-//! use winapi::*;
-//! use kernel32::{FormatMessageW, LocalFree};
+//! use winapi::um::winbase::{FormatMessageW, LocalFree};
 //! use std::ptr;
 //! use widestring::WideCString;
 //! # let error_code: DWORD = 0;
@@ -146,19 +142,13 @@
 //! # }
 //! ```
 
-#![warn(missing_docs,
-        missing_copy_implementations,
-        missing_debug_implementations,
-        trivial_casts,
-        trivial_numeric_casts,
-        unstable_features,
-        unused_extern_crates,
-        unused_import_braces,
+#![warn(missing_docs, missing_copy_implementations, missing_debug_implementations, trivial_casts,
+        trivial_numeric_casts, unstable_features, unused_extern_crates, unused_import_braces,
         unused_qualifications)]
 
 mod widestring;
 mod widecstring;
 mod platform;
 
-pub use widestring::{WideString, WideStr};
-pub use widecstring::{WideCString, WideCStr, NulError, MissingNulError};
+pub use widestring::{WideStr, WideString};
+pub use widecstring::{MissingNulError, NulError, WideCStr, WideCString};
