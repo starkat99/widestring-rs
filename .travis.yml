@@ -5,20 +5,5 @@ rust:
 - 1.8.0
 - beta
 - nightly
-branches:
-  except:
-  - gh-pages
-before_script:
-- |
-  pip install 'travis-cargo<0.2' --user &&
-  export PATH=$HOME/.local/bin:$PATH
 script:
-- |
-  travis-cargo build &&
-  travis-cargo test &&
-  travis-cargo --only stable doc
-after_success:
-- travis-cargo --only stable doc-upload
-env:
-  global:
-  - TRAVIS_CARGO_NIGHTLY_FEATURE=""
+- cargo test --verbose
