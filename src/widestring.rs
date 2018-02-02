@@ -1,6 +1,6 @@
 use std;
 use std::mem;
-use std::ffi::{OsString, OsStr};
+use std::ffi::{OsStr, OsString};
 use super::platform;
 
 /// An owned, mutable "wide" string for windows FFI that is **not** nul-aware.
@@ -90,7 +90,9 @@ impl WideString {
     /// assert_eq!(wstr.to_string().unwrap(), s);
     /// ```
     pub fn from_str<S: AsRef<OsStr> + ?Sized>(s: &S) -> WideString {
-        WideString { inner: platform::os_to_wide(s.as_ref()) }
+        WideString {
+            inner: platform::os_to_wide(s.as_ref()),
+        }
     }
 
     /// Constructs a `WideString` from a `u16` pointer and a length.
@@ -119,7 +121,9 @@ impl WideString {
     /// The string will be able to hold exactly `capacity` partial code units without reallocating.
     /// If `capacity` is set to 0, the string will not initially allocate.
     pub fn with_capacity(capacity: usize) -> WideString {
-        WideString { inner: Vec::with_capacity(capacity) }
+        WideString {
+            inner: Vec::with_capacity(capacity),
+        }
     }
 
     /// Returns the capacity this `WideString` can hold without reallocating.

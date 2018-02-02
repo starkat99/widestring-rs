@@ -1,7 +1,7 @@
 use std;
 use std::mem;
 use super::{WideStr, WideString};
-use std::ffi::{OsString, OsStr};
+use std::ffi::{OsStr, OsString};
 use super::platform;
 
 /// An owned, mutable C-style "wide" string for windows FFI that is nul-aware and nul-terminated.
@@ -64,7 +64,9 @@ pub struct MissingNulError(Option<Vec<u16>>);
 impl WideCString {
     /// Constructs a new empty `WideCString`.
     pub fn new() -> WideCString {
-        WideCString { inner: vec![0].into_boxed_slice() }
+        WideCString {
+            inner: vec![0].into_boxed_slice(),
+        }
     }
 
     /// Constructs a `WideCString` from a container of UTF-16 data.
@@ -179,7 +181,9 @@ impl WideCString {
     /// that `v` contains no nul values. Providing a vector without interior nul values or without a
     /// terminating nul value will result in an invalid `WideCString`.
     pub unsafe fn from_vec_with_nul_unchecked<T: Into<Vec<u16>>>(v: T) -> WideCString {
-        WideCString { inner: v.into().into_boxed_slice() }
+        WideCString {
+            inner: v.into().into_boxed_slice(),
+        }
     }
 
     /// Constructs a `WideCString` from anything that can be converted to an `OsStr`.
@@ -354,9 +358,10 @@ impl WideCString {
     /// # Panics
     ///
     /// Panics if `len` is greater than 0 but `p` is a null pointer.
-    pub unsafe fn from_ptr_with_nul(p: *const u16,
-                                    len: usize)
-                                    -> Result<WideCString, MissingNulError> {
+    pub unsafe fn from_ptr_with_nul(
+        p: *const u16,
+        len: usize,
+    ) -> Result<WideCString, MissingNulError> {
         if len == 0 {
             return Ok(WideCString::new());
         }
@@ -415,7 +420,9 @@ impl WideCString {
             i += 1;
         }
         let slice = std::slice::from_raw_parts_mut(p, i as usize + 1);
-        WideCString { inner: mem::transmute(slice) }
+        WideCString {
+            inner: mem::transmute(slice),
+        }
     }
 }
 
