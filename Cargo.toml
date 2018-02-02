@@ -2,10 +2,8 @@
 name = "widestring"
 version = "0.2.2"
 authors = ["Kathryn Long <squeeself@gmail.com>"]
-description = "A wide string FFI library for converting to and from Windows Wide \"Unicode\" (UTF-16) strings."
+description = "A wide string FFI library for converting to and from Wide \"Unicode\" (UTF-16) strings, such as those often used in Windows API."
 repository = "https://github.com/starkat99/widestring-rs.git"
-homepage = "https://github.com/starkat99/widestring-rs"
-documentation = "http://starkat99.github.io/widestring-rs/widestring/"
 readme = "README.md"
 keywords = ["windows", "wide", "string", "win32", "utf16"]
 license = "MIT/Apache-2.0"

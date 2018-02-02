@@ -1,10 +1,13 @@
-# widestring [![Build status](https://ci.appveyor.com/api/projects/status/97pmbv6kk79bicww?svg=true)](https://ci.appveyor.com/project/starkat99/widestring-rs) [![Build Status](https://travis-ci.org/starkat99/widestring-rs.svg?branch=master)](https://travis-ci.org/starkat99/widestring-rs) [![Crates.io](https://img.shields.io/crates/v/widestring.svg)](https://crates.io/crates/widestring/)
+# widestring
+[![Crates.io](https://img.shields.io/crates/v/widestring.svg)](https://crates.io/crates/widestring/) [![Build status](https://ci.appveyor.com/api/projects/status/97pmbv6kk79bicww?svg=true)](https://ci.appveyor.com/project/starkat99/widestring-rs) [![Build Status](https://travis-ci.org/starkat99/widestring-rs.svg?branch=master)](https://travis-ci.org/starkat99/widestring-rs)
 
-A wide string Rust FFI library for converting to and from Windows Wide "Unicode" (UTF-16) strings.
+A wide string Rust FFI library for converting to and from Wide "Unicode" (UTF-16) strings, such as
+those often used in Windows API.
 
 ## Documentation
 
-Documentation can be found [online](http://starkat99.github.io/widestring-rs/widestring/).
+- [Crate API Reference](https://docs.rs/widestring/)
+- [Latest Changes](CHANGELOG.md)
 
 ## License
 
@@ -13,7 +16,7 @@ This library is distributed under the terms of either of:
 * MIT license ([LICENSE-MIT](LICENSE-MIT) or
 [http://opensource.org/licenses/MIT](http://opensource.org/licenses/MIT))
 * Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
-[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0))
+[http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0))x
 
 at your option.
 
