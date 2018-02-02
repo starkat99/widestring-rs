@@ -381,7 +381,7 @@ impl WideCString {
     /// The resulting vector will **not** contain a nul-terminator, and will contain no other nul
     /// values.
     pub fn into_vec(self) -> Vec<u16> {
-        let mut v = self.inner.into_vec();
+        let mut v = self.into_inner().into_vec();
         v.pop();
         v
     }
@@ -390,7 +390,7 @@ impl WideCString {
     ///
     /// The resulting vector will contain a nul-terminator and no interior nul values.
     pub fn into_vec_with_nul(self) -> Vec<u16> {
-        self.inner.into_vec()
+        self.into_inner().into_vec()
     }
 
     /// Transfers ownership of the wide string to a C caller.
@@ -403,7 +403,7 @@ impl WideCString {
     ///
     /// Failure to call `from_raw` will lead to a memory leak.
     pub fn into_raw(self) -> *mut u16 {
-        Box::into_raw(self.inner) as *mut u16
+        Box::into_raw(self.into_inner()) as *mut u16
     }
 
     /// Retakes ownership of a CString that was transferred to C.
@@ -422,6 +422,17 @@ impl WideCString {
         let slice = std::slice::from_raw_parts_mut(p, i as usize + 1);
         WideCString {
             inner: mem::transmute(slice),
+        }
+    }
+
+    // Bypass "move out of struct which implements [`Drop`] trait" restriction.
+    ///
+    /// [`Drop`]: ../ops/trait.Drop.html
+    fn into_inner(self) -> Box<[u16]> {
+        unsafe {
+            let result = std::ptr::read(&self.inner);
+            mem::forget(self);
+            result
         }
     }
 }
