@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Changed
 - Writing changelog manually.
+- Upgraded winapi dev dependency.
 
 ## [0.2.2] - 2016-09-09 <a name="0.2.2"></a>
 ### Fixed
