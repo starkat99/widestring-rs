@@ -479,6 +479,18 @@ impl Default for WideCString {
     }
 }
 
+// Turns this `WideCString` into an empty string to prevent
+// memory unsafe code from working by accident. Inline
+// to prevent LLVM from optimizing it away in debug builds.
+impl Drop for WideCString {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            *self.inner.get_unchecked_mut(0) = 0;
+        }
+    }
+}
+
 impl WideCStr {
     /// Coerces a value into a `WideCStr`.
     pub fn new<'a, S: AsRef<WideCStr> + ?Sized>(s: &'a S) -> &'a WideCStr {
