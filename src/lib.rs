@@ -71,9 +71,13 @@
 //! # extern crate widestring;
 //! # #[cfg(windows)]
 //! # fn main() {
-//! use winapi::um::winbase::{FormatMessageW, LocalFree};
+//! use winapi::um::winbase::{FormatMessageW, LocalFree, FORMAT_MESSAGE_FROM_SYSTEM,
+//!                           FORMAT_MESSAGE_ALLOCATE_BUFFER, FORMAT_MESSAGE_IGNORE_INSERTS};
+//! use winapi::shared::ntdef::LPWSTR;
+//! use winapi::shared::minwindef::HLOCAL;
 //! use std::ptr;
 //! use widestring::WideString;
+//! # use winapi::shared::minwindef::DWORD;
 //! # let error_code: DWORD = 0;
 //!
 //! let widestr: WideString;
@@ -111,9 +115,13 @@
 //! # extern crate widestring;
 //! # #[cfg(windows)]
 //! # fn main() {
-//! use winapi::um::winbase::{FormatMessageW, LocalFree};
+//! use winapi::um::winbase::{FormatMessageW, LocalFree, FORMAT_MESSAGE_FROM_SYSTEM,
+//!                           FORMAT_MESSAGE_ALLOCATE_BUFFER, FORMAT_MESSAGE_IGNORE_INSERTS};
+//! use winapi::shared::ntdef::LPWSTR;
+//! use winapi::shared::minwindef::HLOCAL;
 //! use std::ptr;
 //! use widestring::WideCString;
+//! # use winapi::shared::minwindef::DWORD;
 //! # let error_code: DWORD = 0;
 //!
 //! let widestr: WideCString;
