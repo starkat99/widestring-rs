@@ -4,7 +4,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Additional unchecked functions on `WideCString`.
+- All types now implement `Default`.
+- `WideString::shrink_to_fit`
+
 ### Changed
+- Renamed `WideCString::from_vec` to replace `WideCString::new`. To create empty string, use
+  `WideCString::default()` now.
+- `WideCString` now implements `Drop`, which sets the string to an empty string to prevent invalid
+  unsafe code from working correctly when it should otherwise break. Also see `Drop` implementation
+  of `CString`.
 - Writing changelog manually.
 - Upgraded winapi dev dependency.
 
