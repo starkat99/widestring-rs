@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   of `CString`.
 - Writing changelog manually.
 - Upgraded winapi dev dependency.
+- Now requires at least Rust 1.17+ to compile (previously, was Rust 1.8).
 
 ## [0.2.2] - 2016-09-09 <a name="0.2.2"></a>
 ### Fixed
