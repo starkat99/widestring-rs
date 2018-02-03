@@ -152,9 +152,9 @@ impl WideCString {
     ///
     /// # Safety
     ///
-    /// This method is equivalent to `from_vec` except that no runtime assertion is made that `v`
-    /// contains no nul values. Providing a vector with non-terminating nul values will result in an
-    /// invalid `WideCString`.
+    /// This method is equivalent to `new` except that no runtime assertion is made that `v`
+    /// contains no nul values. Providing a vector with nul values will result in an invalid
+    /// `WideCString`.
     pub unsafe fn from_vec_unchecked<T: Into<Vec<u16>>>(v: T) -> WideCString {
         let mut v = v.into();
         match v.last() {
@@ -171,7 +171,7 @@ impl WideCString {
     /// # Safety
     ///
     /// This method is equivalent to `from_vec_with_nul` except that no runtime assertion is made
-    /// that `v` contains no nul values. Providing a vector without interior nul values or without a
+    /// that `v` contains no nul values. Providing a vector with interior nul values or without a
     /// terminating nul value will result in an invalid `WideCString`.
     pub unsafe fn from_vec_with_nul_unchecked<T: Into<Vec<u16>>>(v: T) -> WideCString {
         WideCString {
@@ -213,6 +213,29 @@ impl WideCString {
         WideCString::new(v)
     }
 
+    /// Constructs a `WideCString` from anything that can be converted to an `OsStr`, without
+    /// checking for interior nul values.
+    ///
+    /// # Safety
+    ///
+    /// This method is equivalent to `from_str` except that no runtime assertion is made that `s`
+    /// contains no nul values. Providing a string with nul values will result in an invalid
+    /// `WideCString`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideCString;
+    /// let s = "MyString";
+    /// // Create a wide string from the string
+    /// let wcstr = unsafe { WideCString::from_str_unchecked(s) };
+    /// # assert_eq!(wcstr.to_string_lossy(), s);
+    /// ```
+    pub unsafe fn from_str_unchecked<T: AsRef<OsStr>>(s: T) -> WideCString {
+        let v = platform::os_to_wide(s.as_ref());
+        WideCString::from_vec_unchecked(v)
+    }
+
     /// Constructs a `WideCString` from anything that can be converted to an `OsStr` with a nul
     /// terminator.
     ///
@@ -247,6 +270,29 @@ impl WideCString {
         WideCString::from_vec_with_nul(v)
     }
 
+    /// Constructs a `WideCString` from anything that can be converted to an `OsStr` that should
+    /// have a terminating nul, but without checking for any nul values.
+    ///
+    /// # Safety
+    ///
+    /// This method is equivalent to `from_str_with_nul` except that no runtime assertion is made
+    /// that `s` contains no nul values. Providing a vector with interior nul values or without a
+    /// terminating nul value will result in an invalid `WideCString`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideCString;
+    /// let s = "My String\u{0}";
+    /// // Create a wide string from the string
+    /// let wcstr = unsafe { WideCString::from_str_with_nul_unchecked(s) };
+    /// assert_eq!(wcstr.to_string_lossy(), "My String");
+    /// ```
+    pub unsafe fn from_str_with_nul_unchecked<T: AsRef<OsStr>>(s: T) -> WideCString {
+        let v = platform::os_to_wide(s.as_ref());
+        WideCString::from_vec_with_nul_unchecked(v)
+    }
+
     /// Constructs a `WideCString` from anything that can be converted to a `WideStr`.
     ///
     /// The string will be scanned for invalid nul values.
@@ -257,6 +303,18 @@ impl WideCString {
     /// The returned error will contain a `Vec<u16>` as well as the position of the nul value.
     pub fn from_wide_str<T: AsRef<WideStr>>(s: T) -> Result<WideCString, NulError> {
         WideCString::new(s.as_ref().as_slice())
+    }
+
+    /// Constructs a `WideCString` from anything that can be converted to a `WideStr`, without
+    /// scanning for invalid nul values.
+    ///
+    /// # Safety
+    ///
+    /// This method is equivalent to `from_wide_str` except that no runtime assertion is made that
+    /// `s` contains no nul values. Providing a string with nul values will result in an invalid
+    /// `WideCString`.
+    pub unsafe fn from_wide_str_unchecked<T: AsRef<WideStr>>(s: T) -> WideCString {
+        WideCString::from_vec_unchecked(s.as_ref().as_slice())
     }
 
     /// Constructs a `WideCString` from anything that can be converted to a `WideStr` with a nul
@@ -270,6 +328,18 @@ impl WideCString {
     /// string. The returned error will contain the consumed `Vec<u16>`.
     pub fn from_wide_str_with_nul<T: AsRef<WideStr>>(s: T) -> Result<WideCString, MissingNulError> {
         WideCString::from_vec_with_nul(s.as_ref().as_slice())
+    }
+
+    /// Constructs a `WideCString` from anything that can be converted to a `WideStr` with a nul
+    /// terminator, without checking the string for any invalid interior nul values.
+    ///
+    /// # Safety
+    ///
+    /// This method is equivalent to `from_wide_str_with_nul` except that no runtime assertion is
+    /// made that `s` contains no nul values. Providing a vector with interior nul values or
+    /// without a terminating nul value will result in an invalid `WideCString`.
+    pub unsafe fn from_wide_str_with_nul_unchecked<T: AsRef<WideStr>>(s: T) -> WideCString {
+        WideCString::from_vec_with_nul_unchecked(s.as_ref().as_slice())
     }
 
     /// Constructs a new `WideCString` copied from a `u16` nul-terminated string pointer.
@@ -332,6 +402,30 @@ impl WideCString {
         WideCString::new(slice)
     }
 
+    /// Constructs a new `WideCString` copied from a `u16` pointer and a length.
+    ///
+    /// The `len` argument is the number of `u16` elements, **not** the number of bytes.
+    ///
+    /// The string will **not** be checked for invalid nul values.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len`
+    /// elements. In addition, no checking for invalid nul values is performed, so if any elements
+    /// of `p` are a nul value, the resulting `WideCString` will be invalid.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `len` is greater than 0 but `p` is a null pointer.
+    pub unsafe fn from_ptr_unchecked(p: *const u16, len: usize) -> WideCString {
+        if len == 0 {
+            return WideCString::default();
+        }
+        assert!(!p.is_null());
+        let slice = std::slice::from_raw_parts(p, len);
+        WideCString::from_vec_unchecked(slice)
+    }
+
     /// Constructs a new `WideString` copied from a `u16` pointer and a length.
     ///
     /// The `len` argument is the number of `u16` elements, **not** the number of bytes.
@@ -361,6 +455,32 @@ impl WideCString {
         assert!(!p.is_null());
         let slice = std::slice::from_raw_parts(p, len);
         WideCString::from_vec_with_nul(slice)
+    }
+
+    /// Constructs a new `WideString` copied from a `u16` pointer and a length.
+    ///
+    /// The `len` argument is the number of `u16` elements, **not** the number of bytes.
+    ///
+    /// The data should end with a nul terminator, but no checking is done on whether the data
+    /// actually ends with a nul terminator, or if the data contains any interior nul values.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len`
+    /// elements. In addition, no checking for nul values is performed, so if there data does not
+    /// end with a nul terminator, or if there are any interior nul values, the resulting
+    /// `WideCString` will be invalid.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `len` is greater than 0 but `p` is a null pointer.
+    pub unsafe fn from_ptr_with_nul_unchecked(p: *const u16, len: usize) -> WideCString {
+        if len == 0 {
+            return WideCString::default();
+        }
+        assert!(!p.is_null());
+        let slice = std::slice::from_raw_parts(p, len);
+        WideCString::from_vec_with_nul_unchecked(slice)
     }
 
     /// Converts to a `WideCStr` reference.
@@ -480,14 +600,14 @@ impl std::ops::Deref for WideCString {
 impl<'a> Default for &'a WideCStr {
     fn default() -> &'a WideCStr {
         const SLICE: &'static [u16] = &[0u16];
-        WideCStr::from_slice_with_nul(SLICE).unwrap()
+        unsafe { WideCStr::from_slice_with_nul_unchecked(SLICE) }
     }
 }
 
 impl Default for WideCString {
     fn default() -> WideCString {
         let def: &WideCStr = Default::default();
-        def.to_owned()
+        def.to_wide_c_string()
     }
 }
 
@@ -557,7 +677,8 @@ impl WideCStr {
     ///
     /// `p` must be non-null, even for zero `len`.
     ///
-    /// The interior values of the pointer are not scanned for nul.
+    /// The interior values of the pointer are not scanned for nul. Any interior nul values will
+    /// result in an invalid `WideCStr`.
     ///
     /// # Panics
     ///
@@ -577,14 +698,31 @@ impl WideCStr {
 
     /// Constructs a `WideCStr` from a slice of `u16` values that has a nul terminator.
     ///
-    /// The slice will be scanned for nul values. If a nul value is found, it is treated as the
-    /// terminator for the string, and the `WideCStr` slice will be truncated to that nul. If no nul
-    /// value is found, an error is returned.
+    /// The slice will be scanned for nul values. When a nul value is found, it is treated as the
+    /// terminator for the string, and the `WideCStr` slice will be truncated to that nul.
+    ///
+    /// # Failure
+    ///
+    /// If there are no no nul values in `slice`, an error is returned.
     pub fn from_slice_with_nul<'a>(slice: &'a [u16]) -> Result<&'a WideCStr, MissingNulError> {
         match slice.iter().position(|x| *x == 0) {
             None => Err(MissingNulError(None)),
-            Some(i) => Ok(unsafe { std::mem::transmute(&slice[..i + 1]) }),
+            Some(i) => Ok(unsafe {
+                WideCStr::from_slice_with_nul_unchecked(&slice[..i + 1])
+            }),
         }
+    }
+
+    /// Constructs a `WideCStr` from a slice of `u16` values that has a nul terminator. No
+    /// checking for nul values is performed.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it can lead to invalid `WideCStr` values when `slice`
+    /// is missing a terminating nul value or there are non-terminating interior nul values
+    /// in the slice.
+    pub unsafe fn from_slice_with_nul_unchecked<'a>(slice: &'a [u16]) -> &'a WideCStr {
+        std::mem::transmute(slice)
     }
 
     /// Copies the wide string to an new owned `WideString`.
