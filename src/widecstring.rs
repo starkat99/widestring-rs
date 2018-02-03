@@ -23,7 +23,7 @@ use super::platform;
 /// use widestring::WideCString;
 /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
 /// // Create a wide string from the vector
-/// let wstr = WideCString::from_vec(v).unwrap();
+/// let wstr = WideCString::new(v).unwrap();
 /// // Convert to a rust string!
 /// let rust_str = wstr.to_string_lossy();
 /// assert_eq!(rust_str, "The");
@@ -477,11 +477,17 @@ impl std::ops::Deref for WideCString {
     }
 }
 
+impl<'a> Default for &'a WideCStr {
+    fn default() -> &'a WideCStr {
+        const SLICE: &'static [u16] = &[0u16];
+        WideCStr::from_slice_with_nul(SLICE).unwrap()
+    }
+}
+
 impl Default for WideCString {
     fn default() -> WideCString {
-        WideCString {
-            inner: vec![0].into_boxed_slice(),
-        }
+        let def: &WideCStr = Default::default();
+        def.to_owned()
     }
 }
 
