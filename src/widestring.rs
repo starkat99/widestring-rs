@@ -243,6 +243,22 @@ impl WideString {
     pub fn shrink_to_fit(&mut self) {
         self.inner.shrink_to_fit();
     }
+
+    /// Converts this `WideString` into a boxed `WideStr`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::{WideString, WideStr};
+    ///
+    /// let s = WideString::from_str("hello");
+    ///
+    /// let b: Box<WideStr> = s.into_boxed_wide_str();
+    /// ```
+    pub fn into_boxed_wide_str(self) -> Box<WideStr> {
+        let rw = Box::into_raw(self.inner.into_boxed_slice()) as *mut WideStr;
+        unsafe { Box::from_raw(rw) }
+    }
 }
 
 impl Into<Vec<u16>> for WideString {
@@ -469,6 +485,14 @@ impl WideStr {
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
+
+    /// Converts a `Box<WideStr>` into a `WideString` without copying or allocating.
+    pub fn into_wide_string(self: Box<WideStr>) -> WideString {
+        let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut [u16]) };
+        WideString {
+            inner: boxed.into_vec(),
+        }
+    }
 }
 
 impl std::borrow::Borrow<WideStr> for WideString {
@@ -511,5 +535,33 @@ impl AsRef<[u16]> for WideStr {
 impl AsRef<[u16]> for WideString {
     fn as_ref(&self) -> &[u16] {
         self.as_slice()
+    }
+}
+
+impl<'a> From<&'a WideStr> for Box<WideStr> {
+    fn from(s: &'a WideStr) -> Box<WideStr> {
+        let boxed: Box<[u16]> = Box::from(&s.inner);
+        let rw = Box::into_raw(boxed) as *mut WideStr;
+        unsafe { Box::from_raw(rw) }
+    }
+}
+
+impl From<Box<WideStr>> for WideString {
+    fn from(boxed: Box<WideStr>) -> WideString {
+        boxed.into_wide_string()
+    }
+}
+
+impl From<WideString> for Box<WideStr> {
+    fn from(s: WideString) -> Box<WideStr> {
+        s.into_boxed_wide_str()
+    }
+}
+
+impl Default for Box<WideStr> {
+    fn default() -> Box<WideStr> {
+        let boxed: Box<[u16]> = Box::from([]);
+        let rw = Box::into_raw(boxed) as *mut WideStr;
+        unsafe { Box::from_raw(rw) }
     }
 }

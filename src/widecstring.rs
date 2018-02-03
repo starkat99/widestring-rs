@@ -538,6 +538,23 @@ impl WideCString {
         }
     }
 
+    /// Converts this `WideCString` into a boxed `WideCStr`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::{WideCString, WideCStr};
+    ///
+    /// let mut v = vec![102u16, 111u16, 111u16]; // "foo"
+    /// let c_string = WideCString::new(v.clone()).unwrap();
+    /// let boxed = c_string.into_boxed_wide_c_str();
+    /// v.push(0);
+    /// assert_eq!(&*boxed, WideCStr::from_slice_with_nul(&v).unwrap());
+    /// ```
+    pub fn into_boxed_wide_c_str(self) -> Box<WideCStr> {
+        unsafe { Box::from_raw(Box::into_raw(self.into_inner()) as *mut WideCStr) }
+    }
+
     // Bypass "move out of struct which implements [`Drop`] trait" restriction.
     ///
     /// [`Drop`]: ../ops/trait.Drop.html
@@ -831,6 +848,25 @@ impl WideCStr {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+
+    /// Converts a `Box<WideCStr>` into a `WideCString` without copying or allocating.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::WideCString;
+    ///
+    /// let v = vec![102u16, 111u16, 111u16]; // "foo"
+    /// let c_string = WideCString::new(v.clone()).unwrap();
+    /// let boxed = c_string.into_boxed_wide_c_str();
+    /// assert_eq!(boxed.into_wide_c_string(), WideCString::new(v).unwrap());
+    /// ```
+    pub fn into_wide_c_string(self: Box<WideCStr>) -> WideCString {
+        let raw = Box::into_raw(self) as *mut [u16];
+        WideCString {
+            inner: unsafe { Box::from_raw(raw) },
+        }
+    }
 }
 
 impl std::borrow::Borrow<WideCStr> for WideCString {
@@ -873,6 +909,34 @@ impl AsRef<[u16]> for WideCStr {
 impl AsRef<[u16]> for WideCString {
     fn as_ref(&self) -> &[u16] {
         self.as_slice()
+    }
+}
+
+impl<'a> From<&'a WideCStr> for Box<WideCStr> {
+    fn from(s: &'a WideCStr) -> Box<WideCStr> {
+        let boxed: Box<[u16]> = Box::from(s.as_slice_with_nul());
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut WideCStr) }
+    }
+}
+
+impl From<Box<WideCStr>> for WideCString {
+    #[inline]
+    fn from(s: Box<WideCStr>) -> WideCString {
+        s.into_wide_c_string()
+    }
+}
+
+impl From<WideCString> for Box<WideCStr> {
+    #[inline]
+    fn from(s: WideCString) -> Box<WideCStr> {
+        s.into_boxed_wide_c_str()
+    }
+}
+
+impl Default for Box<WideCStr> {
+    fn default() -> Box<WideCStr> {
+        let boxed: Box<[u16]> = Box::from([0]);
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut WideCStr) }
     }
 }
 

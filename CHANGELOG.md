@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Additional unchecked functions on `WideCString`.
 - All types now implement `Default`.
 - `WideString::shrink_to_fit`
+- `WideString::into_boxed_wide_str` and `Box<WideStr>::into_wide_string`.
+- `WideCString::into_boxed_wide_c_str` and `Box<WideCStr>::into_wide_c_string`.
+- `From` and `Default` implementations for boxed `WideStr` and boxed `WideCStr`.
 
 ### Changed
 - Renamed `WideCString::from_vec` to replace `WideCString::new`. To create empty string, use
