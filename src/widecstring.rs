@@ -62,14 +62,7 @@ pub struct NulError(usize, Vec<u16>);
 pub struct MissingNulError(Option<Vec<u16>>);
 
 impl WideCString {
-    /// Constructs a new empty `WideCString`.
-    pub fn new() -> WideCString {
-        WideCString {
-            inner: vec![0].into_boxed_slice(),
-        }
-    }
-
-    /// Constructs a `WideCString` from a container of UTF-16 data.
+    /// Constructs a `WideCString` from a container of wide character data.
     ///
     /// This method will consume the provided data and use the underlying elements to construct a
     /// new string. The data will be scanned for invalid nul values.
@@ -86,7 +79,7 @@ impl WideCString {
     /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
     /// # let cloned = v.clone();
     /// // Create a wide string from the vector
-    /// let wcstr = WideCString::from_vec(v).unwrap();
+    /// let wcstr = WideCString::new(v).unwrap();
     /// # assert_eq!(wcstr.into_vec(), cloned);
     /// ```
     ///
@@ -96,11 +89,11 @@ impl WideCString {
     /// use widestring::WideCString;
     /// let v = vec![84u16, 0u16, 104u16, 101u16]; // 'T' NUL 'h' 'e'
     /// // Create a wide string from the vector
-    /// let res = WideCString::from_vec(v);
+    /// let res = WideCString::new(v);
     /// assert!(res.is_err());
     /// assert_eq!(res.err().unwrap().nul_position(), 1);
     /// ```
-    pub fn from_vec<T: Into<Vec<u16>>>(v: T) -> Result<WideCString, NulError> {
+    pub fn new<T: Into<Vec<u16>>>(v: T) -> Result<WideCString, NulError> {
         let v = v.into();
         // Check for nul vals
         match v.iter().position(|&val| val == 0) {
@@ -217,7 +210,7 @@ impl WideCString {
     /// ```
     pub fn from_str<T: AsRef<OsStr>>(s: T) -> Result<WideCString, NulError> {
         let v = platform::os_to_wide(s.as_ref());
-        WideCString::from_vec(v)
+        WideCString::new(v)
     }
 
     /// Constructs a `WideCString` from anything that can be converted to an `OsStr` with a nul
@@ -263,7 +256,7 @@ impl WideCString {
     /// This function will return an error if the data contains a nul value.
     /// The returned error will contain a `Vec<u16>` as well as the position of the nul value.
     pub fn from_wide_str<T: AsRef<WideStr>>(s: T) -> Result<WideCString, NulError> {
-        WideCString::from_vec(s.as_ref().as_slice())
+        WideCString::new(s.as_ref().as_slice())
     }
 
     /// Constructs a `WideCString` from anything that can be converted to a `WideStr` with a nul
@@ -332,11 +325,11 @@ impl WideCString {
     /// Panics if `len` is greater than 0 but `p` is a null pointer.
     pub unsafe fn from_ptr(p: *const u16, len: usize) -> Result<WideCString, NulError> {
         if len == 0 {
-            return Ok(WideCString::new());
+            return Ok(WideCString::default());
         }
         assert!(!p.is_null());
         let slice = std::slice::from_raw_parts(p, len);
-        WideCString::from_vec(slice)
+        WideCString::new(slice)
     }
 
     /// Constructs a new `WideString` copied from a `u16` pointer and a length.
@@ -363,7 +356,7 @@ impl WideCString {
         len: usize,
     ) -> Result<WideCString, MissingNulError> {
         if len == 0 {
-            return Ok(WideCString::new());
+            return Ok(WideCString::default());
         }
         assert!(!p.is_null());
         let slice = std::slice::from_raw_parts(p, len);
@@ -486,7 +479,9 @@ impl std::ops::Deref for WideCString {
 
 impl Default for WideCString {
     fn default() -> WideCString {
-        WideCString::new()
+        WideCString {
+            inner: vec![0].into_boxed_slice(),
+        }
     }
 }
 
