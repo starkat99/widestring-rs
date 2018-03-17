@@ -1,39 +1,39 @@
 //! A wide string FFI library for converting to and from Windows Wide "Unicode" strings.
 //!
 //! This crate provides two types of wide strings: `WideString` and `WideCString`. They differ
-//! in the guaruntees they provide. For `WideString`, no guaruntees are made about the underlying
+//! in the guarantees they provide. For `WideString`, no guarantees are made about the underlying
 //! string data; it is simply a sequence of UTF-16 *partial code units*, which may be ill-formed or
-//! contain nul values. `WideCString` on the other hand is aware of nul values and is guarunteed to
-//! be terminated with a nul value (unless unchecked methods are used to construct the
-//! `WideCString`). Because `WideCString` is a C-style, nul-terminated string, it will have no
-//! interior nul values. A `WideCString` may still have ill-formed UTF-16 partial code units.
+//! contain null values. `WideCString` on the other hand is aware of null values and is guaranteed to
+//! be terminated with a null value (unless unchecked methods are used to construct the
+//! `WideCString`). Because `WideCString` is a C-style, null-terminated string, it will have no
+//! interior null values. A `WideCString` may still have ill-formed UTF-16 partial code units.
 //!
-//! Use `WideString` when you simply need to pass-thru strings, or when you know or don't care if
-//! you're not dealing with a nul-terminated string, such as when string lengths are provided and
+//! Use `WideString` when you simply need to pass-through strings, or when you know or don't care if
+//! you're not dealing with a null-terminated string, such as when string lengths are provided and
 //! you are only reading strings from FFI, not passing them into FFI.
 //!
-//! Use `WideCString` when you must properly handle nul values, and must deal with nul-terminated
-//! C-style wide strings, such as if you must pass strings into FFI functions.
+//! Use `WideCString` when you must properly handle null values, and must deal with null-terminated
+//! C-style wide strings, such as when you pass strings into FFI functions.
 //!
 //! # Relationship to other Rust Strings
 //!
 //! Standard Rust strings `String` and `str` are well-formed Unicode data encoded as UTF-8. The
-//! standard strings provide proper handling of Unicode and ensure strong safety guaruntees.
+//! standard strings provide proper handling of Unicode and ensure strong safety guarantees.
 //!
-//! `CString` and `CStr` are strings used for C FFI. They handle nul-terminated C-style strings.
+//! `CString` and `CStr` are strings used for C FFI. They handle null-terminated C-style strings.
 //! However, they do not have a builtin encoding, and conversions between C-style and other Rust
-//! strings must specifically encode and decode the strings, and handle possible invalid encoding
+//! strings must specifically encode and decode the strings, and handle possibly invalid encoding
 //! data. They are safe to use only in passing string-like data back and forth from C APIs but do
-//! do provide any other guaruntees, so may not be well-formed.
+//! not provide any other guarantees, so may not be well-formed.
 //!
 //! `OsString` and `OsStr` are also strings for use with FFI. Unlike `CString`, they do no special
-//! handling of nul values, but instead have an OS-specified encoding. While, for example, Linux
-//! systems this is usually UTF-8 encoding, this is not the case for every platform. The encoding
-//! may not even be 8-bit: on Windows, `OsString` is 16-bit values, but may not always be
-//! interpreted with UTF-16 encoding. Like `CString`, `OsString` has no additional
-//! guaruntees and may not be well-formed.
+//! handling of null values, but instead have an OS-specified encoding. While, for example, on Linux
+//! systems this is usually the UTF-8 encoding, this is not the case for every platform. The encoding
+//! may not even be 8-bit: on Windows, `OsString` uses 16-bit values, but may not always be
+//! valid UTF-16-encoded. Like `CString`, `OsString` has no additional
+//! guarantees and may not be well-formed.
 //!
-//! Due to the looser safety of these other string types, conversion to standard Rust `String` is
+//! Due to the loser safety of these other string types, conversion to standard Rust `String` is
 //! lossy, and may require knowledge of the underlying encoding, including platform-specific quirks.
 //!
 //! The wide strings in this crate are roughly based on the principles of the string types in
@@ -62,7 +62,7 @@
 //!
 //! The following example uses `WideString` to get windows error messages, since `FormatMessageW`
 //! returns a string length for us, and we don't need to pass error messages into other FFI
-//! functions so we don't need to worry about nuls.
+//! functions so we don't need to worry about nulls.
 //!
 //! ```rust
 //! # #[cfg(not(windows))]
