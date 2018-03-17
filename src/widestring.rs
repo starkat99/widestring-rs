@@ -3,17 +3,18 @@ use std::mem;
 use std::ffi::{OsStr, OsString};
 use super::platform;
 
-/// An owned, mutable "wide" string for windows FFI that is **not** nul-aware.
+/// An owned, mutable "wide" string for FFI that is **not** nul-aware.
 ///
 /// `WideString` is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-16 data. These strings are intended to be used with windows
-/// FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
+/// contain invalid and ill-formed UTF-16 data. These strings are intended to be used with
+/// FFI functions (such as Windows API) that directly use string length, where the strings are
+/// known to have proper nul-termination already, or where strings are merely being passed through
+/// without modification.
 ///
 /// `WideCString` should be used instead if nul-aware strings are required.
 ///
 /// `WideString` can be converted to and from many other string types, including `OsString` and
-/// `String`, making proper Unicode windows FFI safe and easy.
+/// `String`, making proper Unicode Windows FFI safe and easy.
 ///
 /// # Examples
 ///
@@ -37,14 +38,15 @@ pub struct WideString {
 /// Wide string reference for `WideString`.
 ///
 /// `WideStr` is aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-16 data. These strings are intended to be used with windows
-/// FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
+/// contain invalid and ill-formed UTF-16 data. These strings are intended to be used with
+/// FFI functions (such as Windows API) that directly use string length, where the strings are
+/// known to have proper nul-termination already, or where strings are merely being passed through
+/// without modification.
 ///
 /// `WideCStr` should be used instead of nul-aware strings are required.
 ///
 /// `WideStr` can be converted to many other string types, including `OsString` and `String`, making
-/// proper Unicode windows FFI safe and easy.
+/// proper Unicode Windows FFI safe and easy.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct WideStr {
     inner: [u16],
@@ -76,8 +78,8 @@ impl WideString {
 
     /// Encodes a `WideString` copy from an `OsStr`.
     ///
-    /// This makes a wide string copy of the `OsStr`. Since `OsStr` makes no guaruntees that it is
-    /// valid data, there is no guaruntee that the resulting `WideString` will be valid UTF-16.
+    /// This makes a wide string copy of the `OsStr`. Since `OsStr` makes no guarantees that it is
+    /// valid data, there is no guarantee that the resulting `WideString` will be valid UTF-16.
     ///
     /// # Examples
     ///
@@ -136,7 +138,7 @@ impl WideString {
         self.inner.clear()
     }
 
-    /// Reserves the capacity for at least `additiona` more capacity to be inserted in the given
+    /// Reserves the capacity for at least `additional` more capacity to be inserted in the given
     /// `WideString`.
     ///
     /// More space may be reserved to avoid frequent allocations.
@@ -144,7 +146,7 @@ impl WideString {
         self.inner.reserve(additional)
     }
 
-    /// Reserves the minimum capacity for exactly `additiona` more capacity to be inserted in the
+    /// Reserves the minimum capacity for exactly `additional` more capacity to be inserted in the
     /// given `WideString`. Does nothing if the capcity is already sufficient.
     ///
     /// Note that the allocator may give more space than is requested. Therefore capacity can not be
@@ -387,7 +389,7 @@ impl WideStr {
         mem::transmute(std::slice::from_raw_parts(p, len))
     }
 
-    /// Constructs a `WideStr` from a slice of `u16` partial code points.
+    /// Constructs a `WideStr` from a slice of `u16` code points.
     ///
     /// No checks are performed on the slice.
     pub fn from_slice<'a>(slice: &'a [u16]) -> &'a WideStr {
@@ -396,8 +398,8 @@ impl WideStr {
 
     /// Decodes a wide string to an owned `OsString`.
     ///
-    /// This makes a string copy of the `WideStr`. Since `WideStr` makes no guaruntees that it is
-    /// valid UTF-16, there is no guaruntee that the resulting `OsString` will be valid data.
+    /// This makes a string copy of the `WideStr`. Since `WideStr` makes no guarantees that it is
+    /// valid UTF-16, there is no guarantee that the resulting `OsString` will be valid data.
     ///
     /// # Examples
     ///
@@ -475,7 +477,7 @@ impl WideStr {
         self.inner.as_ptr()
     }
 
-    /// Returns the length of the wide string as number of UTF-16 partial code units (**not** code
+    /// Returns the length of the wide string as number of UTF-16 code units (**not** code
     /// points and **not** number of bytes).
     pub fn len(&self) -> usize {
         self.inner.len()

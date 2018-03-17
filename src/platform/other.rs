@@ -1,4 +1,4 @@
-use std::ffi::{OsString, OsStr};
+use std::ffi::{OsStr, OsString};
 
 pub fn os_to_wide(s: &OsStr) -> Vec<u16> {
     s.to_string_lossy().encode_utf16().collect()

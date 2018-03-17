@@ -4,15 +4,15 @@ use super::{WideStr, WideString};
 use std::ffi::{OsStr, OsString};
 use super::platform;
 
-/// An owned, mutable C-style "wide" string for windows FFI that is nul-aware and nul-terminated.
+/// An owned, mutable C-style "wide" string for FFI that is nul-aware and nul-terminated.
 ///
 /// `WideCString` is aware of nul values. Unless unchecked conversions are used, all `WideCString`
-/// strings end with a nul-terminator in the underlying buffer, and contain no internal nul values.
+/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
 /// The strings may still contain invalid or ill-formed UTF-16 data. These strings are intended to
-/// be used with windows FFI functions that may require nul-terminated strings.
+/// be used with FFI functions such as Windows API that may require nul-terminated strings.
 ///
 /// `WideCString` can be converted to and from many other string types, including `WideString`,
-/// `OsString`, and `String`, making proper Unicode windows FFI safe and easy.
+/// `OsString`, and `String`, making proper Unicode Windows FFI safe and easy.
 ///
 /// # Examples
 ///
@@ -36,12 +36,12 @@ pub struct WideCString {
 /// C-style wide string reference for `WideCString`.
 ///
 /// `WideCStr` is aware of nul values. Unless unchecked conversions are used, all `WideCStr`
-/// strings end with a nul-terminator in the underlying buffer, and contain no internal nul values.
+/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
 /// The strings may still contain invalid or ill-formed UTF-16 data. These strings are intended to
-/// be used with windows FFI functions that may require nul-terminated strings.
+/// be used with FFI functions such as Windows API that may require nul-terminated strings.
 ///
 /// `WideCStr` can be converted to and from many other string types, including `WideString`,
-/// `OsString`, and `String`, making proper Unicode windows FFI safe and easy.
+/// `OsString`, and `String`, making proper Unicode Windows FFI safe and easy.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct WideCStr {
     inner: [u16],
@@ -143,7 +143,6 @@ impl WideCString {
             }
         }
     }
-
 
     /// Creates a `WideCString` from a vector without checking for interior nul values.
     ///
@@ -519,7 +518,7 @@ impl WideCString {
         Box::into_raw(self.into_inner()) as *mut u16
     }
 
-    /// Retakes ownership of a CString that was transferred to C.
+    /// Retakes ownership of a `WideCString` that was transferred to C.
     ///
     /// # Safety
     ///
@@ -555,7 +554,7 @@ impl WideCString {
         unsafe { Box::from_raw(Box::into_raw(self.into_inner()) as *mut WideCStr) }
     }
 
-    // Bypass "move out of struct which implements [`Drop`] trait" restriction.
+    /// Bypass "move out of struct which implements [`Drop`] trait" restriction.
     ///
     /// [`Drop`]: ../ops/trait.Drop.html
     fn into_inner(self) -> Box<[u16]> {
@@ -724,9 +723,7 @@ impl WideCStr {
     pub fn from_slice_with_nul<'a>(slice: &'a [u16]) -> Result<&'a WideCStr, MissingNulError> {
         match slice.iter().position(|x| *x == 0) {
             None => Err(MissingNulError(None)),
-            Some(i) => Ok(unsafe {
-                WideCStr::from_slice_with_nul_unchecked(&slice[..i + 1])
-            }),
+            Some(i) => Ok(unsafe { WideCStr::from_slice_with_nul_unchecked(&slice[..i + 1]) }),
         }
     }
 
@@ -749,8 +746,8 @@ impl WideCStr {
 
     /// Decodes a wide string to an owned `OsString`.
     ///
-    /// This makes a string copy of the `WideCStr`. Since `WideCStr` makes no guaruntees that it is
-    /// valid UTF-16, there is no guaruntee that the resulting `OsString` will be valid data. The
+    /// This makes a string copy of the `WideCStr`. Since `WideCStr` makes no guarantees that it is
+    /// valid UTF-16, there is no guarantee that the resulting `OsString` will be valid data. The
     /// `OsString` will **not** have a nul terminator.
     ///
     /// # Examples
@@ -826,7 +823,7 @@ impl WideCStr {
         &self.inner[..self.len()]
     }
 
-    /// converts to a slice of the wide string, including the nul terminator.
+    /// Converts to a slice of the wide string, including the nul terminator.
     pub fn as_slice_with_nul(&self) -> &[u16] {
         &self.inner
     }
@@ -838,7 +835,7 @@ impl WideCStr {
         self.inner.as_ptr()
     }
 
-    /// Returns the length of the wide string as number of UTF-16 partial code units (**not** code
+    /// Returns the length of the wide string as number of UTF-16 code units (**not** code
     /// points and **not** number of bytes) **not** including nul terminator.
     pub fn len(&self) -> usize {
         self.inner.len() - 1
@@ -972,8 +969,8 @@ impl std::error::Error for NulError {
 }
 
 impl MissingNulError {
-    /// Consumes this error, returning the underlying vector of u16 values which generated the error
-    /// in the first place.
+    /// Consumes this error, returning the underlying vector of `u16` values which generated the
+    /// error in the first place.
     pub fn into_vec(self) -> Option<Vec<u16>> {
         self.0
     }

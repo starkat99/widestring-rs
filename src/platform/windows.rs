@@ -1,7 +1,7 @@
 #![cfg(windows)]
 
-use std::ffi::{OsString, OsStr};
-use std::os::windows::ffi::{OsStringExt, OsStrExt};
+use std::ffi::{OsStr, OsString};
+use std::os::windows::ffi::{OsStrExt, OsStringExt};
 
 pub fn os_to_wide(s: &OsStr) -> Vec<u16> {
     s.encode_wide().collect()
