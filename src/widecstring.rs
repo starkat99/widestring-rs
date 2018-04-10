@@ -770,6 +770,22 @@ impl WideCStr {
     /// Copies the wide string to a new owned `WideString`.
     ///
     /// The `WideString` will **not** have a nul terminator.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::WideCString;
+    /// let wcstr = WideCString::from_str("MyString").unwrap();
+    /// // Convert WideCString to a WideString
+    /// let wstr = wcstr.to_wide_string();
+    ///
+    /// // WideCString will have a terminating nul
+    /// let wcvec = wcstr.into_vec_with_nul();
+    /// assert_eq!(wcvec[wcvec.len()-1], 0);
+    /// // The resulting WideString will not have the terminating nul
+    /// let wvec = wstr.into_vec();
+    /// assert_ne!(wvec[wvec.len()-1], 0);
+    /// ```
     pub fn to_wide_string(&self) -> WideString {
         WideString::from_vec(self.as_slice())
     }
