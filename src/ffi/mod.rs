@@ -1,18 +1,18 @@
 //! A wide string FFI module for converting to and from Wide "Unicode" strings.
 //!
-//! This module provides two types of wide strings: `WideString` and `WideCString`. They differ
-//! in the guarantees they provide. For `WideString`, no guarantees are made about the underlying
+//! This module provides two types of wide strings: `U16String` and `U16CString`. They differ
+//! in the guarantees they provide. For `U16String`, no guarantees are made about the underlying
 //! string data; it is simply a sequence of UTF-16 *code units*, which may be ill-formed or
-//! contain nul values. `WideCString` on the other hand is aware of nul values and is guaranteed to
+//! contain nul values. `U16CString` on the other hand is aware of nul values and is guaranteed to
 //! be terminated with a nul value (unless unchecked methods are used to construct the
-//! `WideCString`). Because `WideCString` is a C-style, nul-terminated string, it will have no
-//! interior nul values. A `WideCString` may still have ill-formed UTF-16 code units.
+//! `U16CString`). Because `U16CString` is a C-style, nul-terminated string, it will have no
+//! interior nul values. A `U16CString` may still have ill-formed UTF-16 code units.
 //!
-//! Use `WideString` when you simply need to pass-through strings, or when you know or don't care if
+//! Use `U16String` when you simply need to pass-through strings, or when you know or don't care if
 //! you're not dealing with a nul-terminated string, such as when string lengths are provided and
 //! you are only reading strings from FFI, not passing them into FFI.
 //!
-//! Use `WideCString` when you must properly handle nul values, and must deal with nul-terminated
+//! Use `U16CString` when you must properly handle nul values, and must deal with nul-terminated
 //! C-style wide strings, such as when you pass strings into FFI functions.
 //!
 //! # Relationship to other Rust Strings
@@ -37,9 +37,9 @@
 //! lossy, and may require knowledge of the underlying encoding, including platform-specific quirks.
 //!
 //! The wide strings in this crate are roughly based on the principles of the string types in
-//! `std::ffi`, though there are differences. `WideString` and `WideStr` are roughly similar in role
-//! to `OsString` and `OsStr`, while `WideCString` and `WideCStr` are roughly similar in role to
-//! `CString` and `CStr`. In fact, on Windows, `WideString` is nearly identical to `OsString`. It
+//! `std::ffi`, though there are differences. `U16String` and `U16Str` are roughly similar in role
+//! to `OsString` and `OsStr`, while `U16CString` and `U16CStr` are roughly similar in role to
+//! `CString` and `CStr`. In fact, on Windows, `U16String` is nearly identical to `OsString`. It
 //! can be useful to ensure consistent wide character size across other platforms, and that's where
 //! these wide string types come into play. Conversion to other string types is very straight
 //! forward and safe, while conversion directly between standard Rust `String` is a lossy conversion
@@ -60,7 +60,7 @@
 //!
 //! # Examples
 //!
-//! The following example uses `WideString` to get Windows error messages, since `FormatMessageW`
+//! The following example uses `U16String` to get Windows error messages, since `FormatMessageW`
 //! returns a string length for us and we don't need to pass error messages into other FFI
 //! functions so we don't need to worry about nul values.
 //!
@@ -76,11 +76,11 @@
 //! use winapi::shared::ntdef::LPWSTR;
 //! use winapi::shared::minwindef::HLOCAL;
 //! use std::ptr;
-//! use widestring::ffi::WideString;
+//! use widestring::ffi::U16String;
 //! # use winapi::shared::minwindef::DWORD;
 //! # let error_code: DWORD = 0;
 //!
-//! let widestr: WideString;
+//! let U16Str: U16String;
 //! unsafe {
 //!     // First, get a string buffer from some windows api such as FormatMessageW...
 //!     let mut buffer: LPWSTR = ptr::null_mut();
@@ -95,18 +95,18 @@
 //!                                 ptr::null_mut());
 //!
 //!     // Get the buffer as a wide string
-//!     widestr = WideString::from_ptr(buffer, strlen as usize);
-//!     // Since WideString creates an owned copy, it's safe to free original buffer now
-//!     // If you didn't want an owned copy, you could use &WideStr.
+//!     U16Str = U16String::from_ptr(buffer, strlen as usize);
+//!     // Since U16String creates an owned copy, it's safe to free original buffer now
+//!     // If you didn't want an owned copy, you could use &U16Str.
 //!     LocalFree(buffer as HLOCAL);
 //! }
 //! // Convert to a regular Rust String and use it to your heart's desire!
-//! let message = widestr.to_string_lossy();
+//! let message = U16Str.to_string_lossy();
 //! # assert_eq!(message, "The operation completed successfully.\r\n");
 //! # }
 //! ```
 //!
-//! The following example is the functionally the same, only using `WideCString` instead.
+//! The following example is the functionally the same, only using `U16CString` instead.
 //!
 //! ```rust
 //! # #[cfg(not(windows))]
@@ -120,11 +120,11 @@
 //! use winapi::shared::ntdef::LPWSTR;
 //! use winapi::shared::minwindef::HLOCAL;
 //! use std::ptr;
-//! use widestring::ffi::WideCString;
+//! use widestring::ffi::U16CString;
 //! # use winapi::shared::minwindef::DWORD;
 //! # let error_code: DWORD = 0;
 //!
-//! let widestr: WideCString;
+//! let U16Str: U16CString;
 //! unsafe {
 //!     // First, get a string buffer from some windows api such as FormatMessageW...
 //!     let mut buffer: LPWSTR = ptr::null_mut();
@@ -139,19 +139,19 @@
 //!                    ptr::null_mut());
 //!
 //!     // Get the buffer as a wide string
-//!     widestr = WideCString::from_ptr_str(buffer);
-//!     // Since WideCString creates an owned copy, it's safe to free original buffer now
-//!     // If you didn't want an owned copy, you could use &WideCStr.
+//!     U16Str = U16CString::from_ptr_str(buffer);
+//!     // Since U16CString creates an owned copy, it's safe to free original buffer now
+//!     // If you didn't want an owned copy, you could use &U16CStr.
 //!     LocalFree(buffer as HLOCAL);
 //! }
 //! // Convert to a regular Rust String and use it to your heart's desire!
-//! let message = widestr.to_string_lossy();
+//! let message = U16Str.to_string_lossy();
 //! # assert_eq!(message, "The operation completed successfully.\r\n");
 //! # }
 //! ```
 
-mod widecstring;
-mod widestring;
+mod u16cstring;
+mod u16string;
 
-pub use self::widecstring::{MissingNulError, NulError, WideCStr, WideCString};
-pub use self::widestring::{WideStr, WideString};
+pub use self::u16cstring::{MissingNulError, NulError, U16CStr, U16CString};
+pub use self::u16string::{U16Str, U16String};
