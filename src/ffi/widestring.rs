@@ -1,7 +1,7 @@
+use super::super::platform;
 use std;
-use std::mem;
 use std::ffi::{OsStr, OsString};
-use super::platform;
+use std::mem;
 
 /// An owned, mutable "wide" string for FFI that is **not** nul-aware.
 ///
@@ -22,7 +22,7 @@ use super::platform;
 /// regular Rust `String`.
 ///
 /// ```rust
-/// use widestring::WideString;
+/// use widestring::ffi::WideString;
 /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
 /// // Create a wide string from the vector
 /// let wstr = WideString::from_vec(v);
@@ -65,7 +65,7 @@ impl WideString {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideString;
+    /// use widestring::ffi::WideString;
     /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
     /// # let cloned = v.clone();
     /// // Create a wide string from the vector
@@ -84,7 +84,7 @@ impl WideString {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideString;
+    /// use widestring::ffi::WideString;
     /// let s = "MyString";
     /// // Create a wide string from the string
     /// let wstr = WideString::from_str(s);
@@ -173,7 +173,7 @@ impl WideString {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideString;
+    /// use widestring::ffi::WideString;
     /// let s = "MyString";
     /// let mut wstr = WideString::from_str(s);
     /// let cloned = wstr.clone();
@@ -194,7 +194,7 @@ impl WideString {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideString;
+    /// use widestring::ffi::WideString;
     /// let s = "MyString";
     /// let mut wstr = WideString::from_str(s);
     /// let cloned = wstr.clone();
@@ -215,7 +215,7 @@ impl WideString {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideString;
+    /// use widestring::ffi::WideString;
     /// let s = "MyString";
     /// let mut wstr = WideString::from_str(s);
     /// // Push the original to the end, repeating the string twice.
@@ -232,7 +232,7 @@ impl WideString {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideString;
+    /// use widestring::ffi::WideString;
     ///
     /// let mut s = WideString::from_str("foo");
     ///
@@ -251,7 +251,7 @@ impl WideString {
     /// # Examples
     ///
     /// ```
-    /// use widestring::{WideString, WideStr};
+    /// use widestring::ffi::{WideString, WideStr};
     ///
     /// let s = WideString::from_str("hello");
     ///
@@ -404,7 +404,7 @@ impl WideStr {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideString;
+    /// use widestring::ffi::WideString;
     /// use std::ffi::OsString;
     /// let s = "MyString";
     /// // Create a wide string from the string
@@ -432,7 +432,7 @@ impl WideStr {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideString;
+    /// use widestring::ffi::WideString;
     /// let s = "MyString";
     /// // Create a wide string from the string
     /// let wstr = WideString::from_str(s);
@@ -452,7 +452,7 @@ impl WideStr {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideString;
+    /// use widestring::ffi::WideString;
     /// let s = "MyString";
     /// // Create a wide string from the string
     /// let wstr = WideString::from_str(s);

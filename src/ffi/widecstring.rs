@@ -1,8 +1,8 @@
-use std;
-use std::mem;
+use super::super::platform;
 use super::{WideStr, WideString};
+use std;
 use std::ffi::{OsStr, OsString};
-use super::platform;
+use std::mem;
 
 /// An owned, mutable C-style "wide" string for FFI that is nul-aware and nul-terminated.
 ///
@@ -20,7 +20,7 @@ use super::platform;
 /// regular Rust `String`.
 ///
 /// ```rust
-/// use widestring::WideCString;
+/// use widestring::ffi::WideCString;
 /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
 /// // Create a wide string from the vector
 /// let wstr = WideCString::new(v).unwrap();
@@ -75,7 +75,7 @@ impl WideCString {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideCString;
+    /// use widestring::ffi::WideCString;
     /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
     /// # let cloned = v.clone();
     /// // Create a wide string from the vector
@@ -86,7 +86,7 @@ impl WideCString {
     /// The following example demonstrates errors from nul values in a vector.
     ///
     /// ```rust
-    /// use widestring::WideCString;
+    /// use widestring::ffi::WideCString;
     /// let v = vec![84u16, 0u16, 104u16, 101u16]; // 'T' NUL 'h' 'e'
     /// // Create a wide string from the vector
     /// let res = WideCString::new(v);
@@ -115,7 +115,7 @@ impl WideCString {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideCString;
+    /// use widestring::ffi::WideCString;
     /// let v = vec![84u16, 104u16, 101u16, 0u16]; // 'T' 'h' 'e' NUL
     /// # let cloned = v[..3].to_owned();
     /// // Create a wide string from the vector
@@ -126,7 +126,7 @@ impl WideCString {
     /// The following example demonstrates errors from missing nul values in a vector.
     ///
     /// ```rust
-    /// use widestring::WideCString;
+    /// use widestring::ffi::WideCString;
     /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
     /// // Create a wide string from the vector
     /// let res = WideCString::from_vec_with_nul(v);
@@ -190,7 +190,7 @@ impl WideCString {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideCString;
+    /// use widestring::ffi::WideCString;
     /// let s = "MyString";
     /// // Create a wide string from the string
     /// let wcstr = WideCString::from_str(s).unwrap();
@@ -200,7 +200,7 @@ impl WideCString {
     /// The following example demonstrates errors from nul values in a vector.
     ///
     /// ```rust
-    /// use widestring::WideCString;
+    /// use widestring::ffi::WideCString;
     /// let s = "My\u{0}String";
     /// // Create a wide string from the string
     /// let res = WideCString::from_str(s);
@@ -224,7 +224,7 @@ impl WideCString {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideCString;
+    /// use widestring::ffi::WideCString;
     /// let s = "MyString";
     /// // Create a wide string from the string
     /// let wcstr = unsafe { WideCString::from_str_unchecked(s) };
@@ -248,7 +248,7 @@ impl WideCString {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideCString;
+    /// use widestring::ffi::WideCString;
     /// let s = "My\u{0}String";
     /// // Create a wide string from the string
     /// let wcstr = WideCString::from_str_with_nul(s).unwrap();
@@ -258,7 +258,7 @@ impl WideCString {
     /// The following example demonstrates errors from missing nul values in a vector.
     ///
     /// ```rust
-    /// use widestring::WideCString;
+    /// use widestring::ffi::WideCString;
     /// let s = "MyString";
     /// // Create a wide string from the string
     /// let res = WideCString::from_str_with_nul(s);
@@ -281,7 +281,7 @@ impl WideCString {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideCString;
+    /// use widestring::ffi::WideCString;
     /// let s = "My String\u{0}";
     /// // Create a wide string from the string
     /// let wcstr = unsafe { WideCString::from_str_with_nul_unchecked(s) };
@@ -542,7 +542,7 @@ impl WideCString {
     /// # Examples
     ///
     /// ```
-    /// use widestring::{WideCString, WideCStr};
+    /// use widestring::ffi::{WideCString, WideCStr};
     ///
     /// let mut v = vec![102u16, 111u16, 111u16]; // "foo"
     /// let c_string = WideCString::new(v.clone()).unwrap();
@@ -753,7 +753,7 @@ impl WideCStr {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideCString;
+    /// use widestring::ffi::WideCString;
     /// use std::ffi::OsString;
     /// let s = "MyString";
     /// // Create a wide string from the string
@@ -774,7 +774,7 @@ impl WideCStr {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideCString;
+    /// use widestring::ffi::WideCString;
     /// let wcstr = WideCString::from_str("MyString").unwrap();
     /// // Convert WideCString to a WideString
     /// let wstr = wcstr.to_wide_string();
@@ -799,7 +799,7 @@ impl WideCStr {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideCString;
+    /// use widestring::ffi::WideCString;
     /// let s = "MyString";
     /// // Create a wide string from the string
     /// let wstr = WideCString::from_str(s).unwrap();
@@ -819,7 +819,7 @@ impl WideCStr {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::WideCString;
+    /// use widestring::ffi::WideCString;
     /// let s = "MyString";
     /// // Create a wide string from the string
     /// let wstr = WideCString::from_str(s).unwrap();
@@ -867,7 +867,7 @@ impl WideCStr {
     /// # Examples
     ///
     /// ```
-    /// use widestring::WideCString;
+    /// use widestring::ffi::WideCString;
     ///
     /// let v = vec![102u16, 111u16, 111u16]; // "foo"
     /// let c_string = WideCString::new(v.clone()).unwrap();

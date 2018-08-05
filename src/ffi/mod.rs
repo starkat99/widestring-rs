@@ -1,6 +1,6 @@
-//! A wide string FFI library for converting to and from Wide "Unicode" strings.
+//! A wide string FFI module for converting to and from Wide "Unicode" strings.
 //!
-//! This crate provides two types of wide strings: `WideString` and `WideCString`. They differ
+//! This module provides two types of wide strings: `WideString` and `WideCString`. They differ
 //! in the guarantees they provide. For `WideString`, no guarantees are made about the underlying
 //! string data; it is simply a sequence of UTF-16 *code units*, which may be ill-formed or
 //! contain nul values. `WideCString` on the other hand is aware of nul values and is guaranteed to
@@ -150,11 +150,8 @@
 //! # }
 //! ```
 
-#![warn(
-        missing_docs, missing_copy_implementations, missing_debug_implementations, trivial_casts,
-        trivial_numeric_casts, unstable_features, unused_extern_crates, unused_import_braces,
-        unused_qualifications
-)]
+mod widecstring;
+mod widestring;
 
-pub mod ffi;
-mod platform;
+pub use self::widecstring::{MissingNulError, NulError, WideCStr, WideCString};
+pub use self::widestring::{WideStr, WideString};
