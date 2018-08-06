@@ -68,6 +68,18 @@
 //! points are reserved only for 21-bits. Again, Unicode code points do not have a one-to-one
 //! mapping with the concept of a visual character glyph.
 //!
+//! # FFI with C/C++ `wchar_t`
+//!
+//! C/C++'s `wchar_t` (and C++'s corresponding `widestring`) varies in size depending on compiler
+//! and platform. Typically, `wchar_t` is 16-bits on Windows and 32-bits on most Unix-based
+//! platforms. For convenience when using `wchar_t`-based FFI's, type aliases for the corresponding
+//! string types are provided: `WideString` aliases `U16String` on Windows or `U32String`
+//! elsewhere, `WideCString` aliases `U16CString` or `U32CString`, etc. The `WideChar` alias
+//! is also provided, aliasing `u16` or `u32`.
+//!
+//! When not interacting with a FFI using `wchar_t`, it is recommended to use the string types
+//! directly rather than via alias.
+//!
 //! # Examples
 //!
 //! The following example uses `U16String` to get Windows error messages, since `FormatMessageW`
@@ -177,3 +189,35 @@ pub use u16cstring::{MissingU16NulError, U16CStr, U16CString, U16NulError};
 pub use u16string::{U16Str, U16String};
 pub use u32cstring::{MissingU32NulError, U32CStr, U32CString, U32NulError};
 pub use u32string::{FromUtf32Error, U32Str, U32String};
+
+#[cfg(not(windows))]
+/// Alias for `U16String` or `U32String` depending on platform. Intended to match typical C `wchar_t` size on platform.
+pub type WideString = U32String;
+#[cfg(not(windows))]
+/// Alias for `U16CString` or `U32CString` depending on platform. Intended to match typical C `wchar_t` size on platform.
+pub type WideCString = U32CString;
+#[cfg(not(windows))]
+/// Alias for `U16Str` or `U32Str` depending on platform. Intended to match typical C `wchar_t` size on platform.
+pub type WideStr = U32Str;
+#[cfg(not(windows))]
+/// Alias for `U16CStr` or `U32CStr` depending on platform. Intended to match typical C `wchar_t` size on platform.
+pub type WideCStr = U32CStr;
+#[cfg(not(windows))]
+/// Alias for `u16` or `u32` depending on platform. Intended to match typical C `wchar_t` size on platform.
+pub type WideChar = u32;
+
+#[cfg(windows)]
+/// Alias for `U16String` or `U32String` depending on platform. Intended to match typical C `wchar_t` size on platform.
+pub type WideString = U16String;
+#[cfg(windows)]
+/// Alias for `U16CString` or `U32CString` depending on platform. Intended to match typical C `wchar_t` size on platform.
+pub type WideCString = U16CString;
+#[cfg(windows)]
+/// Alias for `U16Str` or `U32Str` depending on platform. Intended to match typical C `wchar_t` size on platform.
+pub type WideStr = U16Str;
+#[cfg(windows)]
+/// Alias for `U16CStr` or `U32CStr` depending on platform. Intended to match typical C `wchar_t` size on platform.
+pub type WideCStr = U16CStr;
+#[cfg(windows)]
+/// Alias for `u16` or `u32` depending on platform. Intended to match typical C `wchar_t` size on platform.
+pub type WideChar = u16;
