@@ -1,4 +1,4 @@
-use super::super::platform;
+use super::platform;
 use super::{U16Str, U16String};
 use std;
 use std::ffi::{OsStr, OsString};
@@ -12,7 +12,7 @@ use std::mem;
 /// be used with FFI functions such as Windows API that may require nul-terminated strings.
 ///
 /// `U16CString` can be converted to and from many other string types, including `U16String`,
-/// `OsString`, and `String`, making proper Unicode Windows FFI safe and easy.
+/// `OsString`, and `String`, making proper Unicode FFI safe and easy.
 ///
 /// # Examples
 ///
@@ -20,13 +20,13 @@ use std::mem;
 /// regular Rust `String`.
 ///
 /// ```rust
-/// use widestring::ffi::U16CString;
-/// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
-/// // Create a wide string from the vector
-/// let wstr = U16CString::new(v).unwrap();
-/// // Convert to a rust string!
+/// use widestring::U16CString;
+/// let s = "Test";
+/// // Create a wide string from the rust string
+/// let wstr = U16CString::from_str(s).unwrap();
+/// // Convert back to a rust string
 /// let rust_str = wstr.to_string_lossy();
-/// assert_eq!(rust_str, "The");
+/// assert_eq!(rust_str, "Test");
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct U16CString {
@@ -41,7 +41,7 @@ pub struct U16CString {
 /// be used with FFI functions such as Windows API that may require nul-terminated strings.
 ///
 /// `U16CStr` can be converted to and from many other string types, including `U16String`,
-/// `OsString`, and `String`, making proper Unicode Windows FFI safe and easy.
+/// `OsString`, and `String`, making proper Unicode FFI safe and easy.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct U16CStr {
     inner: [u16],
@@ -52,14 +52,14 @@ pub struct U16CStr {
 /// The error indicates the position in the vector where the nul value was found, as well as
 /// returning the ownership of the invalid vector.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NulError(usize, Vec<u16>);
+pub struct U16NulError(usize, Vec<u16>);
 
 /// An error returned from `U16CString` and `U16CStr` to indicate that a terminating nul value
 /// was missing.
 ///
 /// The error optionally returns the ownership of the invalid vector whenever a vector was owned.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MissingNulError(Option<Vec<u16>>);
+pub struct MissingU16NulError(Option<Vec<u16>>);
 
 impl U16CString {
     /// Constructs a `U16CString` from a container of wide character data.
@@ -75,7 +75,7 @@ impl U16CString {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16CString;
+    /// use widestring::U16CString;
     /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
     /// # let cloned = v.clone();
     /// // Create a wide string from the vector
@@ -86,19 +86,19 @@ impl U16CString {
     /// The following example demonstrates errors from nul values in a vector.
     ///
     /// ```rust
-    /// use widestring::ffi::U16CString;
+    /// use widestring::U16CString;
     /// let v = vec![84u16, 0u16, 104u16, 101u16]; // 'T' NUL 'h' 'e'
     /// // Create a wide string from the vector
     /// let res = U16CString::new(v);
     /// assert!(res.is_err());
     /// assert_eq!(res.err().unwrap().nul_position(), 1);
     /// ```
-    pub fn new<T: Into<Vec<u16>>>(v: T) -> Result<U16CString, NulError> {
+    pub fn new(v: impl Into<Vec<u16>>) -> Result<U16CString, U16NulError> {
         let v = v.into();
         // Check for nul vals
         match v.iter().position(|&val| val == 0) {
             None => Ok(unsafe { U16CString::from_vec_unchecked(v) }),
-            Some(pos) => Err(NulError(pos, v)),
+            Some(pos) => Err(U16NulError(pos, v)),
         }
     }
 
@@ -115,7 +115,7 @@ impl U16CString {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16CString;
+    /// use widestring::U16CString;
     /// let v = vec![84u16, 104u16, 101u16, 0u16]; // 'T' 'h' 'e' NUL
     /// # let cloned = v[..3].to_owned();
     /// // Create a wide string from the vector
@@ -126,17 +126,17 @@ impl U16CString {
     /// The following example demonstrates errors from missing nul values in a vector.
     ///
     /// ```rust
-    /// use widestring::ffi::U16CString;
+    /// use widestring::U16CString;
     /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
     /// // Create a wide string from the vector
     /// let res = U16CString::from_vec_with_nul(v);
     /// assert!(res.is_err());
     /// ```
-    pub fn from_vec_with_nul<T: Into<Vec<u16>>>(v: T) -> Result<U16CString, MissingNulError> {
+    pub fn from_vec_with_nul(v: impl Into<Vec<u16>>) -> Result<U16CString, MissingU16NulError> {
         let mut v = v.into();
         // Check for nul vals
         match v.iter().position(|&val| val == 0) {
-            None => Err(MissingNulError(Some(v))),
+            None => Err(MissingU16NulError(Some(v))),
             Some(pos) => {
                 v.truncate(pos + 1);
                 Ok(unsafe { U16CString::from_vec_with_nul_unchecked(v) })
@@ -154,7 +154,7 @@ impl U16CString {
     /// This method is equivalent to `new` except that no runtime assertion is made that `v`
     /// contains no nul values. Providing a vector with nul values will result in an invalid
     /// `U16CString`.
-    pub unsafe fn from_vec_unchecked<T: Into<Vec<u16>>>(v: T) -> U16CString {
+    pub unsafe fn from_vec_unchecked(v: impl Into<Vec<u16>>) -> U16CString {
         let mut v = v.into();
         match v.last() {
             None => v.push(0),
@@ -172,10 +172,122 @@ impl U16CString {
     /// This method is equivalent to `from_vec_with_nul` except that no runtime assertion is made
     /// that `v` contains no nul values. Providing a vector with interior nul values or without a
     /// terminating nul value will result in an invalid `U16CString`.
-    pub unsafe fn from_vec_with_nul_unchecked<T: Into<Vec<u16>>>(v: T) -> U16CString {
+    pub unsafe fn from_vec_with_nul_unchecked(v: impl Into<Vec<u16>>) -> U16CString {
         U16CString {
             inner: v.into().into_boxed_slice(),
         }
+    }
+
+    /// Constructs a `U16CString` from a `str`.
+    ///
+    /// The string will be scanned for invalid nul values.
+    ///
+    /// # Failures
+    ///
+    /// This function will return an error if the data contains a nul value.
+    /// The returned error will contain a `Vec<u16>` as well as the position of the nul value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::U16CString;
+    /// let s = "MyString";
+    /// // Create a wide string from the string
+    /// let wcstr = U16CString::from_str(s).unwrap();
+    /// # assert_eq!(wcstr.to_string_lossy(), s);
+    /// ```
+    ///
+    /// The following example demonstrates errors from nul values in a vector.
+    ///
+    /// ```rust
+    /// use widestring::U16CString;
+    /// let s = "My\u{0}String";
+    /// // Create a wide string from the string
+    /// let res = U16CString::from_str(s);
+    /// assert!(res.is_err());
+    /// assert_eq!(res.err().unwrap().nul_position(), 2);
+    /// ```
+    pub fn from_str(s: impl AsRef<str>) -> Result<U16CString, U16NulError> {
+        let v: Vec<u16> = s.as_ref().encode_utf16().collect();
+        U16CString::new(v)
+    }
+
+    /// Constructs a `U16CString` from a `str`, without checking for interior nul values.
+    ///
+    /// # Safety
+    ///
+    /// This method is equivalent to `from_str` except that no runtime assertion is made that `s`
+    /// contains no nul values. Providing a string with nul values will result in an invalid
+    /// `U16CString`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::U16CString;
+    /// let s = "MyString";
+    /// // Create a wide string from the string
+    /// let wcstr = unsafe { U16CString::from_str_unchecked(s) };
+    /// # assert_eq!(wcstr.to_string_lossy(), s);
+    /// ```
+    pub unsafe fn from_str_unchecked(s: impl AsRef<str>) -> U16CString {
+        let v: Vec<u16> = s.as_ref().encode_utf16().collect();
+        U16CString::from_vec_unchecked(v)
+    }
+
+    /// Constructs a `U16CString` from a `str` with a nul terminator.
+    ///
+    /// The string will be truncated at the first nul value in the string.
+    ///
+    /// # Failures
+    ///
+    /// This function will return an error if the data does not contain a nul to terminate the
+    /// string. The returned error will contain the consumed `Vec<u16>`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::U16CString;
+    /// let s = "My\u{0}String";
+    /// // Create a wide string from the string
+    /// let wcstr = U16CString::from_str_with_nul(s).unwrap();
+    /// assert_eq!(wcstr.to_string_lossy(), "My");
+    /// ```
+    ///
+    /// The following example demonstrates errors from missing nul values in a vector.
+    ///
+    /// ```rust
+    /// use widestring::U16CString;
+    /// let s = "MyString";
+    /// // Create a wide string from the string
+    /// let res = U16CString::from_str_with_nul(s);
+    /// assert!(res.is_err());
+    /// ```
+    pub fn from_str_with_nul(s: impl AsRef<str>) -> Result<U16CString, MissingU16NulError> {
+        let v: Vec<u16> = s.as_ref().encode_utf16().collect();
+        U16CString::from_vec_with_nul(v)
+    }
+
+    /// Constructs a `U16CString` from str `str` that should have a terminating nul, but without
+    /// checking for any nul values.
+    ///
+    /// # Safety
+    ///
+    /// This method is equivalent to `from_str_with_nul` except that no runtime assertion is made
+    /// that `s` contains no nul values. Providing a vector with interior nul values or without a
+    /// terminating nul value will result in an invalid `U16CString`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::U16CString;
+    /// let s = "My String\u{0}";
+    /// // Create a wide string from the string
+    /// let wcstr = unsafe { U16CString::from_str_with_nul_unchecked(s) };
+    /// assert_eq!(wcstr.to_string_lossy(), "My String");
+    /// ```
+    pub unsafe fn from_str_with_nul_unchecked(s: impl AsRef<str>) -> U16CString {
+        let v: Vec<u16> = s.as_ref().encode_utf16().collect();
+        U16CString::from_vec_with_nul_unchecked(v)
     }
 
     /// Constructs a `U16CString` from anything that can be converted to an `OsStr`.
@@ -190,24 +302,24 @@ impl U16CString {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16CString;
+    /// use widestring::U16CString;
     /// let s = "MyString";
     /// // Create a wide string from the string
-    /// let wcstr = U16CString::from_str(s).unwrap();
+    /// let wcstr = U16CString::from_os_str(s).unwrap();
     /// # assert_eq!(wcstr.to_string_lossy(), s);
     /// ```
     ///
     /// The following example demonstrates errors from nul values in a vector.
     ///
     /// ```rust
-    /// use widestring::ffi::U16CString;
+    /// use widestring::U16CString;
     /// let s = "My\u{0}String";
     /// // Create a wide string from the string
-    /// let res = U16CString::from_str(s);
+    /// let res = U16CString::from_os_str(s);
     /// assert!(res.is_err());
     /// assert_eq!(res.err().unwrap().nul_position(), 2);
     /// ```
-    pub fn from_str<T: AsRef<OsStr>>(s: T) -> Result<U16CString, NulError> {
+    pub fn from_os_str(s: impl AsRef<OsStr>) -> Result<U16CString, U16NulError> {
         let v = platform::os_to_wide(s.as_ref());
         U16CString::new(v)
     }
@@ -217,20 +329,20 @@ impl U16CString {
     ///
     /// # Safety
     ///
-    /// This method is equivalent to `from_str` except that no runtime assertion is made that `s`
-    /// contains no nul values. Providing a string with nul values will result in an invalid
+    /// This method is equivalent to `from_os_str` except that no runtime assertion is made that
+    /// `s` contains no nul values. Providing a string with nul values will result in an invalid
     /// `U16CString`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16CString;
+    /// use widestring::U16CString;
     /// let s = "MyString";
     /// // Create a wide string from the string
-    /// let wcstr = unsafe { U16CString::from_str_unchecked(s) };
+    /// let wcstr = unsafe { U16CString::from_os_str_unchecked(s) };
     /// # assert_eq!(wcstr.to_string_lossy(), s);
     /// ```
-    pub unsafe fn from_str_unchecked<T: AsRef<OsStr>>(s: T) -> U16CString {
+    pub unsafe fn from_os_str_unchecked(s: impl AsRef<OsStr>) -> U16CString {
         let v = platform::os_to_wide(s.as_ref());
         U16CString::from_vec_unchecked(v)
     }
@@ -248,23 +360,23 @@ impl U16CString {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16CString;
+    /// use widestring::U16CString;
     /// let s = "My\u{0}String";
     /// // Create a wide string from the string
-    /// let wcstr = U16CString::from_str_with_nul(s).unwrap();
+    /// let wcstr = U16CString::from_os_str_with_nul(s).unwrap();
     /// assert_eq!(wcstr.to_string_lossy(), "My");
     /// ```
     ///
     /// The following example demonstrates errors from missing nul values in a vector.
     ///
     /// ```rust
-    /// use widestring::ffi::U16CString;
+    /// use widestring::U16CString;
     /// let s = "MyString";
     /// // Create a wide string from the string
-    /// let res = U16CString::from_str_with_nul(s);
+    /// let res = U16CString::from_os_str_with_nul(s);
     /// assert!(res.is_err());
     /// ```
-    pub fn from_str_with_nul<T: AsRef<OsStr>>(s: T) -> Result<U16CString, MissingNulError> {
+    pub fn from_os_str_with_nul(s: impl AsRef<OsStr>) -> Result<U16CString, MissingU16NulError> {
         let v = platform::os_to_wide(s.as_ref());
         U16CString::from_vec_with_nul(v)
     }
@@ -274,20 +386,20 @@ impl U16CString {
     ///
     /// # Safety
     ///
-    /// This method is equivalent to `from_str_with_nul` except that no runtime assertion is made
-    /// that `s` contains no nul values. Providing a vector with interior nul values or without a
-    /// terminating nul value will result in an invalid `U16CString`.
+    /// This method is equivalent to `from_os_str_with_nul` except that no runtime assertion is
+    /// made that `s` contains no nul values. Providing a vector with interior nul values or
+    /// without a terminating nul value will result in an invalid `U16CString`.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16CString;
+    /// use widestring::U16CString;
     /// let s = "My String\u{0}";
     /// // Create a wide string from the string
-    /// let wcstr = unsafe { U16CString::from_str_with_nul_unchecked(s) };
+    /// let wcstr = unsafe { U16CString::from_os_str_with_nul_unchecked(s) };
     /// assert_eq!(wcstr.to_string_lossy(), "My String");
     /// ```
-    pub unsafe fn from_str_with_nul_unchecked<T: AsRef<OsStr>>(s: T) -> U16CString {
+    pub unsafe fn from_os_str_with_nul_unchecked(s: impl AsRef<OsStr>) -> U16CString {
         let v = platform::os_to_wide(s.as_ref());
         U16CString::from_vec_with_nul_unchecked(v)
     }
@@ -300,7 +412,7 @@ impl U16CString {
     ///
     /// This function will return an error if the data contains a nul value.
     /// The returned error will contain a `Vec<u16>` as well as the position of the nul value.
-    pub fn from_wide_str<T: AsRef<U16Str>>(s: T) -> Result<U16CString, NulError> {
+    pub fn from_u16_str(s: impl AsRef<U16Str>) -> Result<U16CString, U16NulError> {
         U16CString::new(s.as_ref().as_slice())
     }
 
@@ -309,10 +421,10 @@ impl U16CString {
     ///
     /// # Safety
     ///
-    /// This method is equivalent to `from_wide_str` except that no runtime assertion is made that
+    /// This method is equivalent to `from_u16_str` except that no runtime assertion is made that
     /// `s` contains no nul values. Providing a string with nul values will result in an invalid
     /// `U16CString`.
-    pub unsafe fn from_wide_str_unchecked<T: AsRef<U16Str>>(s: T) -> U16CString {
+    pub unsafe fn from_u16_str_unchecked(s: impl AsRef<U16Str>) -> U16CString {
         U16CString::from_vec_unchecked(s.as_ref().as_slice())
     }
 
@@ -325,7 +437,7 @@ impl U16CString {
     ///
     /// This function will return an error if the data does not contain a nul to terminate the
     /// string. The returned error will contain the consumed `Vec<u16>`.
-    pub fn from_wide_str_with_nul<T: AsRef<U16Str>>(s: T) -> Result<U16CString, MissingNulError> {
+    pub fn from_u16_str_with_nul(s: impl AsRef<U16Str>) -> Result<U16CString, MissingU16NulError> {
         U16CString::from_vec_with_nul(s.as_ref().as_slice())
     }
 
@@ -334,10 +446,10 @@ impl U16CString {
     ///
     /// # Safety
     ///
-    /// This method is equivalent to `from_wide_str_with_nul` except that no runtime assertion is
+    /// This method is equivalent to `from_u16_str_with_nul` except that no runtime assertion is
     /// made that `s` contains no nul values. Providing a vector with interior nul values or
     /// without a terminating nul value will result in an invalid `U16CString`.
-    pub unsafe fn from_wide_str_with_nul_unchecked<T: AsRef<U16Str>>(s: T) -> U16CString {
+    pub unsafe fn from_u16_str_with_nul_unchecked(s: impl AsRef<U16Str>) -> U16CString {
         U16CString::from_vec_with_nul_unchecked(s.as_ref().as_slice())
     }
 
@@ -392,7 +504,7 @@ impl U16CString {
     /// # Panics
     ///
     /// Panics if `len` is greater than 0 but `p` is a null pointer.
-    pub unsafe fn from_ptr(p: *const u16, len: usize) -> Result<U16CString, NulError> {
+    pub unsafe fn from_ptr(p: *const u16, len: usize) -> Result<U16CString, U16NulError> {
         if len == 0 {
             return Ok(U16CString::default());
         }
@@ -447,7 +559,7 @@ impl U16CString {
     pub unsafe fn from_ptr_with_nul(
         p: *const u16,
         len: usize,
-    ) -> Result<U16CString, MissingNulError> {
+    ) -> Result<U16CString, MissingU16NulError> {
         if len == 0 {
             return Ok(U16CString::default());
         }
@@ -483,7 +595,7 @@ impl U16CString {
     }
 
     /// Converts to a `U16CStr` reference.
-    pub fn as_wide_c_str(&self) -> &U16CStr {
+    pub fn as_u16_c_str(&self) -> &U16CStr {
         self
     }
 
@@ -542,15 +654,15 @@ impl U16CString {
     /// # Examples
     ///
     /// ```
-    /// use widestring::ffi::{U16CString, U16CStr};
+    /// use widestring::{U16CString, U16CStr};
     ///
     /// let mut v = vec![102u16, 111u16, 111u16]; // "foo"
     /// let c_string = U16CString::new(v.clone()).unwrap();
-    /// let boxed = c_string.into_boxed_wide_c_str();
+    /// let boxed = c_string.into_boxed_u16_c_str();
     /// v.push(0);
     /// assert_eq!(&*boxed, U16CStr::from_slice_with_nul(&v).unwrap());
     /// ```
-    pub fn into_boxed_wide_c_str(self) -> Box<U16CStr> {
+    pub fn into_boxed_u16_c_str(self) -> Box<U16CStr> {
         unsafe { Box::from_raw(Box::into_raw(self.into_inner()) as *mut U16CStr) }
     }
 
@@ -585,13 +697,13 @@ impl From<U16CString> for OsString {
 
 impl From<U16CString> for U16String {
     fn from(s: U16CString) -> U16String {
-        s.to_wide_string()
+        s.to_u16_string()
     }
 }
 
 impl<'a, T: ?Sized + AsRef<U16CStr>> From<&'a T> for U16CString {
     fn from(s: &'a T) -> U16CString {
-        s.as_ref().to_wide_c_string()
+        s.as_ref().to_u16_c_string()
     }
 }
 
@@ -623,7 +735,7 @@ impl<'a> Default for &'a U16CStr {
 impl Default for U16CString {
     fn default() -> U16CString {
         let def: &U16CStr = Default::default();
-        def.to_wide_c_string()
+        def.to_u16_c_string()
     }
 }
 
@@ -641,7 +753,7 @@ impl Drop for U16CString {
 
 impl U16CStr {
     /// Coerces a value into a `U16CStr`.
-    pub fn new<'a, S: AsRef<U16CStr> + ?Sized>(s: &'a S) -> &'a U16CStr {
+    pub fn new<S: AsRef<U16CStr> + ?Sized>(s: &S) -> &U16CStr {
         s.as_ref()
     }
 
@@ -720,9 +832,9 @@ impl U16CStr {
     /// # Failure
     ///
     /// If there are no no nul values in `slice`, an error is returned.
-    pub fn from_slice_with_nul<'a>(slice: &'a [u16]) -> Result<&'a U16CStr, MissingNulError> {
+    pub fn from_slice_with_nul(slice: &[u16]) -> Result<&U16CStr, MissingU16NulError> {
         match slice.iter().position(|x| *x == 0) {
-            None => Err(MissingNulError(None)),
+            None => Err(MissingU16NulError(None)),
             Some(i) => Ok(unsafe { U16CStr::from_slice_with_nul_unchecked(&slice[..i + 1]) }),
         }
     }
@@ -735,12 +847,12 @@ impl U16CStr {
     /// This function is unsafe because it can lead to invalid `U16CStr` values when `slice`
     /// is missing a terminating nul value or there are non-terminating interior nul values
     /// in the slice.
-    pub unsafe fn from_slice_with_nul_unchecked<'a>(slice: &'a [u16]) -> &'a U16CStr {
+    pub unsafe fn from_slice_with_nul_unchecked(slice: &[u16]) -> &U16CStr {
         std::mem::transmute(slice)
     }
 
     /// Copies the wide string to an new owned `U16String`.
-    pub fn to_wide_c_string(&self) -> U16CString {
+    pub fn to_u16_c_string(&self) -> U16CString {
         unsafe { U16CString::from_vec_with_nul_unchecked(self.inner.to_owned()) }
     }
 
@@ -753,7 +865,7 @@ impl U16CStr {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16CString;
+    /// use widestring::U16CString;
     /// use std::ffi::OsString;
     /// let s = "MyString";
     /// // Create a wide string from the string
@@ -774,10 +886,10 @@ impl U16CStr {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16CString;
+    /// use widestring::U16CString;
     /// let wcstr = U16CString::from_str("MyString").unwrap();
     /// // Convert U16CString to a U16String
-    /// let wstr = wcstr.to_wide_string();
+    /// let wstr = wcstr.to_u16_string();
     ///
     /// // U16CString will have a terminating nul
     /// let wcvec = wcstr.into_vec_with_nul();
@@ -786,7 +898,7 @@ impl U16CStr {
     /// let wvec = wstr.into_vec();
     /// assert_ne!(wvec[wvec.len()-1], 0);
     /// ```
-    pub fn to_wide_string(&self) -> U16String {
+    pub fn to_u16_string(&self) -> U16String {
         U16String::from_vec(self.as_slice())
     }
 
@@ -799,7 +911,7 @@ impl U16CStr {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16CString;
+    /// use widestring::U16CString;
     /// let s = "MyString";
     /// // Create a wide string from the string
     /// let wstr = U16CString::from_str(s).unwrap();
@@ -819,7 +931,7 @@ impl U16CStr {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16CString;
+    /// use widestring::U16CString;
     /// let s = "MyString";
     /// // Create a wide string from the string
     /// let wstr = U16CString::from_str(s).unwrap();
@@ -867,14 +979,14 @@ impl U16CStr {
     /// # Examples
     ///
     /// ```
-    /// use widestring::ffi::U16CString;
+    /// use widestring::U16CString;
     ///
     /// let v = vec![102u16, 111u16, 111u16]; // "foo"
     /// let c_string = U16CString::new(v.clone()).unwrap();
-    /// let boxed = c_string.into_boxed_wide_c_str();
-    /// assert_eq!(boxed.into_wide_c_string(), U16CString::new(v).unwrap());
+    /// let boxed = c_string.into_boxed_u16_c_str();
+    /// assert_eq!(boxed.into_u16_c_string(), U16CString::new(v).unwrap());
     /// ```
-    pub fn into_wide_c_string(self: Box<U16CStr>) -> U16CString {
+    pub fn into_u16_c_string(self: Box<U16CStr>) -> U16CString {
         let raw = Box::into_raw(self) as *mut [u16];
         U16CString {
             inner: unsafe { Box::from_raw(raw) },
@@ -891,7 +1003,7 @@ impl std::borrow::Borrow<U16CStr> for U16CString {
 impl ToOwned for U16CStr {
     type Owned = U16CString;
     fn to_owned(&self) -> U16CString {
-        self.to_wide_c_string()
+        self.to_u16_c_string()
     }
 }
 
@@ -935,14 +1047,14 @@ impl<'a> From<&'a U16CStr> for Box<U16CStr> {
 impl From<Box<U16CStr>> for U16CString {
     #[inline]
     fn from(s: Box<U16CStr>) -> U16CString {
-        s.into_wide_c_string()
+        s.into_u16_c_string()
     }
 }
 
 impl From<U16CString> for Box<U16CStr> {
     #[inline]
     fn from(s: U16CString) -> Box<U16CStr> {
-        s.into_boxed_wide_c_str()
+        s.into_boxed_u16_c_str()
     }
 }
 
@@ -953,7 +1065,7 @@ impl Default for Box<U16CStr> {
     }
 }
 
-impl NulError {
+impl U16NulError {
     /// Returns the position of the nul value in the slice that was provided to `U16CString`.
     pub fn nul_position(&self) -> usize {
         self.0
@@ -966,25 +1078,25 @@ impl NulError {
     }
 }
 
-impl Into<Vec<u16>> for NulError {
+impl Into<Vec<u16>> for U16NulError {
     fn into(self) -> Vec<u16> {
         self.into_vec()
     }
 }
 
-impl std::fmt::Display for NulError {
+impl std::fmt::Display for U16NulError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "nul value found at position {}", self.0)
     }
 }
 
-impl std::error::Error for NulError {
+impl std::error::Error for U16NulError {
     fn description(&self) -> &str {
         "nul value found"
     }
 }
 
-impl MissingNulError {
+impl MissingU16NulError {
     /// Consumes this error, returning the underlying vector of `u16` values which generated the
     /// error in the first place.
     pub fn into_vec(self) -> Option<Vec<u16>> {
@@ -992,13 +1104,13 @@ impl MissingNulError {
     }
 }
 
-impl std::fmt::Display for MissingNulError {
+impl std::fmt::Display for MissingU16NulError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "missing terminating nul value")
     }
 }
 
-impl std::error::Error for MissingNulError {
+impl std::error::Error for MissingU16NulError {
     fn description(&self) -> &str {
         "missing terminating nul value"
     }

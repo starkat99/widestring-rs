@@ -1,4 +1,4 @@
-use super::super::platform;
+use super::platform;
 use std;
 use std::ffi::{OsStr, OsString};
 use std::mem;
@@ -7,14 +7,13 @@ use std::mem;
 ///
 /// `U16String` is not aware of nul values. Strings may or may not be nul-terminated, and may
 /// contain invalid and ill-formed UTF-16 data. These strings are intended to be used with
-/// FFI functions (such as Windows API) that directly use string length, where the strings are
-/// known to have proper nul-termination already, or where strings are merely being passed through
-/// without modification.
+/// FFI functions that directly use string length, where the strings are known to have proper
+/// nul-termination already, or where strings are merely being passed through without modification.
 ///
 /// `WideCString` should be used instead if nul-aware strings are required.
 ///
-/// `U16String` can be converted to and from many other string types, including `OsString` and
-/// `String`, making proper Unicode Windows FFI safe and easy.
+/// `U16String` can be converted to and from many other standard Rust string types, including
+/// `OsString` and `String`, making proper Unicode FFI safe and easy.
 ///
 /// # Examples
 ///
@@ -22,31 +21,32 @@ use std::mem;
 /// regular Rust `String`.
 ///
 /// ```rust
-/// use widestring::ffi::U16String;
-/// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
-/// // Create a wide string from the vector
-/// let wstr = U16String::from_vec(v);
-/// // Convert to a rust string!
+/// use widestring::U16String;
+/// let s = "Test";
+/// // Create a wide string from the rust string
+/// let wstr = U16String::from_str(s);
+/// // Convert back to a rust string
 /// let rust_str = wstr.to_string_lossy();
-/// assert_eq!(rust_str, "The");
+/// assert_eq!(rust_str, "Test");
 /// ```
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct U16String {
     inner: Vec<u16>,
 }
 
-/// Wide string reference for `U16String`.
+/// String slice reference for `U16String`.
 ///
-/// `U16Str` is aware of nul values. Strings may or may not be nul-terminated, and may
+/// `U16Str` is to `U16String` as `str` is to `String`.
+///
+/// `U16Str` is not aware of nul values. Strings may or may not be nul-terminated, and may
 /// contain invalid and ill-formed UTF-16 data. These strings are intended to be used with
-/// FFI functions (such as Windows API) that directly use string length, where the strings are
-/// known to have proper nul-termination already, or where strings are merely being passed through
-/// without modification.
+/// FFI functions that directly use string length, where the strings are known to have proper
+/// nul-termination already, or where strings are merely being passed through without modification.
 ///
 /// `WideCStr` should be used instead of nul-aware strings are required.
 ///
 /// `U16Str` can be converted to many other string types, including `OsString` and `String`, making
-/// proper Unicode Windows FFI safe and easy.
+/// proper Unicode FFI safe and easy.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct U16Str {
     inner: [u16],
@@ -65,15 +65,36 @@ impl U16String {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16String;
+    /// use widestring::U16String;
     /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
     /// # let cloned = v.clone();
     /// // Create a wide string from the vector
     /// let wstr = U16String::from_vec(v);
     /// # assert_eq!(wstr.into_vec(), cloned);
     /// ```
-    pub fn from_vec<T: Into<Vec<u16>>>(raw: T) -> U16String {
+    pub fn from_vec(raw: impl Into<Vec<u16>>) -> U16String {
         U16String { inner: raw.into() }
+    }
+
+    /// Encodes a `U16String` copy from a `str`.
+    ///
+    /// This makes a wide string copy of the `str`. Since `str` will always be valid UTF-8, the
+    /// resulting `U16String` will also be valid UTF-16.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::U16String;
+    /// let s = "MyString";
+    /// // Create a wide string from the string
+    /// let wstr = U16String::from_str(s);
+    ///
+    /// assert_eq!(wstr.to_string().unwrap(), s);
+    /// ```
+    pub fn from_str<S: AsRef<str> + ?Sized>(s: &S) -> U16String {
+        U16String {
+            inner: s.as_ref().encode_utf16().collect(),
+        }
     }
 
     /// Encodes a `U16String` copy from an `OsStr`.
@@ -84,14 +105,14 @@ impl U16String {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16String;
+    /// use widestring::U16String;
     /// let s = "MyString";
     /// // Create a wide string from the string
-    /// let wstr = U16String::from_str(s);
+    /// let wstr = U16String::from_os_str(s);
     ///
     /// assert_eq!(wstr.to_string().unwrap(), s);
     /// ```
-    pub fn from_str<S: AsRef<OsStr> + ?Sized>(s: &S) -> U16String {
+    pub fn from_os_str<S: AsRef<OsStr> + ?Sized>(s: &S) -> U16String {
         U16String {
             inner: platform::os_to_wide(s.as_ref()),
         }
@@ -156,7 +177,7 @@ impl U16String {
     }
 
     /// Converts to a `U16Str` reference.
-    pub fn as_wide_str(&self) -> &U16Str {
+    pub fn as_u16_str(&self) -> &U16Str {
         self
     }
 
@@ -173,7 +194,7 @@ impl U16String {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16String;
+    /// use widestring::U16String;
     /// let s = "MyString";
     /// let mut wstr = U16String::from_str(s);
     /// let cloned = wstr.clone();
@@ -182,7 +203,7 @@ impl U16String {
     ///
     /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
     /// ```
-    pub fn push<T: AsRef<U16Str>>(&mut self, s: T) {
+    pub fn push(&mut self, s: impl AsRef<U16Str>) {
         self.inner.extend_from_slice(&s.as_ref().inner)
     }
 
@@ -194,7 +215,7 @@ impl U16String {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16String;
+    /// use widestring::U16String;
     /// let s = "MyString";
     /// let mut wstr = U16String::from_str(s);
     /// let cloned = wstr.clone();
@@ -203,8 +224,28 @@ impl U16String {
     ///
     /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
     /// ```
-    pub fn push_slice<T: AsRef<[u16]>>(&mut self, s: T) {
+    pub fn push_slice(&mut self, s: impl AsRef<[u16]>) {
         self.inner.extend_from_slice(&s.as_ref())
+    }
+
+    /// Extends the string with the given `&str`.
+    ///
+    /// No checks are performed on the strings. It is possible to end up nul values inside the
+    /// string, and it is up to the caller to determine if that is acceptable.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::U16String;
+    /// let s = "MyString";
+    /// let mut wstr = U16String::from_str(s);
+    /// // Push the original to the end, repeating the string twice.
+    /// wstr.push_str(s);
+    ///
+    /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
+    /// ```
+    pub fn push_str(&mut self, s: impl AsRef<str>) {
+        self.inner.extend(s.as_ref().encode_utf16())
     }
 
     /// Extends the string with the given `&OsStr`.
@@ -215,15 +256,15 @@ impl U16String {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16String;
+    /// use widestring::U16String;
     /// let s = "MyString";
     /// let mut wstr = U16String::from_str(s);
     /// // Push the original to the end, repeating the string twice.
-    /// wstr.push_str(s);
+    /// wstr.push_os_str(s);
     ///
     /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
     /// ```
-    pub fn push_str<T: AsRef<OsStr>>(&mut self, s: T) {
+    pub fn push_os_str(&mut self, s: impl AsRef<OsStr>) {
         self.inner.extend(platform::os_to_wide(s.as_ref()))
     }
 
@@ -232,7 +273,7 @@ impl U16String {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16String;
+    /// use widestring::U16String;
     ///
     /// let mut s = U16String::from_str("foo");
     ///
@@ -251,13 +292,13 @@ impl U16String {
     /// # Examples
     ///
     /// ```
-    /// use widestring::ffi::{U16String, U16Str};
+    /// use widestring::{U16String, U16Str};
     ///
     /// let s = U16String::from_str("hello");
     ///
-    /// let b: Box<U16Str> = s.into_boxed_wide_str();
+    /// let b: Box<U16Str> = s.into_boxed_u16_str();
     /// ```
-    pub fn into_boxed_wide_str(self) -> Box<U16Str> {
+    pub fn into_boxed_u16_str(self) -> Box<U16Str> {
         let rw = Box::into_raw(self.inner.into_boxed_slice()) as *mut U16Str;
         unsafe { Box::from_raw(rw) }
     }
@@ -275,6 +316,12 @@ impl<'a> From<U16String> for std::borrow::Cow<'a, U16Str> {
     }
 }
 
+impl Into<U16String> for Vec<u16> {
+    fn into(self) -> U16String {
+        U16String::from_vec(self)
+    }
+}
+
 impl From<String> for U16String {
     fn from(s: String) -> U16String {
         U16String::from_str(&s)
@@ -283,7 +330,7 @@ impl From<String> for U16String {
 
 impl From<OsString> for U16String {
     fn from(s: OsString) -> U16String {
-        U16String::from_str(&s)
+        U16String::from_os_str(&s)
     }
 }
 
@@ -295,7 +342,7 @@ impl From<U16String> for OsString {
 
 impl<'a, T: ?Sized + AsRef<U16Str>> From<&'a T> for U16String {
     fn from(s: &'a T) -> U16String {
-        s.as_ref().to_wide_string()
+        s.as_ref().to_u16_string()
     }
 }
 
@@ -320,48 +367,48 @@ impl std::ops::Deref for U16String {
 impl PartialEq<U16Str> for U16String {
     #[inline]
     fn eq(&self, other: &U16Str) -> bool {
-        self.as_wide_str() == other
+        self.as_u16_str() == other
     }
 }
 
 impl PartialOrd<U16Str> for U16String {
     #[inline]
     fn partial_cmp(&self, other: &U16Str) -> Option<std::cmp::Ordering> {
-        self.as_wide_str().partial_cmp(other)
+        self.as_u16_str().partial_cmp(other)
     }
 }
 
 impl<'a> PartialEq<&'a U16Str> for U16String {
     #[inline]
     fn eq(&self, other: &&'a U16Str) -> bool {
-        self.as_wide_str() == *other
+        self.as_u16_str() == *other
     }
 }
 
 impl<'a> PartialOrd<&'a U16Str> for U16String {
     #[inline]
     fn partial_cmp(&self, other: &&'a U16Str) -> Option<std::cmp::Ordering> {
-        self.as_wide_str().partial_cmp(*other)
+        self.as_u16_str().partial_cmp(*other)
     }
 }
 
 impl<'a> PartialEq<std::borrow::Cow<'a, U16Str>> for U16String {
     #[inline]
     fn eq(&self, other: &std::borrow::Cow<'a, U16Str>) -> bool {
-        self.as_wide_str() == other.as_ref()
+        self.as_u16_str() == other.as_ref()
     }
 }
 
 impl<'a> PartialOrd<std::borrow::Cow<'a, U16Str>> for U16String {
     #[inline]
     fn partial_cmp(&self, other: &std::borrow::Cow<'a, U16Str>) -> Option<std::cmp::Ordering> {
-        self.as_wide_str().partial_cmp(other.as_ref())
+        self.as_u16_str().partial_cmp(other.as_ref())
     }
 }
 
 impl U16Str {
     /// Coerces a value into a `U16Str`.
-    pub fn new<'a, S: AsRef<U16Str> + ?Sized>(s: &'a S) -> &'a U16Str {
+    pub fn new<S: AsRef<U16Str> + ?Sized>(s: &S) -> &U16Str {
         s.as_ref()
     }
 
@@ -392,7 +439,7 @@ impl U16Str {
     /// Constructs a `U16Str` from a slice of `u16` code points.
     ///
     /// No checks are performed on the slice.
-    pub fn from_slice<'a>(slice: &'a [u16]) -> &'a U16Str {
+    pub fn from_slice(slice: &[u16]) -> &U16Str {
         unsafe { mem::transmute(slice) }
     }
 
@@ -404,7 +451,7 @@ impl U16Str {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16String;
+    /// use widestring::U16String;
     /// use std::ffi::OsString;
     /// let s = "MyString";
     /// // Create a wide string from the string
@@ -419,7 +466,7 @@ impl U16Str {
     }
 
     /// Copies the wide string to a new owned `U16String`.
-    pub fn to_wide_string(&self) -> U16String {
+    pub fn to_u16_string(&self) -> U16String {
         U16String::from_vec(&self.inner)
     }
 
@@ -432,7 +479,7 @@ impl U16Str {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16String;
+    /// use widestring::U16String;
     /// let s = "MyString";
     /// // Create a wide string from the string
     /// let wstr = U16String::from_str(s);
@@ -452,7 +499,7 @@ impl U16Str {
     /// # Examples
     ///
     /// ```rust
-    /// use widestring::ffi::U16String;
+    /// use widestring::U16String;
     /// let s = "MyString";
     /// // Create a wide string from the string
     /// let wstr = U16String::from_str(s);
@@ -489,7 +536,7 @@ impl U16Str {
     }
 
     /// Converts a `Box<U16Str>` into a `U16String` without copying or allocating.
-    pub fn into_wide_string(self: Box<U16Str>) -> U16String {
+    pub fn into_u16_string(self: Box<U16Str>) -> U16String {
         let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut [u16]) };
         U16String {
             inner: boxed.into_vec(),
@@ -506,7 +553,7 @@ impl std::borrow::Borrow<U16Str> for U16String {
 impl ToOwned for U16Str {
     type Owned = U16String;
     fn to_owned(&self) -> U16String {
-        self.to_wide_string()
+        self.to_u16_string()
     }
 }
 
@@ -550,13 +597,13 @@ impl<'a> From<&'a U16Str> for Box<U16Str> {
 
 impl From<Box<U16Str>> for U16String {
     fn from(boxed: Box<U16Str>) -> U16String {
-        boxed.into_wide_string()
+        boxed.into_u16_string()
     }
 }
 
 impl From<U16String> for Box<U16Str> {
     fn from(s: U16String) -> Box<U16Str> {
-        s.into_boxed_wide_str()
+        s.into_boxed_u16_str()
     }
 }
 
