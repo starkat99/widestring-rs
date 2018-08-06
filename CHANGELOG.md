@@ -4,6 +4,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- New `U32String`, `U32Str`, `U32CString`, and `U32CStr` types for dealing with UTF-32 FFI. These
+  new types are roughly equivalent to the existing UTF-16 types.
+- `WideChar` is a type alias to `u16` on Windows but `u32` on non-Windows platforms.
+
+### Changed
+- **Breaking Change** Existing wide string types have been renamed to `U16String`, `U16Str`,
+  `U16CString`, and `U16CStr` (previously `WideString`, `WideStr`, etc.). Some function have
+  also been renamed to reflect this change (`wide_str` to `u16_str`, etc.).
+- **Breaking Change** `WideString`, `WideStr`, `WideCString`, and `WideCStr` are now type aliases
+  that vary between platforms. On Windows, these are aliases to the `U16` types and are equivalent
+  to the previous version, but on non-Windows platforms these alias the new `U32` types instead.
+  See crate documentation for more details.
 
 ## [0.3.0] - 2018-03-17 <a name="0.3.0"></a>
 ### Added
