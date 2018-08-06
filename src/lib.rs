@@ -1,19 +1,24 @@
-//! A wide string FFI module for converting to and from Wide "Unicode" strings.
+//! A wide string FFI module for converting to and from wide string variants.
 //!
-//! This module provides two types of wide strings: `U16String` and `U16CString`. They differ
-//! in the guarantees they provide. For `U16String`, no guarantees are made about the underlying
-//! string data; it is simply a sequence of UTF-16 *code units*, which may be ill-formed or
-//! contain nul values. `U16CString` on the other hand is aware of nul values and is guaranteed to
-//! be terminated with a nul value (unless unchecked methods are used to construct the
-//! `U16CString`). Because `U16CString` is a C-style, nul-terminated string, it will have no
-//! interior nul values. A `U16CString` may still have ill-formed UTF-16 code units.
+//! This module provides multiple types of wide strings: `U16String`, `U16CString`, `U32String`,
+//! and `U32CString`. The `U--CString` types are analogous to the standard `CString` FFI type,
+//! while the `U--String` types are analogous to `OsString`. Otherwise, `U16` and `U32` types
+//! differ only in character width and encoding methods.
 //!
-//! Use `U16String` when you simply need to pass-through strings, or when you know or don't care if
-//! you're not dealing with a nul-terminated string, such as when string lengths are provided and
-//! you are only reading strings from FFI, not passing them into FFI.
+//! For `U16String` and `U32String`, no guarantees are made about the underlying string data; they
+//! are simply a sequence of UTF-16 *code units* or UTF-32 code points, both of which may be
+//! ill-formed or contain nul values. `U16CString` and `U32CString`, on the other hand, are aware
+//! of nul values and are guaranteed to be terminated with a nul value (unless unchecked methods
+//! are used to construct the strings). Because `U16CString` and `U32CString` are C-style,
+//! nul-terminated strings, they will have no interior nul values. All four string types may still
+//! have unpaired UTF-16 surrogates or invalid UTF-32 code points.
 //!
-//! Use `U16CString` when you must properly handle nul values, and must deal with nul-terminated
-//! C-style wide strings, such as when you pass strings into FFI functions.
+//! Use `U16String` or `U32String` when you simply need to pass-through strings, or when you know
+//! or don't care if you're not dealing with a nul-terminated string, such as when string lengths
+//! are provided and you are only reading strings from FFI, not writing them out to a FFI.
+//!
+//! Use `U16CString` or `U32CString` when you must properly handle nul values, and must deal with
+//! nul-terminated C-style wide strings, such as when you pass strings into FFI functions.
 //!
 //! # Relationship to other Rust Strings
 //!
@@ -29,22 +34,23 @@
 //! `OsString` and `OsStr` are also strings for use with FFI. Unlike `CString`, they do no special
 //! handling of nul values, but instead have an OS-specified encoding. While, for example, on Linux
 //! systems this is usually the UTF-8 encoding, this is not the case for every platform. The encoding
-//! may not even be 8-bit: on Windows, `OsString` uses 16-bit values, but may not always be
-//! valid UTF-16-encoded. Like `CString`, `OsString` has no additional
-//! guarantees and may not be well-formed.
+//! may not even be 8-bit: on Windows, `OsString` uses a malformed encoding sometimes referred to as
+//! "WTF-8". In any case, like `CString`, `OsString` has no additional guarantees and may not be
+//! well-formed.
 //!
 //! Due to the loss of safety of these other string types, conversion to standard Rust `String` is
 //! lossy, and may require knowledge of the underlying encoding, including platform-specific quirks.
 //!
 //! The wide strings in this crate are roughly based on the principles of the string types in
-//! `std::ffi`, though there are differences. `U16String` and `U16Str` are roughly similar in role
-//! to `OsString` and `OsStr`, while `U16CString` and `U16CStr` are roughly similar in role to
-//! `CString` and `CStr`. In fact, on Windows, `U16String` is nearly identical to `OsString`. It
-//! can be useful to ensure consistent wide character size across other platforms, and that's where
-//! these wide string types come into play. Conversion to other string types is very straight
-//! forward and safe, while conversion directly between standard Rust `String` is a lossy conversion
-//! just as `OsString` is. Just as `OsString`, the wide strings are assumed to have some sort of
-//! UTF-16 encoding, but that encoding may be ill-formed.
+//! `std::ffi`, though there are differences. `U16String`, `U32String`, `U16Str`, and `U32Str` are
+//! roughly similar in role to `OsString` and `OsStr`, while `U16CString`, `U32CString`, `U16CStr`,
+//! and `U32CStr` are roughly similar in role to `CString` and `CStr`. Conversion to FFI string
+//! types is generally very straight forward and safe, while conversion directly between standard
+//! Rust `String` is a lossy conversion just as `OsString` is.
+//!
+//! `U16String` and `U16CString` are treated as though they use UTF-16 encoding, even if they may
+//! contain unpaired surrogates. `U32String` and `U32CString` are treated as though they use UTF-32
+//! encoding, even if they may contain values outside the valid Unicode character range.
 //!
 //! # Remarks on Code Units
 //!
@@ -57,6 +63,10 @@
 //! the number of code units (`len()`) of a wide string is **not** equivalent to the
 //! number of Unicode characters in the string, merely the length of the UTF-16 encoding sequence.
 //! In fact, Unicode code points do not even have a one-to-one mapping with characters!
+//!
+//! UTF-32 simply encodes Unicode code points as-is in 32-bit values, but Unicode character code
+//! points are reserved only for 21-bits. Again, Unicode code points do not have a one-to-one
+//! mapping with the concept of a visual character glyph.
 //!
 //! # Examples
 //!
