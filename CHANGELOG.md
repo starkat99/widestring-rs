@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - New `U32String`, `U32Str`, `U32CString`, and `U32CStr` types for dealing with UTF-32 FFI. These
   new types are roughly equivalent to the existing UTF-16 types.
 - `WideChar` is a type alias to `u16` on Windows but `u32` on non-Windows platforms.
+- The generic types `UString`, `UStr`, `UCString` and `UCStr` are used to implement the string
+  types.
 
 ### Changed
 - **Breaking Change** Existing wide string types have been renamed to `U16String`, `U16Str`,

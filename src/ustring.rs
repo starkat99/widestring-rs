@@ -7,15 +7,18 @@ use std::mem;
 
 /// An owned, mutable "wide" string for FFI that is **not** nul-aware.
 ///
-/// `U16String` is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-16 data. These strings are intended to be used with
-/// FFI functions that directly use string length, where the strings are known to have proper
+/// `UString` is not aware of nul values. Strings may or may not be nul-terminated, and may
+/// contain invalid and ill-formed UTF-16 or UTF-32 data. These strings are intended to be used
+/// with FFI functions that directly use string length, where the strings are known to have proper
 /// nul-termination already, or where strings are merely being passed through without modification.
 ///
-/// `WideCString` should be used instead if nul-aware strings are required.
+/// `UCString` should be used instead if nul-aware strings are required.
 ///
-/// `U16String` can be converted to and from many other standard Rust string types, including
+/// `UString` can be converted to and from many other standard Rust string types, including
 /// `OsString` and `String`, making proper Unicode FFI safe and easy.
+///
+/// Please prefer using the type aliases `U16String` or `U32String` or `WideString` to using this
+/// type directly.
 ///
 /// # Examples
 ///
@@ -31,6 +34,18 @@ use std::mem;
 /// let rust_str = wstr.to_string_lossy();
 /// assert_eq!(rust_str, "Test");
 /// ```
+///
+/// The same example using `U32String` instead:
+///
+/// ```rust
+/// use widestring::U32String;
+/// let s = "Test";
+/// // Create a wide string from the rust string
+/// let wstr = U32String::from_str(s);
+/// // Convert back to a rust string
+/// let rust_str = wstr.to_string_lossy();
+/// assert_eq!(rust_str, "Test");
+/// ```
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UString<C: UChar> {
     inner: Vec<C>,
@@ -38,17 +53,20 @@ pub struct UString<C: UChar> {
 
 /// String slice reference for `U16String`.
 ///
-/// `U16Str` is to `U16String` as `str` is to `String`.
+/// `UStr` is to `UString` as `str` is to `String`.
 ///
-/// `U16Str` is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-16 data. These strings are intended to be used with
-/// FFI functions that directly use string length, where the strings are known to have proper
+/// `UStr` is not aware of nul values. Strings may or may not be nul-terminated, and may
+/// contain invalid and ill-formed UTF-16 or UTF-32 data. These strings are intended to be used
+/// with FFI functions that directly use string length, where the strings are known to have proper
 /// nul-termination already, or where strings are merely being passed through without modification.
 ///
-/// `WideCStr` should be used instead of nul-aware strings are required.
+/// `UCStr` should be used instead of nul-aware strings are required.
 ///
-/// `U16Str` can be converted to many other string types, including `OsString` and `String`, making
+/// `UStr` can be converted to many other string types, including `OsString` and `String`, making
 /// proper Unicode FFI safe and easy.
+///
+/// Please prefer using the type aliases `U16Str` or `U32Str` or `WideStr` to using this type
+/// directly.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UStr<C: UChar> {
     inner: [C],
@@ -61,12 +79,13 @@ pub struct UStr<C: UChar> {
 pub struct FromUtf32Error();
 
 impl<C: UChar> UString<C> {
-    /// Constructs a new empty `U16String`.
+    /// Constructs a new empty `UString`.
     pub fn new() -> Self {
         Self { inner: vec![] }
     }
 
-    /// Constructs a `U16String` from a vector of possibly invalid or ill-formed UTF-16 data.
+    /// Constructs a `UString` from a vector of possibly invalid or ill-formed UTF-16 or UTF-32
+    /// data.
     ///
     /// No checks are made on the contents of the vector.
     ///
@@ -80,13 +99,22 @@ impl<C: UChar> UString<C> {
     /// let wstr = U16String::from_vec(v);
     /// # assert_eq!(wstr.into_vec(), cloned);
     /// ```
+    ///
+    /// ```rust
+    /// use widestring::U32String;
+    /// let v = vec![84u32, 104u32, 101u32]; // 'T' 'h' 'e'
+    /// # let cloned = v.clone();
+    /// // Create a wide string from the vector
+    /// let wstr = U32String::from_vec(v);
+    /// # assert_eq!(wstr.into_vec(), cloned);
+    /// ```
     pub fn from_vec(raw: impl Into<Vec<C>>) -> Self {
         Self { inner: raw.into() }
     }
 
-    /// Constructs a `U16String` from a `u16` pointer and a length.
+    /// Constructs a `UString` from a pointer and a length.
     ///
-    /// The `len` argument is the number of `u16` elements, **not** the number of bytes.
+    /// The `len` argument is the number of elements, **not** the number of bytes.
     ///
     /// # Safety
     ///
@@ -105,7 +133,7 @@ impl<C: UChar> UString<C> {
         Self::from_vec(slice)
     }
 
-    /// Creates a `U16String` with the given capacity.
+    /// Creates a `UString` with the given capacity.
     ///
     /// The string will be able to hold exactly `capacity` partial code units without reallocating.
     /// If `capacity` is set to 0, the string will not initially allocate.
@@ -115,18 +143,18 @@ impl<C: UChar> UString<C> {
         }
     }
 
-    /// Returns the capacity this `U16String` can hold without reallocating.
+    /// Returns the capacity this `UString` can hold without reallocating.
     pub fn capacity(&self) -> usize {
         self.inner.capacity()
     }
 
-    /// Truncate the `U16String` to zero length.
+    /// Truncate the `UString` to zero length.
     pub fn clear(&mut self) {
         self.inner.clear()
     }
 
     /// Reserves the capacity for at least `additional` more capacity to be inserted in the given
-    /// `U16String`.
+    /// `UString`.
     ///
     /// More space may be reserved to avoid frequent allocations.
     pub fn reserve(&mut self, additional: usize) {
@@ -134,25 +162,25 @@ impl<C: UChar> UString<C> {
     }
 
     /// Reserves the minimum capacity for exactly `additional` more capacity to be inserted in the
-    /// given `U16String`. Does nothing if the capcity is already sufficient.
+    /// given `UString`. Does nothing if the capcity is already sufficient.
     ///
-    /// Note that the allocator may give more space than is requested. Therefore capacity can not be
-    /// relied upon to be precisely minimal. Prefer `reserve` if future insertions are expected.
+    /// Note that the allocator may give more space than is requested. Therefore capacity can not
+    /// be relied upon to be precisely minimal. Prefer `reserve` if future insertions are expected.
     pub fn reserve_exact(&mut self, additional: usize) {
         self.inner.reserve_exact(additional)
     }
 
-    /// Converts the wide string into a `Vec<u16>`, consuming the string in the process.
+    /// Converts the wide string into a `Vec`, consuming the string in the process.
     pub fn into_vec(self) -> Vec<C> {
         self.inner
     }
 
-    /// Converts to a `U16Str` reference.
+    /// Converts to a `UStr` reference.
     pub fn as_ustr(&self) -> &UStr<C> {
         self
     }
 
-    /// Extends the wide string with the given `&U16Str`.
+    /// Extends the wide string with the given `&UStr`.
     ///
     /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
@@ -169,11 +197,22 @@ impl<C: UChar> UString<C> {
     ///
     /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
     /// ```
+    ///
+    /// ```rust
+    /// use widestring::U32String;
+    /// let s = "MyString";
+    /// let mut wstr = U32String::from_str(s);
+    /// let cloned = wstr.clone();
+    /// // Push the clone to the end, repeating the string twice.
+    /// wstr.push(cloned);
+    ///
+    /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
+    /// ```
     pub fn push(&mut self, s: impl AsRef<UStr<C>>) {
         self.inner.extend_from_slice(&s.as_ref().inner)
     }
 
-    /// Extends the wide string with the given `&[u16]` slice.
+    /// Extends the wide string with the given slice.
     ///
     /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
@@ -190,11 +229,22 @@ impl<C: UChar> UString<C> {
     ///
     /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
     /// ```
+    ///
+    /// ```rust
+    /// use widestring::U32String;
+    /// let s = "MyString";
+    /// let mut wstr = U32String::from_str(s);
+    /// let cloned = wstr.clone();
+    /// // Push the clone to the end, repeating the string twice.
+    /// wstr.push_slice(cloned);
+    ///
+    /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
+    /// ```
     pub fn push_slice(&mut self, s: impl AsRef<[C]>) {
         self.inner.extend_from_slice(&s.as_ref())
     }
 
-    /// Shrinks the capacity of the `U16String` to match its length.
+    /// Shrinks the capacity of the `UString` to match its length.
     ///
     /// # Examples
     ///
@@ -209,11 +259,23 @@ impl<C: UChar> UString<C> {
     /// s.shrink_to_fit();
     /// assert_eq!(3, s.capacity());
     /// ```
+    ///
+    /// ```rust
+    /// use widestring::U32String;
+    ///
+    /// let mut s = U32String::from_str("foo");
+    ///
+    /// s.reserve(100);
+    /// assert!(s.capacity() >= 100);
+    ///
+    /// s.shrink_to_fit();
+    /// assert_eq!(3, s.capacity());
+    /// ```
     pub fn shrink_to_fit(&mut self) {
         self.inner.shrink_to_fit();
     }
 
-    /// Converts this `U16String` into a boxed `U16Str`.
+    /// Converts this `UString` into a boxed `UStr`.
     ///
     /// # Examples
     ///
@@ -223,6 +285,14 @@ impl<C: UChar> UString<C> {
     /// let s = U16String::from_str("hello");
     ///
     /// let b: Box<U16Str> = s.into_boxed_ustr();
+    /// ```
+    ///
+    /// ```
+    /// use widestring::{U32String, U32Str};
+    ///
+    /// let s = U32String::from_str("hello");
+    ///
+    /// let b: Box<U32Str> = s.into_boxed_ustr();
     /// ```
     pub fn into_boxed_ustr(self) -> Box<UStr<C>> {
         let rw = Box::into_raw(self.inner.into_boxed_slice()) as *mut UStr<C>;
@@ -434,14 +504,14 @@ impl UString<u32> {
 }
 
 impl<C: UChar> UStr<C> {
-    /// Coerces a value into a `U16Str`.
+    /// Coerces a value into a `UStr`.
     pub fn new<S: AsRef<Self> + ?Sized>(s: &S) -> &Self {
         s.as_ref()
     }
 
-    /// Constructs a `U16Str` from a `u16` pointer and a length.
+    /// Constructs a `UStr` from a pointer and a length.
     ///
-    /// The `len` argument is the number of `u16` elements, **not** the number of bytes.
+    /// The `len` argument is the number of elements, **not** the number of bytes.
     ///
     /// # Safety
     ///
@@ -463,14 +533,14 @@ impl<C: UChar> UStr<C> {
         mem::transmute(std::slice::from_raw_parts(p, len))
     }
 
-    /// Constructs a `U16Str` from a slice of `u16` code points.
+    /// Constructs a `UStr` from a slice of code points.
     ///
     /// No checks are performed on the slice.
     pub fn from_slice(slice: &[C]) -> &Self {
         unsafe { mem::transmute(slice) }
     }
 
-    /// Copies the wide string to a new owned `U16String`.
+    /// Copies the wide string to a new owned `UString`.
     pub fn to_ustring(&self) -> UString<C> {
         UString::from_vec(&self.inner)
     }
@@ -487,8 +557,7 @@ impl<C: UChar> UStr<C> {
         self.inner.as_ptr()
     }
 
-    /// Returns the length of the wide string as number of UTF-16 code units (**not** code
-    /// points and **not** number of bytes).
+    /// Returns the length of the wide string as number of elements (**not** number of bytes).
     pub fn len(&self) -> usize {
         self.inner.len()
     }
@@ -498,7 +567,7 @@ impl<C: UChar> UStr<C> {
         self.inner.is_empty()
     }
 
-    /// Converts a `Box<U16Str>` into a `U16String` without copying or allocating.
+    /// Converts a `Box<UStr>` into a `UString` without copying or allocating.
     pub fn into_ustring(self: Box<Self>) -> UString<C> {
         let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut [C]) };
         UString {
@@ -554,7 +623,7 @@ impl UStr<u16> {
 
     /// Copies the wide string to a `String`.
     ///
-    /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+    /// Any non-Unicode sequences are replaced with *U+FFFD REPLACEMENT CHARACTER*.
     ///
     /// # Examples
     ///
@@ -662,7 +731,7 @@ impl UStr<u32> {
 
     /// Copies the wide string to a `String`.
     ///
-    /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+    /// Any non-Unicode sequences are replaced with *U+FFFD REPLACEMENT CHARACTER*.
     ///
     /// # Examples
     ///
