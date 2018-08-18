@@ -4,6 +4,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.4.0] - 2018-08-18 <a name="0.4.0"></a>
 ### Added
 - New `U32String`, `U32Str`, `U32CString`, and `U32CStr` types for dealing with UTF-32 FFI. These
   new types are roughly equivalent to the existing UTF-16 types.
@@ -60,7 +62,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 [#2]: https://github.com/starkat99/widestring-rs/issues/2
 
-[Unreleased]: https://github.com/starkat99/widestring-rs/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/starkat99/widestring-rs/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/starkat99/widestring-rs/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/starkat99/widestring-rs/compare/v0.2.2...v0.3.0
 [0.2.2]: https://github.com/starkat99/widestring-rs/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/starkat99/widestring-rs/compare/v0.2.0...v0.2.1
