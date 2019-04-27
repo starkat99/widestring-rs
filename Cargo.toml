@@ -2,7 +2,7 @@
 name = "widestring"
 version = "0.4.0"
 authors = ["Kathryn Long <squeeself@gmail.com>"]
-description = "A wide string FFI library for converting to and from wide strings, such as those often used in Windows API or other FFI libaries. Both UTF-16 and UTF-32 types are provided."
+description = "A wide string FFI library for converting to and from wide strings, such as those often used in Windows API or other FFI libraries. Both UTF-16 and UTF-32 types are provided."
 repository = "https://github.com/starkat99/widestring-rs.git"
 readme = "README.md"
 keywords = ["wide", "string", "win32", "utf-16", "utf-32"]
