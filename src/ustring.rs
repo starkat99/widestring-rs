@@ -1,9 +1,11 @@
-use super::platform;
-use super::UChar;
-use std;
-use std::char;
-use std::ffi::{OsStr, OsString};
-use std::mem;
+use crate::{UChar, UStr, WideChar};
+use alloc::borrow::{Cow, ToOwned};
+use alloc::boxed::Box;
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::borrow::Borrow;
+use core::ops::{Deref, Index, RangeFull};
+use core::{char, cmp, mem, slice};
 
 /// An owned, mutable "wide" string for FFI that is **not** nul-aware.
 ///
@@ -48,40 +50,13 @@ use std::mem;
 /// ```
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UString<C: UChar> {
-    inner: Vec<C>,
+    pub(crate) inner: Vec<C>,
 }
-
-/// String slice reference for `U16String`.
-///
-/// `UStr` is to `UString` as `str` is to `String`.
-///
-/// `UStr` is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-16 or UTF-32 data. These strings are intended to be used
-/// with FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
-///
-/// `UCStr` should be used instead of nul-aware strings are required.
-///
-/// `UStr` can be converted to many other string types, including `OsString` and `String`, making
-/// proper Unicode FFI safe and easy.
-///
-/// Please prefer using the type aliases `U16Str` or `U32Str` or `WideStr` to using this type
-/// directly.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct UStr<C: UChar> {
-    inner: [C],
-}
-
-/// A possible error value when converting a String from a UTF-32 byte slice.
-///
-/// This type is the error type for the `to_string` method on `U32Str`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FromUtf32Error();
 
 impl<C: UChar> UString<C> {
     /// Constructs a new empty `UString`.
     pub fn new() -> Self {
-        Self { inner: vec![] }
+        Self { inner: Vec::new() }
     }
 
     /// Constructs a `UString` from a vector of possibly invalid or ill-formed UTF-16 or UTF-32
@@ -129,7 +104,7 @@ impl<C: UChar> UString<C> {
             return Self::new();
         }
         assert!(!p.is_null());
-        let slice = std::slice::from_raw_parts(p, len);
+        let slice = slice::from_raw_parts(p, len);
         Self::from_vec(slice)
     }
 
@@ -337,9 +312,10 @@ impl UString<u16> {
     ///
     /// assert_eq!(wstr.to_string().unwrap(), s);
     /// ```
-    pub fn from_os_str<S: AsRef<OsStr> + ?Sized>(s: &S) -> Self {
+    #[cfg(feature = "std")]
+    pub fn from_os_str<S: AsRef<std::ffi::OsStr> + ?Sized>(s: &S) -> Self {
         Self {
-            inner: platform::os_to_wide(s.as_ref()),
+            inner: crate::platform::os_to_wide(s.as_ref()),
         }
     }
 
@@ -379,8 +355,9 @@ impl UString<u16> {
     ///
     /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
     /// ```
-    pub fn push_os_str(&mut self, s: impl AsRef<OsStr>) {
-        self.inner.extend(platform::os_to_wide(s.as_ref()))
+    #[cfg(feature = "std")]
+    pub fn push_os_str(&mut self, s: impl AsRef<std::ffi::OsStr>) {
+        self.inner.extend(crate::platform::os_to_wide(s.as_ref()))
     }
 }
 
@@ -440,7 +417,8 @@ impl UString<u32> {
     ///
     /// assert_eq!(wstr.to_string().unwrap(), s);
     /// ```
-    pub fn from_os_str<S: AsRef<OsStr> + ?Sized>(s: &S) -> Self {
+    #[cfg(feature = "std")]
+    pub fn from_os_str<S: AsRef<std::ffi::OsStr> + ?Sized>(s: &S) -> Self {
         let v: Vec<char> = s.as_ref().to_string_lossy().chars().collect();
         UString::from_chars(v)
     }
@@ -497,269 +475,10 @@ impl UString<u32> {
     ///
     /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
     /// ```
-    pub fn push_os_str(&mut self, s: impl AsRef<OsStr>) {
+    #[cfg(feature = "std")]
+    pub fn push_os_str(&mut self, s: impl AsRef<std::ffi::OsStr>) {
         self.inner
             .extend(s.as_ref().to_string_lossy().chars().map(|c| c as u32))
-    }
-}
-
-impl<C: UChar> UStr<C> {
-    /// Coerces a value into a `UStr`.
-    pub fn new<S: AsRef<Self> + ?Sized>(s: &S) -> &Self {
-        s.as_ref()
-    }
-
-    /// Constructs a `UStr` from a pointer and a length.
-    ///
-    /// The `len` argument is the number of elements, **not** the number of bytes.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len`
-    /// elements.
-    ///
-    /// # Panics
-    ///
-    /// This function panics if `p` is null.
-    ///
-    /// # Caveat
-    ///
-    /// The lifetime for the returned string is inferred from its usage. To prevent accidental
-    /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
-    /// context, such as by providing a helper function taking the lifetime of a host value for the
-    /// string, or by explicit annotation.
-    pub unsafe fn from_ptr<'a>(p: *const C, len: usize) -> &'a Self {
-        assert!(!p.is_null());
-        mem::transmute(std::slice::from_raw_parts(p, len))
-    }
-
-    /// Constructs a `UStr` from a slice of code points.
-    ///
-    /// No checks are performed on the slice.
-    pub fn from_slice(slice: &[C]) -> &Self {
-        unsafe { mem::transmute(slice) }
-    }
-
-    /// Copies the wide string to a new owned `UString`.
-    pub fn to_ustring(&self) -> UString<C> {
-        UString::from_vec(&self.inner)
-    }
-
-    /// Converts to a slice of the wide string.
-    pub fn as_slice(&self) -> &[C] {
-        &self.inner
-    }
-
-    /// Returns a raw pointer to the wide string.
-    ///
-    /// The pointer is valid only as long as the lifetime of this reference.
-    pub fn as_ptr(&self) -> *const C {
-        self.inner.as_ptr()
-    }
-
-    /// Returns the length of the wide string as number of elements (**not** number of bytes).
-    pub fn len(&self) -> usize {
-        self.inner.len()
-    }
-
-    /// Returns whether this wide string contains no data.
-    pub fn is_empty(&self) -> bool {
-        self.inner.is_empty()
-    }
-
-    /// Converts a `Box<UStr>` into a `UString` without copying or allocating.
-    pub fn into_ustring(self: Box<Self>) -> UString<C> {
-        let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut [C]) };
-        UString {
-            inner: boxed.into_vec(),
-        }
-    }
-}
-
-impl UStr<u16> {
-    /// Decodes a wide string to an owned `OsString`.
-    ///
-    /// This makes a string copy of the `U16Str`. Since `U16Str` makes no guarantees that it is
-    /// valid UTF-16, there is no guarantee that the resulting `OsString` will be valid data.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U16String;
-    /// use std::ffi::OsString;
-    /// let s = "MyString";
-    /// // Create a wide string from the string
-    /// let wstr = U16String::from_str(s);
-    /// // Create an OsString from the wide string
-    /// let osstr = wstr.to_os_string();
-    ///
-    /// assert_eq!(osstr, OsString::from(s));
-    /// ```
-    pub fn to_os_string(&self) -> OsString {
-        platform::os_from_wide(&self.inner)
-    }
-
-    /// Copies the wide string to a `String` if it contains valid UTF-16 data.
-    ///
-    /// # Failures
-    ///
-    /// Returns an error if the string contains any invalid UTF-16 data.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U16String;
-    /// let s = "MyString";
-    /// // Create a wide string from the string
-    /// let wstr = U16String::from_str(s);
-    /// // Create a regular string from the wide string
-    /// let s2 = wstr.to_string().unwrap();
-    ///
-    /// assert_eq!(s2, s);
-    /// ```
-    pub fn to_string(&self) -> Result<String, std::string::FromUtf16Error> {
-        String::from_utf16(&self.inner)
-    }
-
-    /// Copies the wide string to a `String`.
-    ///
-    /// Any non-Unicode sequences are replaced with *U+FFFD REPLACEMENT CHARACTER*.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U16String;
-    /// let s = "MyString";
-    /// // Create a wide string from the string
-    /// let wstr = U16String::from_str(s);
-    /// // Create a regular string from the wide string
-    /// let lossy = wstr.to_string_lossy();
-    ///
-    /// assert_eq!(lossy, s);
-    /// ```
-    pub fn to_string_lossy(&self) -> String {
-        String::from_utf16_lossy(&self.inner)
-    }
-}
-
-impl UStr<u32> {
-    /// Constructs a `U32Str` from a `char` pointer and a length.
-    ///
-    /// The `len` argument is the number of `char` elements, **not** the number of bytes.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len`
-    /// elements.
-    ///
-    /// # Panics
-    ///
-    /// This function panics if `p` is null.
-    ///
-    /// # Caveat
-    ///
-    /// The lifetime for the returned string is inferred from its usage. To prevent accidental
-    /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
-    /// context, such as by providing a helper function taking the lifetime of a host value for the
-    /// string, or by explicit annotation.
-    pub unsafe fn from_char_ptr<'a>(p: *const char, len: usize) -> &'a Self {
-        UStr::from_ptr(p as *const u32, len)
-    }
-
-    /// Constructs a `U32Str` from a slice of `u32` code points.
-    ///
-    /// No checks are performed on the slice.
-    pub fn from_char_slice(slice: &[char]) -> &Self {
-        unsafe { mem::transmute(slice) }
-    }
-
-    /// Decodes a wide string to an owned `OsString`.
-    ///
-    /// This makes a string copy of the `U32Str`. Since `U32Str` makes no guarantees that it is
-    /// valid UTF-32, there is no guarantee that the resulting `OsString` will be valid data.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U32String;
-    /// use std::ffi::OsString;
-    /// let s = "MyString";
-    /// // Create a wide string from the string
-    /// let wstr = U32String::from_str(s);
-    /// // Create an OsString from the wide string
-    /// let osstr = wstr.to_os_string();
-    ///
-    /// assert_eq!(osstr, OsString::from(s));
-    /// ```
-    pub fn to_os_string(&self) -> OsString {
-        self.to_string_lossy().into()
-    }
-
-    /// Copies the wide string to a `String` if it contains valid UTF-32 data.
-    ///
-    /// # Failures
-    ///
-    /// Returns an error if the string contains any invalid UTF-32 data.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U32String;
-    /// let s = "MyString";
-    /// // Create a wide string from the string
-    /// let wstr = U32String::from_str(s);
-    /// // Create a regular string from the wide string
-    /// let s2 = wstr.to_string().unwrap();
-    ///
-    /// assert_eq!(s2, s);
-    /// ```
-    pub fn to_string(&self) -> Result<String, FromUtf32Error> {
-        let chars: Vec<Option<char>> = self.inner.iter().map(|c| char::from_u32(*c)).collect();
-        if chars.iter().any(|c| c.is_none()) {
-            return Err(FromUtf32Error());
-        }
-        let size = chars.iter().filter_map(|o| o.map(|c| c.len_utf8())).sum();
-        let mut vec = Vec::with_capacity(size);
-        unsafe { vec.set_len(size) };
-        let mut i = 0;
-        for c in chars.iter().filter_map(|&o| o) {
-            c.encode_utf8(&mut vec[i..]);
-            i += c.len_utf8();
-        }
-        Ok(unsafe { String::from_utf8_unchecked(vec) })
-    }
-
-    /// Copies the wide string to a `String`.
-    ///
-    /// Any non-Unicode sequences are replaced with *U+FFFD REPLACEMENT CHARACTER*.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U32String;
-    /// let s = "MyString";
-    /// // Create a wide string from the string
-    /// let wstr = U32String::from_str(s);
-    /// // Create a regular string from the wide string
-    /// let lossy = wstr.to_string_lossy();
-    ///
-    /// assert_eq!(lossy, s);
-    /// ```
-    pub fn to_string_lossy(&self) -> String {
-        let chars: Vec<char> = self
-            .inner
-            .iter()
-            .map(|&c| char::from_u32(c).unwrap_or(char::REPLACEMENT_CHARACTER))
-            .collect();
-        let size = chars.iter().map(|c| c.len_utf8()).sum();
-        let mut vec = Vec::with_capacity(size);
-        unsafe { vec.set_len(size) };
-        let mut i = 0;
-        for c in chars {
-            c.encode_utf8(&mut vec[i..]);
-            i += c.len_utf8();
-        }
-        unsafe { String::from_utf8_unchecked(vec) }
     }
 }
 
@@ -769,15 +488,15 @@ impl<C: UChar> Into<Vec<C>> for UString<C> {
     }
 }
 
-impl<'a> From<UString<u16>> for std::borrow::Cow<'a, UStr<u16>> {
+impl<'a> From<UString<u16>> for Cow<'a, UStr<u16>> {
     fn from(s: UString<u16>) -> Self {
-        std::borrow::Cow::Owned(s)
+        Cow::Owned(s)
     }
 }
 
-impl<'a> From<UString<u32>> for std::borrow::Cow<'a, UStr<u32>> {
+impl<'a> From<UString<u32>> for Cow<'a, UStr<u32>> {
     fn from(s: UString<u32>) -> Self {
-        std::borrow::Cow::Owned(s)
+        Cow::Owned(s)
     }
 }
 
@@ -811,25 +530,29 @@ impl From<String> for UString<u32> {
     }
 }
 
-impl From<OsString> for UString<u16> {
-    fn from(s: OsString) -> Self {
+#[cfg(feature = "std")]
+impl From<std::ffi::OsString> for UString<u16> {
+    fn from(s: std::ffi::OsString) -> Self {
         Self::from_os_str(&s)
     }
 }
 
-impl From<OsString> for UString<u32> {
-    fn from(s: OsString) -> Self {
+#[cfg(feature = "std")]
+impl From<std::ffi::OsString> for UString<u32> {
+    fn from(s: std::ffi::OsString) -> Self {
         Self::from_os_str(&s)
     }
 }
 
-impl From<UString<u16>> for OsString {
+#[cfg(feature = "std")]
+impl From<UString<u16>> for std::ffi::OsString {
     fn from(s: UString<u16>) -> Self {
         s.to_os_string()
     }
 }
 
-impl From<UString<u32>> for OsString {
+#[cfg(feature = "std")]
+impl From<UString<u32>> for std::ffi::OsString {
     fn from(s: UString<u32>) -> Self {
         s.to_os_string()
     }
@@ -841,16 +564,16 @@ impl<'a, C: UChar, T: ?Sized + AsRef<UStr<C>>> From<&'a T> for UString<C> {
     }
 }
 
-impl<C: UChar> std::ops::Index<std::ops::RangeFull> for UString<C> {
+impl<C: UChar> Index<RangeFull> for UString<C> {
     type Output = UStr<C>;
 
     #[inline]
-    fn index(&self, _index: std::ops::RangeFull) -> &UStr<C> {
+    fn index(&self, _index: RangeFull) -> &UStr<C> {
         UStr::from_slice(&self.inner)
     }
 }
 
-impl<C: UChar> std::ops::Deref for UString<C> {
+impl<C: UChar> Deref for UString<C> {
     type Target = UStr<C>;
 
     #[inline]
@@ -868,7 +591,7 @@ impl<C: UChar> PartialEq<UStr<C>> for UString<C> {
 
 impl<C: UChar> PartialOrd<UStr<C>> for UString<C> {
     #[inline]
-    fn partial_cmp(&self, other: &UStr<C>) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &UStr<C>) -> Option<cmp::Ordering> {
         self.as_ustr().partial_cmp(other)
     }
 }
@@ -882,26 +605,26 @@ impl<'a, C: UChar> PartialEq<&'a UStr<C>> for UString<C> {
 
 impl<'a, C: UChar> PartialOrd<&'a UStr<C>> for UString<C> {
     #[inline]
-    fn partial_cmp(&self, other: &&'a UStr<C>) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &&'a UStr<C>) -> Option<cmp::Ordering> {
         self.as_ustr().partial_cmp(*other)
     }
 }
 
-impl<'a, C: UChar> PartialEq<std::borrow::Cow<'a, UStr<C>>> for UString<C> {
+impl<'a, C: UChar> PartialEq<Cow<'a, UStr<C>>> for UString<C> {
     #[inline]
-    fn eq(&self, other: &std::borrow::Cow<'a, UStr<C>>) -> bool {
+    fn eq(&self, other: &Cow<'a, UStr<C>>) -> bool {
         self.as_ustr() == other.as_ref()
     }
 }
 
-impl<'a, C: UChar> PartialOrd<std::borrow::Cow<'a, UStr<C>>> for UString<C> {
+impl<'a, C: UChar> PartialOrd<Cow<'a, UStr<C>>> for UString<C> {
     #[inline]
-    fn partial_cmp(&self, other: &std::borrow::Cow<'a, UStr<C>>) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Cow<'a, UStr<C>>) -> Option<cmp::Ordering> {
         self.as_ustr().partial_cmp(other.as_ref())
     }
 }
 
-impl<C: UChar> std::borrow::Borrow<UStr<C>> for UString<C> {
+impl<C: UChar> Borrow<UStr<C>> for UString<C> {
     fn borrow(&self) -> &UStr<C> {
         &self[..]
     }
@@ -914,15 +637,15 @@ impl<C: UChar> ToOwned for UStr<C> {
     }
 }
 
-impl<'a> From<&'a UStr<u16>> for std::borrow::Cow<'a, UStr<u16>> {
+impl<'a> From<&'a UStr<u16>> for Cow<'a, UStr<u16>> {
     fn from(s: &'a UStr<u16>) -> Self {
-        std::borrow::Cow::Borrowed(s)
+        Cow::Borrowed(s)
     }
 }
 
-impl<'a> From<&'a UStr<u32>> for std::borrow::Cow<'a, UStr<u32>> {
+impl<'a> From<&'a UStr<u32>> for Cow<'a, UStr<u32>> {
     fn from(s: &'a UStr<u32>) -> Self {
-        std::borrow::Cow::Borrowed(s)
+        Cow::Borrowed(s)
     }
 }
 
@@ -978,14 +701,61 @@ impl<C: UChar> Default for Box<UStr<C>> {
     }
 }
 
-impl std::fmt::Display for FromUtf32Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "error converting from UTF-32 to UTF-8")
-    }
-}
+/// An owned, mutable "wide" string for FFI that is **not** nul-aware.
+///
+/// `U16String` is not aware of nul values. Strings may or may not be nul-terminated, and may
+/// contain invalid and ill-formed UTF-16 data. These strings are intended to be used with
+/// FFI functions that directly use string length, where the strings are known to have proper
+/// nul-termination already, or where strings are merely being passed through without modification.
+///
+/// `WideCString` should be used instead if nul-aware strings are required.
+///
+/// `U16String` can be converted to and from many other standard Rust string types, including
+/// `OsString` and `String`, making proper Unicode FFI safe and easy.
+///
+/// # Examples
+///
+/// The following example constructs a `U16String` and shows how to convert a `U16String` to a
+/// regular Rust `String`.
+///
+/// ```rust
+/// use widestring::U16String;
+/// let s = "Test";
+/// // Create a wide string from the rust string
+/// let wstr = U16String::from_str(s);
+/// // Convert back to a rust string
+/// let rust_str = wstr.to_string_lossy();
+/// assert_eq!(rust_str, "Test");
+/// ```
+pub type U16String = UString<u16>;
 
-impl std::error::Error for FromUtf32Error {
-    fn description(&self) -> &str {
-        "error converting from UTF-32 to UTF-8"
-    }
-}
+/// An owned, mutable 32-bit wide string for FFI that is **not** nul-aware.
+///
+/// `U32String` is not aware of nul values. Strings may or may not be nul-terminated, and may
+/// contain invalid and ill-formed UTF-32 data. These strings are intended to be used with
+/// FFI functions that directly use string length, where the strings are known to have proper
+/// nul-termination already, or where strings are merely being passed through without modification.
+///
+/// `U32CString` should be used instead if nul-aware 32-bit strings are required.
+///
+/// `U32String` can be converted to and from many other standard Rust string types, including
+/// `OsString` and `String`, making proper Unicode FFI safe and easy.
+///
+/// # Examples
+///
+/// The following example constructs a `U32String` and shows how to convert a `U32String` to a
+/// regular Rust `String`.
+///
+/// ```rust
+/// use widestring::U32String;
+/// let s = "Test";
+/// // Create a wide string from the rust string
+/// let wstr = U32String::from_str(s);
+/// // Convert back to a rust string
+/// let rust_str = wstr.to_string_lossy();
+/// assert_eq!(rust_str, "Test");
+/// ```
+pub type U32String = UString<u32>;
+
+/// Alias for `U16String` or `U32String` depending on platform. Intended to match typical C `wchar_t` size on platform.
+pub type WideString = UString<WideChar>;

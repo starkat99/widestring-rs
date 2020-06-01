@@ -9,6 +9,11 @@ keywords = ["wide", "string", "win32", "utf-16", "utf-32"]
 categories = ["text-processing", "encoding"]
 license = "MIT/Apache-2.0"
 
+[features]
+default = ["std"]
+std = ["alloc"]
+alloc = []
+
 [badges]
 appveyor = { repository = "starkat99/widestring-rs" }
 travis-ci = { repository = "starkat99/widestring-rs" }
