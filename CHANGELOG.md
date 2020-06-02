@@ -4,6 +4,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Now supports `no_std`. Added the `std` and `alloc` features, enabled by default. `U16String`,
+  `U32String`, `U16CString`, and `U32CString` and their aliases all require the `alloc` or `std`
+  feature. By [@nicbn].
 
 ## [0.4.0] - 2018-08-18 <a name="0.4.0"></a>
 ### Added
@@ -61,6 +65,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Initial release.
 
 [#2]: https://github.com/starkat99/widestring-rs/issues/2
+
+[@nicbn]: https://github.com/nicbn
 
 [Unreleased]: https://github.com/starkat99/widestring-rs/compare/v0.4.0...HEAD
 [0.4.0]: https://github.com/starkat99/widestring-rs/compare/v0.3.0...v0.4.0
