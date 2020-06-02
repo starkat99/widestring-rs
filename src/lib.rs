@@ -177,18 +177,38 @@
 
 #![deny(future_incompatible)]
 #![warn(
-    unused, anonymous_parameters, missing_docs, missing_copy_implementations,
-    missing_debug_implementations, trivial_casts, trivial_numeric_casts
+    unused,
+    anonymous_parameters,
+    missing_docs,
+    missing_copy_implementations,
+    missing_debug_implementations,
+    trivial_casts,
+    trivial_numeric_casts
 )]
+#![cfg_attr(not(feature = "std"), no_std)]
 
-use std::fmt::Debug;
+#[cfg(feature = "alloc")]
+extern crate alloc;
+#[cfg(feature = "std")]
+extern crate core;
 
+use core::fmt::Debug;
+
+#[cfg(feature = "std")]
 mod platform;
+mod ucstr;
+#[cfg(feature = "alloc")]
 mod ucstring;
+mod ustr;
+#[cfg(feature = "alloc")]
 mod ustring;
 
-pub use ucstring::*;
-pub use ustring::*;
+pub use crate::ucstr::*;
+#[cfg(feature = "alloc")]
+pub use crate::ucstring::*;
+pub use crate::ustr::*;
+#[cfg(feature = "alloc")]
+pub use crate::ustring::*;
 
 /// Marker trait for primitive types used to represent UTF character data. Should not be used
 /// directly.
@@ -205,194 +225,10 @@ impl UChar for u32 {
     const NUL: u32 = 0;
 }
 
-/// String slice reference for `U16String`.
-///
-/// `U16Str` is to `U16String` as `str` is to `String`.
-///
-/// `U16Str` is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-16 data. These strings are intended to be used with
-/// FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
-///
-/// `WideCStr` should be used instead of nul-aware strings are required.
-///
-/// `U16Str` can be converted to many other string types, including `OsString` and `String`, making
-/// proper Unicode FFI safe and easy.
-pub type U16Str = UStr<u16>;
-
-/// An owned, mutable "wide" string for FFI that is **not** nul-aware.
-///
-/// `U16String` is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-16 data. These strings are intended to be used with
-/// FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
-///
-/// `WideCString` should be used instead if nul-aware strings are required.
-///
-/// `U16String` can be converted to and from many other standard Rust string types, including
-/// `OsString` and `String`, making proper Unicode FFI safe and easy.
-///
-/// # Examples
-///
-/// The following example constructs a `U16String` and shows how to convert a `U16String` to a
-/// regular Rust `String`.
-///
-/// ```rust
-/// use widestring::U16String;
-/// let s = "Test";
-/// // Create a wide string from the rust string
-/// let wstr = U16String::from_str(s);
-/// // Convert back to a rust string
-/// let rust_str = wstr.to_string_lossy();
-/// assert_eq!(rust_str, "Test");
-/// ```
-pub type U16String = UString<u16>;
-
-/// C-style wide string reference for `U16CString`.
-///
-/// `U16CStr` is aware of nul values. Unless unchecked conversions are used, all `U16CStr`
-/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
-/// The strings may still contain invalid or ill-formed UTF-16 data. These strings are intended to
-/// be used with FFI functions such as Windows API that may require nul-terminated strings.
-///
-/// `U16CStr` can be converted to and from many other string types, including `U16String`,
-/// `OsString`, and `String`, making proper Unicode FFI safe and easy.
-pub type U16CStr = UCStr<u16>;
-
-/// An owned, mutable C-style "wide" string for FFI that is nul-aware and nul-terminated.
-///
-/// `U16CString` is aware of nul values. Unless unchecked conversions are used, all `U16CString`
-/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
-/// The strings may still contain invalid or ill-formed UTF-16 data. These strings are intended to
-/// be used with FFI functions such as Windows API that may require nul-terminated strings.
-///
-/// `U16CString` can be converted to and from many other string types, including `U16String`,
-/// `OsString`, and `String`, making proper Unicode FFI safe and easy.
-///
-/// # Examples
-///
-/// The following example constructs a `U16CString` and shows how to convert a `U16CString` to a
-/// regular Rust `String`.
-///
-/// ```rust
-/// use widestring::U16CString;
-/// let s = "Test";
-/// // Create a wide string from the rust string
-/// let wstr = U16CString::from_str(s).unwrap();
-/// // Convert back to a rust string
-/// let rust_str = wstr.to_string_lossy();
-/// assert_eq!(rust_str, "Test");
-/// ```
-pub type U16CString = UCString<u16>;
-
-/// String slice reference for `U32String`.
-///
-/// `U32Str` is to `U32String` as `str` is to `String`.
-///
-/// `U32Str` is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-32 data. These strings are intended to be used with
-/// FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
-///
-/// `WideCStr` should be used instead of nul-aware strings are required.
-///
-/// `U32Str` can be converted to many other string types, including `OsString` and `String`, making
-/// proper Unicode FFI safe and easy.
-pub type U32Str = UStr<u32>;
-
-/// An owned, mutable 32-bit wide string for FFI that is **not** nul-aware.
-///
-/// `U32String` is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-32 data. These strings are intended to be used with
-/// FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
-///
-/// `U32CString` should be used instead if nul-aware 32-bit strings are required.
-///
-/// `U32String` can be converted to and from many other standard Rust string types, including
-/// `OsString` and `String`, making proper Unicode FFI safe and easy.
-///
-/// # Examples
-///
-/// The following example constructs a `U32String` and shows how to convert a `U32String` to a
-/// regular Rust `String`.
-///
-/// ```rust
-/// use widestring::U32String;
-/// let s = "Test";
-/// // Create a wide string from the rust string
-/// let wstr = U32String::from_str(s);
-/// // Convert back to a rust string
-/// let rust_str = wstr.to_string_lossy();
-/// assert_eq!(rust_str, "Test");
-/// ```
-pub type U32String = UString<u32>;
-
-/// C-style wide string reference for `U32CString`.
-///
-/// `U32CStr` is aware of nul values. Unless unchecked conversions are used, all `U32CStr`
-/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
-/// The strings may still contain invalid or ill-formed UTF-32 data. These strings are intended to
-/// be used with FFI functions such as Windows API that may require nul-terminated strings.
-///
-/// `U32CStr` can be converted to and from many other string types, including `U32String`,
-/// `OsString`, and `String`, making proper Unicode FFI safe and easy.
-pub type U32CStr = UCStr<u32>;
-
-/// An owned, mutable C-style wide string for FFI that is nul-aware and nul-terminated.
-///
-/// `U32CString` is aware of nul values. Unless unchecked conversions are used, all `U32CString`
-/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
-/// The strings may still contain invalid or ill-formed UTF-32 data. These strings are intended to
-/// be used with FFI functions such as Windows API that may require nul-terminated strings.
-///
-/// `U32CString` can be converted to and from many other string types, including `U32String`,
-/// `OsString`, and `String`, making proper Unicode FFI safe and easy.
-///
-/// # Examples
-///
-/// The following example constructs a `U32CString` and shows how to convert a `U32CString` to a
-/// regular Rust `String`.
-///
-/// ```rust
-/// use widestring::U32CString;
-/// let s = "Test";
-/// // Create a wide string from the rust string
-/// let wstr = U32CString::from_str(s).unwrap();
-/// // Convert back to a rust string
-/// let rust_str = wstr.to_string_lossy();
-/// assert_eq!(rust_str, "Test");
-/// ```
-pub type U32CString = UCString<u32>;
-
-#[cfg(not(windows))]
-/// Alias for `U16String` or `U32String` depending on platform. Intended to match typical C `wchar_t` size on platform.
-pub type WideString = U32String;
-#[cfg(not(windows))]
-/// Alias for `U16CString` or `U32CString` depending on platform. Intended to match typical C `wchar_t` size on platform.
-pub type WideCString = U32CString;
-#[cfg(not(windows))]
-/// Alias for `U16Str` or `U32Str` depending on platform. Intended to match typical C `wchar_t` size on platform.
-pub type WideStr = U32Str;
-#[cfg(not(windows))]
-/// Alias for `U16CStr` or `U32CStr` depending on platform. Intended to match typical C `wchar_t` size on platform.
-pub type WideCStr = U32CStr;
 #[cfg(not(windows))]
 /// Alias for `u16` or `u32` depending on platform. Intended to match typical C `wchar_t` size on platform.
 pub type WideChar = u32;
 
-#[cfg(windows)]
-/// Alias for `U16String` or `U32String` depending on platform. Intended to match typical C `wchar_t` size on platform.
-pub type WideString = U16String;
-#[cfg(windows)]
-/// Alias for `U16CString` or `U32CString` depending on platform. Intended to match typical C `wchar_t` size on platform.
-pub type WideCString = U16CString;
-#[cfg(windows)]
-/// Alias for `U16Str` or `U32Str` depending on platform. Intended to match typical C `wchar_t` size on platform.
-pub type WideStr = U16Str;
-#[cfg(windows)]
-/// Alias for `U16CStr` or `U32CStr` depending on platform. Intended to match typical C `wchar_t` size on platform.
-pub type WideCStr = U16CStr;
 #[cfg(windows)]
 /// Alias for `u16` or `u32` depending on platform. Intended to match typical C `wchar_t` size on platform.
 pub type WideChar = u16;

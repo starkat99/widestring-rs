@@ -1,8 +1,10 @@
-use super::platform;
-use super::{FromUtf32Error, UChar, UStr, UString};
-use std;
-use std::ffi::{OsStr, OsString};
-use std::mem;
+use crate::{MissingNulError, UCStr, UChar, UStr, UString, WideChar};
+use alloc::borrow::{Cow, ToOwned};
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+use core::borrow::Borrow;
+use core::ops::{Deref, Index, RangeFull};
+use core::{mem, ptr, slice};
 
 /// An owned, mutable C-style "wide" string for FFI that is nul-aware and nul-terminated.
 ///
@@ -46,25 +48,7 @@ use std::mem;
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UCString<C: UChar> {
-    inner: Box<[C]>,
-}
-
-/// C-style wide string reference for `UCString`.
-///
-/// `UCStr` is aware of nul values. Unless unchecked conversions are used, all `UCStr`
-/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
-/// The strings may still contain invalid or ill-formed UTF-16 or UTF-32 data. These strings are
-/// intended to be used with FFI functions such as Windows API that may require nul-terminated
-/// strings.
-///
-/// `UCStr` can be converted to and from many other string types, including `UString`,
-/// `OsString`, and `String`, making proper Unicode FFI safe and easy.
-///
-/// Please prefer using the type aliases `U16CStr` or `U32CStr` or `WideCStr` to using
-/// this type directly.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct UCStr<C: UChar> {
-    inner: [C],
+    pub(crate) inner: Box<[C]>,
 }
 
 /// An error returned from `UCString` to indicate that an invalid nul value was found.
@@ -73,13 +57,6 @@ pub struct UCStr<C: UChar> {
 /// returning the ownership of the invalid vector.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NulError<C: UChar>(usize, Vec<C>);
-
-/// An error returned from `UCString` and `UCStr` to indicate that a terminating nul value
-/// was missing.
-///
-/// The error optionally returns the ownership of the invalid vector whenever a vector was owned.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MissingNulError<C>(Option<Vec<C>>);
 
 impl<C: UChar> UCString<C> {
     /// Constructs a `UCString` from a container of wide character data.
@@ -191,7 +168,7 @@ impl<C: UChar> UCString<C> {
         let mut v = v.into();
         // Check for nul vals
         match v.iter().position(|&val| val == UChar::NUL) {
-            None => Err(MissingNulError(Some(v))),
+            None => Err(MissingNulError { inner: Some(v) }),
             Some(pos) => {
                 v.truncate(pos + 1);
                 Ok(unsafe { UCString::from_vec_with_nul_unchecked(v) })
@@ -310,7 +287,7 @@ impl<C: UChar> UCString<C> {
         while *p.offset(i) != UChar::NUL {
             i = i + 1;
         }
-        let slice = std::slice::from_raw_parts(p, i as usize + 1);
+        let slice = slice::from_raw_parts(p, i as usize + 1);
         UCString::from_vec_with_nul_unchecked(slice)
     }
 
@@ -363,7 +340,7 @@ impl<C: UChar> UCString<C> {
         while *p.offset(i) != UChar::NUL {
             i += 1;
         }
-        let slice = std::slice::from_raw_parts_mut(p, i as usize + 1);
+        let slice = slice::from_raw_parts_mut(p, i as usize + 1);
         UCString {
             inner: mem::transmute(slice),
         }
@@ -401,7 +378,7 @@ impl<C: UChar> UCString<C> {
     /// [`Drop`]: ../ops/trait.Drop.html
     fn into_inner(self) -> Box<[C]> {
         unsafe {
-            let result = std::ptr::read(&self.inner);
+            let result = ptr::read(&self.inner);
             mem::forget(self);
             result
         }
@@ -545,7 +522,7 @@ impl UCString<u16> {
             return Ok(UCString::default());
         }
         assert!(!p.is_null());
-        let slice = std::slice::from_raw_parts(p, len);
+        let slice = slice::from_raw_parts(p, len);
         UCString::new(slice)
     }
 
@@ -569,7 +546,7 @@ impl UCString<u16> {
             return UCString::default();
         }
         assert!(!p.is_null());
-        let slice = std::slice::from_raw_parts(p, len);
+        let slice = slice::from_raw_parts(p, len);
         UCString::from_vec_unchecked(slice)
     }
 
@@ -600,7 +577,7 @@ impl UCString<u16> {
             return Ok(UCString::default());
         }
         assert!(!p.is_null());
-        let slice = std::slice::from_raw_parts(p, len);
+        let slice = slice::from_raw_parts(p, len);
         UCString::from_vec_with_nul(slice)
     }
 
@@ -626,7 +603,7 @@ impl UCString<u16> {
             return UCString::default();
         }
         assert!(!p.is_null());
-        let slice = std::slice::from_raw_parts(p, len);
+        let slice = slice::from_raw_parts(p, len);
         UCString::from_vec_with_nul_unchecked(slice)
     }
 
@@ -659,8 +636,9 @@ impl UCString<u16> {
     /// assert!(res.is_err());
     /// assert_eq!(res.err().unwrap().nul_position(), 2);
     /// ```
-    pub fn from_os_str(s: impl AsRef<OsStr>) -> Result<Self, NulError<u16>> {
-        let v = platform::os_to_wide(s.as_ref());
+    #[cfg(feature = "std")]
+    pub fn from_os_str(s: impl AsRef<std::ffi::OsStr>) -> Result<Self, NulError<u16>> {
+        let v = crate::platform::os_to_wide(s.as_ref());
         UCString::new(v)
     }
 
@@ -682,8 +660,9 @@ impl UCString<u16> {
     /// let wcstr = unsafe { U16CString::from_os_str_unchecked(s) };
     /// # assert_eq!(wcstr.to_string_lossy(), s);
     /// ```
-    pub unsafe fn from_os_str_unchecked(s: impl AsRef<OsStr>) -> Self {
-        let v = platform::os_to_wide(s.as_ref());
+    #[cfg(feature = "std")]
+    pub unsafe fn from_os_str_unchecked(s: impl AsRef<std::ffi::OsStr>) -> Self {
+        let v = crate::platform::os_to_wide(s.as_ref());
         UCString::from_vec_unchecked(v)
     }
 
@@ -716,8 +695,11 @@ impl UCString<u16> {
     /// let res = U16CString::from_os_str_with_nul(s);
     /// assert!(res.is_err());
     /// ```
-    pub fn from_os_str_with_nul(s: impl AsRef<OsStr>) -> Result<Self, MissingNulError<u16>> {
-        let v = platform::os_to_wide(s.as_ref());
+    #[cfg(feature = "std")]
+    pub fn from_os_str_with_nul(
+        s: impl AsRef<std::ffi::OsStr>,
+    ) -> Result<Self, MissingNulError<u16>> {
+        let v = crate::platform::os_to_wide(s.as_ref());
         UCString::from_vec_with_nul(v)
     }
 
@@ -739,8 +721,9 @@ impl UCString<u16> {
     /// let wcstr = unsafe { U16CString::from_os_str_with_nul_unchecked(s) };
     /// assert_eq!(wcstr.to_string_lossy(), "My String");
     /// ```
-    pub unsafe fn from_os_str_with_nul_unchecked(s: impl AsRef<OsStr>) -> Self {
-        let v = platform::os_to_wide(s.as_ref());
+    #[cfg(feature = "std")]
+    pub unsafe fn from_os_str_with_nul_unchecked(s: impl AsRef<std::ffi::OsStr>) -> Self {
+        let v = crate::platform::os_to_wide(s.as_ref());
         UCString::from_vec_with_nul_unchecked(v)
     }
 }
@@ -981,7 +964,7 @@ impl UCString<u32> {
             return Ok(UCString::default());
         }
         assert!(!p.is_null());
-        let slice = std::slice::from_raw_parts(p, len);
+        let slice = slice::from_raw_parts(p, len);
         UCString::new(slice)
     }
 
@@ -1005,7 +988,7 @@ impl UCString<u32> {
             return UCString::default();
         }
         assert!(!p.is_null());
-        let slice = std::slice::from_raw_parts(p, len);
+        let slice = slice::from_raw_parts(p, len);
         UCString::from_vec_unchecked(slice)
     }
 
@@ -1036,7 +1019,7 @@ impl UCString<u32> {
             return Ok(UCString::default());
         }
         assert!(!p.is_null());
-        let slice = std::slice::from_raw_parts(p, len);
+        let slice = slice::from_raw_parts(p, len);
         UCString::from_vec_with_nul(slice)
     }
 
@@ -1062,7 +1045,7 @@ impl UCString<u32> {
             return UCString::default();
         }
         assert!(!p.is_null());
-        let slice = std::slice::from_raw_parts(p, len);
+        let slice = slice::from_raw_parts(p, len);
         UCString::from_vec_with_nul_unchecked(slice)
     }
 
@@ -1184,7 +1167,8 @@ impl UCString<u32> {
     /// assert!(res.is_err());
     /// assert_eq!(res.err().unwrap().nul_position(), 2);
     /// ```
-    pub fn from_os_str(s: impl AsRef<OsStr>) -> Result<Self, NulError<u32>> {
+    #[cfg(feature = "std")]
+    pub fn from_os_str(s: impl AsRef<std::ffi::OsStr>) -> Result<Self, NulError<u32>> {
         let v: Vec<char> = s.as_ref().to_string_lossy().chars().collect();
         UCString::from_chars(v)
     }
@@ -1207,7 +1191,8 @@ impl UCString<u32> {
     /// let wcstr = unsafe { U32CString::from_os_str_unchecked(s) };
     /// # assert_eq!(wcstr.to_string_lossy(), s);
     /// ```
-    pub unsafe fn from_os_str_unchecked(s: impl AsRef<OsStr>) -> Self {
+    #[cfg(feature = "std")]
+    pub unsafe fn from_os_str_unchecked(s: impl AsRef<std::ffi::OsStr>) -> Self {
         let v: Vec<char> = s.as_ref().to_string_lossy().chars().collect();
         UCString::from_chars_unchecked(v)
     }
@@ -1241,7 +1226,10 @@ impl UCString<u32> {
     /// let res = U32CString::from_os_str_with_nul(s);
     /// assert!(res.is_err());
     /// ```
-    pub fn from_os_str_with_nul(s: impl AsRef<OsStr>) -> Result<Self, MissingNulError<u32>> {
+    #[cfg(feature = "std")]
+    pub fn from_os_str_with_nul(
+        s: impl AsRef<std::ffi::OsStr>,
+    ) -> Result<Self, MissingNulError<u32>> {
         let v: Vec<char> = s.as_ref().to_string_lossy().chars().collect();
         UCString::from_chars_with_nul(v)
     }
@@ -1264,425 +1252,10 @@ impl UCString<u32> {
     /// let wcstr = unsafe { U32CString::from_os_str_with_nul_unchecked(s) };
     /// assert_eq!(wcstr.to_string_lossy(), "My String");
     /// ```
-    pub unsafe fn from_os_str_with_nul_unchecked(s: impl AsRef<OsStr>) -> Self {
+    #[cfg(feature = "std")]
+    pub unsafe fn from_os_str_with_nul_unchecked(s: impl AsRef<std::ffi::OsStr>) -> Self {
         let v: Vec<char> = s.as_ref().to_string_lossy().chars().collect();
         UCString::from_chars_with_nul_unchecked(v)
-    }
-}
-
-impl<C: UChar> UCStr<C> {
-    /// Coerces a value into a `UCStr`.
-    pub fn new<S: AsRef<UCStr<C>> + ?Sized>(s: &S) -> &Self {
-        s.as_ref()
-    }
-
-    /// Constructs a `UStr` from a nul-terminated string pointer.
-    ///
-    /// This will scan for nul values beginning with `p`. The first nul value will be used as the
-    /// nul terminator for the string, similar to how libc string functions such as `strlen` work.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe as there is no guarantee that the given pointer is valid or has a
-    /// nul terminator, and the function could scan past the underlying buffer.
-    ///
-    /// `p` must be non-null.
-    ///
-    /// # Panics
-    ///
-    /// This function panics if `p` is null.
-    ///
-    /// # Caveat
-    ///
-    /// The lifetime for the returned string is inferred from its usage. To prevent accidental
-    /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
-    /// context, such as by providing a helper function taking the lifetime of a host value for the
-    /// string, or by explicit annotation.
-    pub unsafe fn from_ptr_str<'a>(p: *const C) -> &'a Self {
-        assert!(!p.is_null());
-        let mut i: isize = 0;
-        while *p.offset(i) != UChar::NUL {
-            i = i + 1;
-        }
-        mem::transmute(std::slice::from_raw_parts(p, i as usize + 1))
-    }
-
-    /// Constructs a `UStr` from a pointer and a length.
-    ///
-    /// The `len` argument is the number of elements, **not** the number of bytes, and does
-    /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means that
-    /// `p` is a pointer directly to the nul terminator of the string.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len`
-    /// elements.
-    ///
-    /// `p` must be non-null, even for zero `len`.
-    ///
-    /// The interior values of the pointer are not scanned for nul. Any interior nul values will
-    /// result in an invalid `UCStr`.
-    ///
-    /// # Panics
-    ///
-    /// This function panics if `p` is null or if a nul value is not found at offset `len` of `p`.
-    /// Only pointers with a nul terminator are valid.
-    ///
-    /// # Caveat
-    ///
-    /// The lifetime for the returned string is inferred from its usage. To prevent accidental
-    /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
-    /// context, such as by providing a helper function taking the lifetime of a host value for the
-    /// string, or by explicit annotation.
-    pub unsafe fn from_ptr_with_nul<'a>(p: *const C, len: usize) -> &'a Self {
-        assert!(*p.offset(len as isize) == UChar::NUL);
-        mem::transmute(std::slice::from_raw_parts(p, len + 1))
-    }
-
-    /// Constructs a `UCStr` from a slice of values that has a nul terminator.
-    ///
-    /// The slice will be scanned for nul values. When a nul value is found, it is treated as the
-    /// terminator for the string, and the `UCStr` slice will be truncated to that nul.
-    ///
-    /// # Failure
-    ///
-    /// If there are no no nul values in the slice, an error is returned.
-    pub fn from_slice_with_nul(slice: &[C]) -> Result<&Self, MissingNulError<C>> {
-        match slice.iter().position(|x| *x == UChar::NUL) {
-            None => Err(MissingNulError(None)),
-            Some(i) => Ok(unsafe { UCStr::from_slice_with_nul_unchecked(&slice[..i + 1]) }),
-        }
-    }
-
-    /// Constructs a `UCStr` from a slice of values that has a nul terminator. No
-    /// checking for nul values is performed.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because it can lead to invalid `UCStr` values when the slice
-    /// is missing a terminating nul value or there are non-terminating interior nul values
-    /// in the slice.
-    pub unsafe fn from_slice_with_nul_unchecked(slice: &[C]) -> &Self {
-        std::mem::transmute(slice)
-    }
-
-    /// Copies the wide string to an new owned `UString`.
-    pub fn to_ucstring(&self) -> UCString<C> {
-        unsafe { UCString::from_vec_with_nul_unchecked(self.inner.to_owned()) }
-    }
-
-    /// Copies the wide string to a new owned `UString`.
-    ///
-    /// The `UString` will **not** have a nul terminator.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U16CString;
-    /// let wcstr = U16CString::from_str("MyString").unwrap();
-    /// // Convert U16CString to a U16String
-    /// let wstr = wcstr.to_ustring();
-    ///
-    /// // U16CString will have a terminating nul
-    /// let wcvec = wcstr.into_vec_with_nul();
-    /// assert_eq!(wcvec[wcvec.len()-1], 0);
-    /// // The resulting U16String will not have the terminating nul
-    /// let wvec = wstr.into_vec();
-    /// assert_ne!(wvec[wvec.len()-1], 0);
-    /// ```
-    ///
-    /// ```rust
-    /// use widestring::U32CString;
-    /// let wcstr = U32CString::from_str("MyString").unwrap();
-    /// // Convert U32CString to a U32String
-    /// let wstr = wcstr.to_ustring();
-    ///
-    /// // U32CString will have a terminating nul
-    /// let wcvec = wcstr.into_vec_with_nul();
-    /// assert_eq!(wcvec[wcvec.len()-1], 0);
-    /// // The resulting U32String will not have the terminating nul
-    /// let wvec = wstr.into_vec();
-    /// assert_ne!(wvec[wvec.len()-1], 0);
-    /// ```
-    pub fn to_ustring(&self) -> UString<C> {
-        UString::from_vec(self.as_slice())
-    }
-
-    /// Converts to a slice of the wide string.
-    ///
-    /// The slice will **not** include the nul terminator.
-    pub fn as_slice(&self) -> &[C] {
-        &self.inner[..self.len()]
-    }
-
-    /// Converts to a slice of the wide string, including the nul terminator.
-    pub fn as_slice_with_nul(&self) -> &[C] {
-        &self.inner
-    }
-
-    /// Returns a raw pointer to the wide string.
-    ///
-    /// The pointer is valid only as long as the lifetime of this reference.
-    pub fn as_ptr(&self) -> *const C {
-        self.inner.as_ptr()
-    }
-
-    /// Returns the length of the wide string as number of elements (**not** number of bytes)
-    /// **not** including nul terminator.
-    pub fn len(&self) -> usize {
-        self.inner.len() - 1
-    }
-
-    /// Returns whether this wide string contains no data (i.e. is only the nul terminator).
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Converts a `Box<UCStr>` into a `UCString` without copying or allocating.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use widestring::U16CString;
-    ///
-    /// let v = vec![102u16, 111u16, 111u16]; // "foo"
-    /// let c_string = U16CString::new(v.clone()).unwrap();
-    /// let boxed = c_string.into_boxed_ucstr();
-    /// assert_eq!(boxed.into_ucstring(), U16CString::new(v).unwrap());
-    /// ```
-    ///
-    /// ```
-    /// use widestring::U32CString;
-    ///
-    /// let v = vec![102u32, 111u32, 111u32]; // "foo"
-    /// let c_string = U32CString::new(v.clone()).unwrap();
-    /// let boxed = c_string.into_boxed_ucstr();
-    /// assert_eq!(boxed.into_ucstring(), U32CString::new(v).unwrap());
-    /// ```
-    pub fn into_ucstring(self: Box<Self>) -> UCString<C> {
-        let raw = Box::into_raw(self) as *mut [C];
-        UCString {
-            inner: unsafe { Box::from_raw(raw) },
-        }
-    }
-
-    fn from_inner(slice: &[C]) -> &UCStr<C> {
-        unsafe { mem::transmute(slice) }
-    }
-}
-
-impl UCStr<u16> {
-    /// Decodes a wide string to an owned `OsString`.
-    ///
-    /// This makes a string copy of the `U16CStr`. Since `U16CStr` makes no guarantees that it is
-    /// valid UTF-16, there is no guarantee that the resulting `OsString` will be valid data. The
-    /// `OsString` will **not** have a nul terminator.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U16CString;
-    /// use std::ffi::OsString;
-    /// let s = "MyString";
-    /// // Create a wide string from the string
-    /// let wstr = U16CString::from_str(s).unwrap();
-    /// // Create an OsString from the wide string
-    /// let osstr = wstr.to_os_string();
-    ///
-    /// assert_eq!(osstr, OsString::from(s));
-    /// ```
-    pub fn to_os_string(&self) -> OsString {
-        platform::os_from_wide(self.as_slice())
-    }
-
-    /// Copies the wide string to a `String` if it contains valid UTF-16 data.
-    ///
-    /// # Failures
-    ///
-    /// Returns an error if the string contains any invalid UTF-16 data.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U16CString;
-    /// let s = "MyString";
-    /// // Create a wide string from the string
-    /// let wstr = U16CString::from_str(s).unwrap();
-    /// // Create a regular string from the wide string
-    /// let s2 = wstr.to_string().unwrap();
-    ///
-    /// assert_eq!(s2, s);
-    /// ```
-    pub fn to_string(&self) -> Result<String, std::string::FromUtf16Error> {
-        String::from_utf16(self.as_slice())
-    }
-
-    /// Copies the wide string to a `String`.
-    ///
-    /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U16CString;
-    /// let s = "MyString";
-    /// // Create a wide string from the string
-    /// let wstr = U16CString::from_str(s).unwrap();
-    /// // Create a regular string from the wide string
-    /// let s2 = wstr.to_string_lossy();
-    ///
-    /// assert_eq!(s2, s);
-    /// ```
-    pub fn to_string_lossy(&self) -> String {
-        String::from_utf16_lossy(self.as_slice())
-    }
-}
-
-impl UCStr<u32> {
-    /// Constructs a `U32Str` from a `char` nul-terminated string pointer.
-    ///
-    /// This will scan for nul values beginning with `p`. The first nul value will be used as the
-    /// nul terminator for the string, similar to how libc string functions such as `strlen` work.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe as there is no guarantee that the given pointer is valid or has a
-    /// nul terminator, and the function could scan past the underlying buffer.
-    ///
-    /// `p` must be non-null.
-    ///
-    /// # Panics
-    ///
-    /// This function panics if `p` is null.
-    ///
-    /// # Caveat
-    ///
-    /// The lifetime for the returned string is inferred from its usage. To prevent accidental
-    /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
-    /// context, such as by providing a helper function taking the lifetime of a host value for the
-    /// string, or by explicit annotation.
-    pub unsafe fn from_char_ptr_str<'a>(p: *const char) -> &'a Self {
-        UCStr::from_ptr_str(p as *const u32)
-    }
-
-    /// Constructs a `U32Str` from a `char` pointer and a length.
-    ///
-    /// The `len` argument is the number of `char` elements, **not** the number of bytes, and does
-    /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means that
-    /// `p` is a pointer directly to the nul terminator of the string.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len`
-    /// elements.
-    ///
-    /// `p` must be non-null, even for zero `len`.
-    ///
-    /// The interior values of the pointer are not scanned for nul. Any interior nul values will
-    /// result in an invalid `U32CStr`.
-    ///
-    /// # Panics
-    ///
-    /// This function panics if `p` is null or if a nul value is not found at offset `len` of `p`.
-    /// Only pointers with a nul terminator are valid.
-    ///
-    /// # Caveat
-    ///
-    /// The lifetime for the returned string is inferred from its usage. To prevent accidental
-    /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
-    /// context, such as by providing a helper function taking the lifetime of a host value for the
-    /// string, or by explicit annotation.
-    pub unsafe fn from_char_ptr_with_nul<'a>(p: *const char, len: usize) -> &'a Self {
-        UCStr::from_ptr_with_nul(p as *const u32, len)
-    }
-
-    /// Constructs a `U32CStr` from a slice of `char` values that has a nul terminator.
-    ///
-    /// The slice will be scanned for nul values. When a nul value is found, it is treated as the
-    /// terminator for the string, and the `U32CStr` slice will be truncated to that nul.
-    ///
-    /// # Failure
-    ///
-    /// If there are no no nul values in `slice`, an error is returned.
-    pub fn from_char_slice_with_nul(slice: &[char]) -> Result<&Self, MissingNulError<u32>> {
-        UCStr::from_slice_with_nul(unsafe { mem::transmute(slice) })
-    }
-
-    /// Constructs a `U32CStr` from a slice of `char` values that has a nul terminator. No
-    /// checking for nul values is performed.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because it can lead to invalid `U32CStr` values when `slice`
-    /// is missing a terminating nul value or there are non-terminating interior nul values
-    /// in the slice.
-    pub unsafe fn from_char_slice_with_nul_unchecked(slice: &[char]) -> &Self {
-        UCStr::from_slice_with_nul_unchecked(mem::transmute(slice))
-    }
-
-    /// Decodes a wide string to an owned `OsString`.
-    ///
-    /// This makes a string copy of the `U32CStr`. Since `U32CStr` makes no guarantees that it is
-    /// valid UTF-32, there is no guarantee that the resulting `OsString` will be valid data. The
-    /// `OsString` will **not** have a nul terminator.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U32CString;
-    /// use std::ffi::OsString;
-    /// let s = "MyString";
-    /// // Create a wide string from the string
-    /// let wstr = U32CString::from_str(s).unwrap();
-    /// // Create an OsString from the wide string
-    /// let osstr = wstr.to_os_string();
-    ///
-    /// assert_eq!(osstr, OsString::from(s));
-    /// ```
-    pub fn to_os_string(&self) -> OsString {
-        self.to_ustring().to_os_string()
-    }
-
-    /// Copies the wide string to a `String` if it contains valid UTF-32 data.
-    ///
-    /// # Failures
-    ///
-    /// Returns an error if the string contains any invalid UTF-32 data.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U32CString;
-    /// let s = "MyString";
-    /// // Create a wide string from the string
-    /// let wstr = U32CString::from_str(s).unwrap();
-    /// // Create a regular string from the wide string
-    /// let s2 = wstr.to_string().unwrap();
-    ///
-    /// assert_eq!(s2, s);
-    /// ```
-    pub fn to_string(&self) -> Result<String, FromUtf32Error> {
-        self.to_ustring().to_string()
-    }
-
-    /// Copies the wide string to a `String`.
-    ///
-    /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U32CString;
-    /// let s = "MyString";
-    /// // Create a wide string from the string
-    /// let wstr = U32CString::from_str(s).unwrap();
-    /// // Create a regular string from the wide string
-    /// let s2 = wstr.to_string_lossy();
-    ///
-    /// assert_eq!(s2, s);
-    /// ```
-    pub fn to_string_lossy(&self) -> String {
-        self.to_ustring().to_string_lossy()
     }
 }
 
@@ -1692,26 +1265,28 @@ impl<C: UChar> Into<Vec<C>> for UCString<C> {
     }
 }
 
-impl<'a> From<UCString<u16>> for std::borrow::Cow<'a, UCStr<u16>> {
-    fn from(s: UCString<u16>) -> std::borrow::Cow<'a, UCStr<u16>> {
-        std::borrow::Cow::Owned(s)
+impl<'a> From<UCString<u16>> for Cow<'a, UCStr<u16>> {
+    fn from(s: UCString<u16>) -> Cow<'a, UCStr<u16>> {
+        Cow::Owned(s)
     }
 }
 
-impl<'a> From<UCString<u32>> for std::borrow::Cow<'a, UCStr<u32>> {
-    fn from(s: UCString<u32>) -> std::borrow::Cow<'a, UCStr<u32>> {
-        std::borrow::Cow::Owned(s)
+impl<'a> From<UCString<u32>> for Cow<'a, UCStr<u32>> {
+    fn from(s: UCString<u32>) -> Cow<'a, UCStr<u32>> {
+        Cow::Owned(s)
     }
 }
 
-impl From<UCString<u16>> for OsString {
-    fn from(s: UCString<u16>) -> OsString {
+#[cfg(feature = "std")]
+impl From<UCString<u16>> for std::ffi::OsString {
+    fn from(s: UCString<u16>) -> std::ffi::OsString {
         s.to_os_string()
     }
 }
 
-impl From<UCString<u32>> for OsString {
-    fn from(s: UCString<u32>) -> OsString {
+#[cfg(feature = "std")]
+impl From<UCString<u32>> for std::ffi::OsString {
+    fn from(s: UCString<u32>) -> std::ffi::OsString {
         s.to_os_string()
     }
 }
@@ -1728,16 +1303,16 @@ impl<'a, C: UChar, T: ?Sized + AsRef<UCStr<C>>> From<&'a T> for UCString<C> {
     }
 }
 
-impl<C: UChar> std::ops::Index<std::ops::RangeFull> for UCString<C> {
+impl<C: UChar> Index<RangeFull> for UCString<C> {
     type Output = UCStr<C>;
 
     #[inline]
-    fn index(&self, _index: std::ops::RangeFull) -> &UCStr<C> {
+    fn index(&self, _index: RangeFull) -> &UCStr<C> {
         UCStr::from_inner(&self.inner)
     }
 }
 
-impl<C: UChar> std::ops::Deref for UCString<C> {
+impl<C: UChar> Deref for UCString<C> {
     type Target = UCStr<C>;
 
     #[inline]
@@ -1786,7 +1361,7 @@ impl<C: UChar> Drop for UCString<C> {
     }
 }
 
-impl<C: UChar> std::borrow::Borrow<UCStr<C>> for UCString<C> {
+impl<C: UChar> Borrow<UCStr<C>> for UCString<C> {
     fn borrow(&self) -> &UCStr<C> {
         &self[..]
     }
@@ -1799,15 +1374,15 @@ impl<C: UChar> ToOwned for UCStr<C> {
     }
 }
 
-impl<'a> From<&'a UCStr<u16>> for std::borrow::Cow<'a, UCStr<u16>> {
-    fn from(s: &'a UCStr<u16>) -> std::borrow::Cow<'a, UCStr<u16>> {
-        std::borrow::Cow::Borrowed(s)
+impl<'a> From<&'a UCStr<u16>> for Cow<'a, UCStr<u16>> {
+    fn from(s: &'a UCStr<u16>) -> Cow<'a, UCStr<u16>> {
+        Cow::Borrowed(s)
     }
 }
 
-impl<'a> From<&'a UCStr<u32>> for std::borrow::Cow<'a, UCStr<u32>> {
-    fn from(s: &'a UCStr<u32>) -> std::borrow::Cow<'a, UCStr<u32>> {
-        std::borrow::Cow::Borrowed(s)
+impl<'a> From<&'a UCStr<u32>> for Cow<'a, UCStr<u32>> {
+    fn from(s: &'a UCStr<u32>) -> Cow<'a, UCStr<u32>> {
+        Cow::Borrowed(s)
     }
 }
 
@@ -1882,34 +1457,70 @@ impl<C: UChar> Into<Vec<C>> for NulError<C> {
     }
 }
 
-impl<C: UChar> std::fmt::Display for NulError<C> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl<C: UChar> core::fmt::Display for NulError<C> {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(f, "nul value found at position {}", self.0)
     }
 }
 
+#[cfg(feature = "std")]
 impl<C: UChar> std::error::Error for NulError<C> {
     fn description(&self) -> &str {
         "nul value found"
     }
 }
 
-impl<C: UChar> MissingNulError<C> {
-    /// Consumes this error, returning the underlying vector of `u16` values which generated the
-    /// error in the first place.
-    pub fn into_vec(self) -> Option<Vec<C>> {
-        self.0
-    }
-}
+/// An owned, mutable C-style "wide" string for FFI that is nul-aware and nul-terminated.
+///
+/// `U16CString` is aware of nul values. Unless unchecked conversions are used, all `U16CString`
+/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
+/// The strings may still contain invalid or ill-formed UTF-16 data. These strings are intended to
+/// be used with FFI functions such as Windows API that may require nul-terminated strings.
+///
+/// `U16CString` can be converted to and from many other string types, including `U16String`,
+/// `OsString`, and `String`, making proper Unicode FFI safe and easy.
+///
+/// # Examples
+///
+/// The following example constructs a `U16CString` and shows how to convert a `U16CString` to a
+/// regular Rust `String`.
+///
+/// ```rust
+/// use widestring::U16CString;
+/// let s = "Test";
+/// // Create a wide string from the rust string
+/// let wstr = U16CString::from_str(s).unwrap();
+/// // Convert back to a rust string
+/// let rust_str = wstr.to_string_lossy();
+/// assert_eq!(rust_str, "Test");
+/// ```
+pub type U16CString = UCString<u16>;
 
-impl<C: UChar> std::fmt::Display for MissingNulError<C> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "missing terminating nul value")
-    }
-}
+/// An owned, mutable C-style wide string for FFI that is nul-aware and nul-terminated.
+///
+/// `U32CString` is aware of nul values. Unless unchecked conversions are used, all `U32CString`
+/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
+/// The strings may still contain invalid or ill-formed UTF-32 data. These strings are intended to
+/// be used with FFI functions such as Windows API that may require nul-terminated strings.
+///
+/// `U32CString` can be converted to and from many other string types, including `U32String`,
+/// `OsString`, and `String`, making proper Unicode FFI safe and easy.
+///
+/// # Examples
+///
+/// The following example constructs a `U32CString` and shows how to convert a `U32CString` to a
+/// regular Rust `String`.
+///
+/// ```rust
+/// use widestring::U32CString;
+/// let s = "Test";
+/// // Create a wide string from the rust string
+/// let wstr = U32CString::from_str(s).unwrap();
+/// // Convert back to a rust string
+/// let rust_str = wstr.to_string_lossy();
+/// assert_eq!(rust_str, "Test");
+/// ```
+pub type U32CString = UCString<u32>;
 
-impl<C: UChar> std::error::Error for MissingNulError<C> {
-    fn description(&self) -> &str {
-        "missing terminating nul value"
-    }
-}
+/// Alias for `U16String` or `U32String` depending on platform. Intended to match typical C `wchar_t` size on platform.
+pub type WideCString = UCString<WideChar>;
