@@ -83,6 +83,10 @@
 //! When not interacting with a FFI using `wchar_t`, it is recommended to use the string types
 //! directly rather than via the wide alias.
 //!
+//! This crate supports `no_std` when default features are disabled. The `std` and `alloc` features
+//! (enabled by default) enable the `U16String`, `U32String`, `U16CString`, and `U32CString` types
+//! and aliases. Other types do not require allocation and can be used in a `no_std` environment.
+//!
 //! # Examples
 //!
 //! The following example uses `U16String` to get Windows error messages, since `FormatMessageW`

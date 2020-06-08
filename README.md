@@ -9,6 +9,16 @@ those often used in Windows API or other FFI libaries. Both UTF-16 and UTF-32 ty
 - [Crate API Reference](https://docs.rs/widestring/)
 - [Latest Changes](CHANGELOG.md)
 
+### Optional Features
+
+- **`alloc`** - Enabled by default. Enable use of the [`alloc`](https://doc.rust-lang.org/alloc/)
+  crate when not using the `std` library.
+
+  This enables the `U16String`, `U32String`, `U16CString`, `U32CString` types and alises.
+
+- **`std`** - Enabled by default. Enable features that depend on the Rust `std` library, including
+  everything in the `alloc` feature.
+
 ## License
 
 This library is distributed under the terms of either of:
