@@ -1,10 +1,20 @@
 use crate::{MissingNulError, UCStr, UChar, UStr, UString, WideChar};
-use alloc::borrow::{Cow, ToOwned};
-use alloc::boxed::Box;
-use alloc::vec::Vec;
 use core::borrow::Borrow;
 use core::ops::{Deref, Index, RangeFull};
 use core::{mem, ptr, slice};
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{
+    borrow::{Cow, ToOwned},
+    boxed::Box,
+    vec::Vec,
+};
+#[cfg(feature = "std")]
+use std::{
+    borrow::{Cow, ToOwned},
+    boxed::Box,
+    vec::Vec,
+};
 
 /// An owned, mutable C-style "wide" string for FFI that is nul-aware and nul-terminated.
 ///

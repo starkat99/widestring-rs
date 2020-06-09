@@ -1,11 +1,22 @@
 use crate::{UChar, UStr, WideChar};
-use alloc::borrow::{Cow, ToOwned};
-use alloc::boxed::Box;
-use alloc::string::String;
-use alloc::vec::Vec;
 use core::borrow::Borrow;
 use core::ops::{Deref, Index, RangeFull};
 use core::{char, cmp, mem, slice};
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{
+    borrow::{Cow, ToOwned},
+    boxed::Box,
+    string::String,
+    vec::Vec,
+};
+#[cfg(feature = "std")]
+use std::{
+    borrow::{Cow, ToOwned},
+    boxed::Box,
+    string::String,
+    vec::Vec,
+};
 
 /// An owned, mutable "wide" string for FFI that is **not** nul-aware.
 ///

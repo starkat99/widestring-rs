@@ -1,6 +1,21 @@
 use crate::{UChar, WideChar};
 use core::{mem, slice};
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{
+    borrow::ToOwned,
+    boxed::Box,
+    string::{FromUtf16Error, String},
+    vec::Vec,
+};
+#[cfg(feature = "std")]
+use std::{
+    borrow::ToOwned,
+    boxed::Box,
+    string::{FromUtf16Error, String},
+    vec::Vec,
+};
+
 /// An error returned from `UCString` and `UCStr` to indicate that a terminating nul value
 /// was missing.
 ///
@@ -8,7 +23,7 @@ use core::{mem, slice};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MissingNulError<C> {
     #[cfg(feature = "alloc")]
-    pub(crate) inner: Option<alloc::vec::Vec<C>>,
+    pub(crate) inner: Option<Vec<C>>,
     #[cfg(not(feature = "alloc"))]
     _p: core::marker::PhantomData<C>,
 }
@@ -29,7 +44,7 @@ impl<C: UChar> MissingNulError<C> {
     /// Consumes this error, returning the underlying vector of `u16` values which generated the
     /// error in the first place.
     #[cfg(feature = "alloc")]
-    pub fn into_vec(self) -> Option<alloc::vec::Vec<C>> {
+    pub fn into_vec(self) -> Option<Vec<C>> {
         self.inner
     }
 }
@@ -164,8 +179,6 @@ impl<C: UChar> UCStr<C> {
     /// Copies the wide string to an new owned `UString`.
     #[cfg(feature = "alloc")]
     pub fn to_ucstring(&self) -> crate::UCString<C> {
-        #[allow(unused_imports)]
-        use alloc::borrow::ToOwned;
         unsafe { crate::UCString::from_vec_with_nul_unchecked(self.inner.to_owned()) }
     }
 
@@ -259,13 +272,14 @@ impl<C: UChar> UCStr<C> {
     /// assert_eq!(boxed.into_ucstring(), U32CString::new(v).unwrap());
     /// ```
     #[cfg(feature = "alloc")]
-    pub fn into_ucstring(self: alloc::boxed::Box<Self>) -> crate::UCString<C> {
-        let raw = alloc::boxed::Box::into_raw(self) as *mut [C];
+    pub fn into_ucstring(self: Box<Self>) -> crate::UCString<C> {
+        let raw = Box::into_raw(self) as *mut [C];
         crate::UCString {
-            inner: unsafe { alloc::boxed::Box::from_raw(raw) },
+            inner: unsafe { Box::from_raw(raw) },
         }
     }
 
+    #[cfg(feature = "alloc")]
     pub(crate) fn from_inner(slice: &[C]) -> &UCStr<C> {
         unsafe { mem::transmute(slice) }
     }
@@ -315,8 +329,8 @@ impl UCStr<u16> {
     /// assert_eq!(s2, s);
     /// ```
     #[cfg(feature = "alloc")]
-    pub fn to_string(&self) -> Result<alloc::string::String, alloc::string::FromUtf16Error> {
-        alloc::string::String::from_utf16(self.as_slice())
+    pub fn to_string(&self) -> Result<String, FromUtf16Error> {
+        String::from_utf16(self.as_slice())
     }
 
     /// Copies the wide string to a `String`.
@@ -336,8 +350,8 @@ impl UCStr<u16> {
     /// assert_eq!(s2, s);
     /// ```
     #[cfg(feature = "alloc")]
-    pub fn to_string_lossy(&self) -> alloc::string::String {
-        alloc::string::String::from_utf16_lossy(self.as_slice())
+    pub fn to_string_lossy(&self) -> String {
+        String::from_utf16_lossy(self.as_slice())
     }
 }
 
@@ -466,7 +480,7 @@ impl UCStr<u32> {
     /// assert_eq!(s2, s);
     /// ```
     #[cfg(feature = "alloc")]
-    pub fn to_string(&self) -> Result<alloc::string::String, crate::FromUtf32Error> {
+    pub fn to_string(&self) -> Result<String, crate::FromUtf32Error> {
         self.to_ustring().to_string()
     }
 
@@ -486,8 +500,8 @@ impl UCStr<u32> {
     ///
     /// assert_eq!(s2, s);
     /// ```
-    #[cfg(feature = "std")]
-    pub fn to_string_lossy(&self) -> alloc::string::String {
+    #[cfg(feature = "alloc")]
+    pub fn to_string_lossy(&self) -> String {
         self.to_ustring().to_string_lossy()
     }
 }

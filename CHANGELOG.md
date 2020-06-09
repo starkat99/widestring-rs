@@ -5,7 +5,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.4.2] - 2020-06-09 <a name="0.4.2"></a>
+### Fixed
+- Fixed compile errors on pre-1.36.0 Rust due to unstable `alloc` crate. Minimum supported version
+  is Rust 1.34.2, the rust version for Debian stable. Fixes [#14].
+
 ## [0.4.1] - 2020-06-08 <a name="0.4.1"></a>
+### ***Yanked***
 ### Changed
 - Now supports `no_std`. Added the `std` and `alloc` features, enabled by default. `U16String`,
   `U32String`, `U16CString`, and `U32CString` and their aliases all require the `alloc` or `std`
@@ -67,6 +73,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Initial release.
 
 [#2]: https://github.com/starkat99/widestring-rs/issues/2
+[#14]: https://github.com/starkat99/widestring-rs/issues/14
 
 [@nicbn]: https://github.com/nicbn
 

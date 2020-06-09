@@ -1,6 +1,19 @@
 use crate::{UChar, WideChar};
 use core::{char, mem, slice};
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{
+    boxed::Box,
+    string::{FromUtf16Error, String},
+    vec::Vec,
+};
+#[cfg(feature = "std")]
+use std::{
+    boxed::Box,
+    string::{FromUtf16Error, String},
+    vec::Vec,
+};
+
 /// A possible error value when converting a String from a UTF-32 byte slice.
 ///
 /// This type is the error type for the `to_string` method on `U32Str`.
@@ -108,9 +121,8 @@ impl<C: UChar> UStr<C> {
 
     /// Converts a `Box<UStr>` into a `UString` without copying or allocating.
     #[cfg(feature = "alloc")]
-    pub fn into_ustring(self: alloc::boxed::Box<Self>) -> crate::UString<C> {
-        let boxed =
-            unsafe { alloc::boxed::Box::from_raw(alloc::boxed::Box::into_raw(self) as *mut [C]) };
+    pub fn into_ustring(self: Box<Self>) -> crate::UString<C> {
+        let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut [C]) };
         crate::UString {
             inner: boxed.into_vec(),
         }
@@ -160,8 +172,8 @@ impl UStr<u16> {
     /// assert_eq!(s2, s);
     /// ```
     #[cfg(feature = "alloc")]
-    pub fn to_string(&self) -> Result<alloc::string::String, alloc::string::FromUtf16Error> {
-        alloc::string::String::from_utf16(&self.inner)
+    pub fn to_string(&self) -> Result<String, FromUtf16Error> {
+        String::from_utf16(&self.inner)
     }
 
     /// Copies the wide string to a `String`.
@@ -181,8 +193,8 @@ impl UStr<u16> {
     /// assert_eq!(lossy, s);
     /// ```
     #[cfg(feature = "alloc")]
-    pub fn to_string_lossy(&self) -> alloc::string::String {
-        alloc::string::String::from_utf16_lossy(&self.inner)
+    pub fn to_string_lossy(&self) -> String {
+        String::from_utf16_lossy(&self.inner)
     }
 }
 
@@ -259,21 +271,20 @@ impl UStr<u32> {
     /// assert_eq!(s2, s);
     /// ```
     #[cfg(feature = "alloc")]
-    pub fn to_string(&self) -> Result<alloc::string::String, FromUtf32Error> {
-        let chars: alloc::vec::Vec<Option<char>> =
-            self.inner.iter().map(|c| char::from_u32(*c)).collect();
+    pub fn to_string(&self) -> Result<String, FromUtf32Error> {
+        let chars: Vec<Option<char>> = self.inner.iter().map(|c| char::from_u32(*c)).collect();
         if chars.iter().any(|c| c.is_none()) {
             return Err(FromUtf32Error());
         }
         let size = chars.iter().filter_map(|o| o.map(|c| c.len_utf8())).sum();
-        let mut vec = alloc::vec::Vec::with_capacity(size);
+        let mut vec = Vec::with_capacity(size);
         unsafe { vec.set_len(size) };
         let mut i = 0;
         for c in chars.iter().filter_map(|&o| o) {
             c.encode_utf8(&mut vec[i..]);
             i += c.len_utf8();
         }
-        Ok(unsafe { alloc::string::String::from_utf8_unchecked(vec) })
+        Ok(unsafe { String::from_utf8_unchecked(vec) })
     }
 
     /// Copies the wide string to a `String`.
@@ -293,21 +304,21 @@ impl UStr<u32> {
     /// assert_eq!(lossy, s);
     /// ```
     #[cfg(feature = "alloc")]
-    pub fn to_string_lossy(&self) -> alloc::string::String {
-        let chars: alloc::vec::Vec<char> = self
+    pub fn to_string_lossy(&self) -> String {
+        let chars: Vec<char> = self
             .inner
             .iter()
             .map(|&c| char::from_u32(c).unwrap_or(char::REPLACEMENT_CHARACTER))
             .collect();
         let size = chars.iter().map(|c| c.len_utf8()).sum();
-        let mut vec = alloc::vec::Vec::with_capacity(size);
+        let mut vec = Vec::with_capacity(size);
         unsafe { vec.set_len(size) };
         let mut i = 0;
         for c in chars {
             c.encode_utf8(&mut vec[i..]);
             i += c.len_utf8();
         }
-        unsafe { alloc::string::String::from_utf8_unchecked(vec) }
+        unsafe { String::from_utf8_unchecked(vec) }
     }
 }
 
