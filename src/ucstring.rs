@@ -13,6 +13,7 @@ use alloc::{
 use std::{
     borrow::{Cow, ToOwned},
     boxed::Box,
+    convert::TryFrom,
     str::FromStr,
     vec::Vec,
 };
@@ -1290,6 +1291,38 @@ impl UCString<u32> {
 impl<C: UChar> Into<Vec<C>> for UCString<C> {
     fn into(self) -> Vec<C> {
         self.into_vec()
+    }
+}
+
+impl TryFrom<String> for UCString<u16> {
+    type Error = NulError<u16>;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::from_str(value)
+    }
+}
+
+impl TryFrom<String> for UCString<u32> {
+    type Error = NulError<u32>;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::from_str(value)
+    }
+}
+
+impl TryFrom<&'_ str> for UCString<u16> {
+    type Error = NulError<u16>;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::from_str(value)
+    }
+}
+
+impl TryFrom<&'_ str> for UCString<u32> {
+    type Error = NulError<u32>;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::from_str(value)
     }
 }
 
