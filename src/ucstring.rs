@@ -295,7 +295,7 @@ impl<C: UChar> UCString<C> {
         assert!(!p.is_null());
         let mut i: isize = 0;
         while *p.offset(i) != UChar::NUL {
-            i = i + 1;
+            i += 1;
         }
         let slice = slice::from_raw_parts(p, i as usize + 1);
         UCString::from_vec_with_nul_unchecked(slice)
@@ -350,9 +350,9 @@ impl<C: UChar> UCString<C> {
         while *p.offset(i) != UChar::NUL {
             i += 1;
         }
-        let slice = slice::from_raw_parts_mut(p, i as usize + 1);
+        let slice: *mut [C] = slice::from_raw_parts_mut(p, i as usize + 1);
         UCString {
-            inner: mem::transmute(slice),
+            inner: Box::from_raw(slice),
         }
     }
 
@@ -770,9 +770,8 @@ impl UCString<u32> {
     /// assert!(res.is_err());
     /// assert_eq!(res.err().unwrap().nul_position(), 1);
     /// ```
-    pub fn from_chars(v: impl Into<Vec<char>>) -> Result<Self, NulError<u32>> {
-        let v: Vec<u32> = unsafe { mem::transmute(v.into()) };
-        UCString::new(v)
+    pub fn from_chars(v: Vec<char>) -> Result<Self, NulError<u32>> {
+        UCString::new(v.into_iter().map(u32::from).collect::<Vec<_>>())
     }
 
     /// Constructs a `U32CString` from a nul-terminated container of UTF-32 data.
@@ -805,8 +804,8 @@ impl UCString<u32> {
     /// let res = U32CString::from_chars_with_nul(v);
     /// assert!(res.is_err());
     /// ```
-    pub fn from_chars_with_nul(v: impl Into<Vec<char>>) -> Result<Self, MissingNulError<u32>> {
-        let v: Vec<u32> = unsafe { mem::transmute(v.into()) };
+    pub fn from_chars_with_nul(v: Vec<char>) -> Result<Self, MissingNulError<u32>> {
+        let v = v.into_iter().map(u32::from).collect::<Vec<_>>();
         UCString::from_vec_with_nul(v)
     }
 
@@ -820,8 +819,8 @@ impl UCString<u32> {
     /// This method is equivalent to `new` except that no runtime assertion is made that `v`
     /// contains no nul values. Providing a vector with nul values will result in an invalid
     /// `U32CString`.
-    pub unsafe fn from_chars_unchecked(v: impl Into<Vec<char>>) -> Self {
-        let v: Vec<u32> = mem::transmute(v.into());
+    pub unsafe fn from_chars_unchecked(v: Vec<char>) -> Self {
+        let v = v.into_iter().map(u32::from).collect::<Vec<_>>();
         UCString::from_vec_unchecked(v)
     }
 
@@ -833,8 +832,8 @@ impl UCString<u32> {
     /// This method is equivalent to `from_vec_with_nul` except that no runtime assertion is made
     /// that `v` contains no nul values. Providing a vector with interior nul values or without a
     /// terminating nul value will result in an invalid `U32CString`.
-    pub unsafe fn from_chars_with_nul_unchecked(v: impl Into<Vec<char>>) -> Self {
-        let v: Vec<u32> = mem::transmute(v.into());
+    pub unsafe fn from_chars_with_nul_unchecked(v: Vec<char>) -> Self {
+        let v = v.into_iter().map(u32::from).collect::<Vec<_>>();
         UCString::from_vec_with_nul_unchecked(v)
     }
 
@@ -1333,14 +1332,14 @@ impl<C: UChar> Deref for UCString<C> {
 
 impl<'a> Default for &'a UCStr<u16> {
     fn default() -> Self {
-        const SLICE: &'static [u16] = &[UChar::NUL];
+        const SLICE: &[u16] = &[UChar::NUL];
         unsafe { UCStr::from_slice_with_nul_unchecked(SLICE) }
     }
 }
 
 impl<'a> Default for &'a UCStr<u32> {
     fn default() -> Self {
-        const SLICE: &'static [u32] = &[UChar::NUL];
+        const SLICE: &[u32] = &[UChar::NUL];
         unsafe { UCStr::from_slice_with_nul_unchecked(SLICE) }
     }
 }

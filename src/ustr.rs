@@ -1,5 +1,5 @@
 use crate::{UChar, WideChar};
-use core::{char, mem, slice};
+use core::{char, slice};
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{
@@ -50,6 +50,7 @@ impl std::error::Error for FromUtf32Error {
 /// Please prefer using the type aliases `U16Str` or `U32Str` or `WideStr` to using this type
 /// directly.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
 pub struct UStr<C: UChar> {
     pub(crate) inner: [C],
 }
@@ -81,14 +82,16 @@ impl<C: UChar> UStr<C> {
     /// string, or by explicit annotation.
     pub unsafe fn from_ptr<'a>(p: *const C, len: usize) -> &'a Self {
         assert!(!p.is_null());
-        mem::transmute(slice::from_raw_parts(p, len))
+        let slice: *const [C] = slice::from_raw_parts(p, len);
+        &*(slice as *const UStr<C>)
     }
 
     /// Constructs a `UStr` from a slice of code points.
     ///
     /// No checks are performed on the slice.
     pub fn from_slice(slice: &[C]) -> &Self {
-        unsafe { mem::transmute(slice) }
+        let v: *const [C] = slice;
+        unsafe { &*(v as *const UStr<C>) }
     }
 
     /// Copies the wide string to a new owned `UString`.
@@ -226,7 +229,8 @@ impl UStr<u32> {
     ///
     /// No checks are performed on the slice.
     pub fn from_char_slice(slice: &[char]) -> &Self {
-        unsafe { mem::transmute(slice) }
+        let slice: *const [char] = slice;
+        unsafe { &*(slice as *const UStr<u32>) }
     }
 
     /// Decodes a wide string to an owned `OsString`.

@@ -1,7 +1,7 @@
 use crate::{UChar, UStr, WideChar};
 use core::borrow::Borrow;
 use core::ops::{Deref, Index, RangeFull};
-use core::{char, cmp, mem, slice};
+use core::{char, cmp, slice};
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{
@@ -60,6 +60,7 @@ use std::{
 /// assert_eq!(rust_str, "Test");
 /// ```
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
 pub struct UString<C: UChar> {
     pub(crate) inner: Vec<C>,
 }
@@ -387,9 +388,9 @@ impl UString<u32> {
     /// let wstr = U32String::from_chars(v);
     /// # assert_eq!(wstr.into_vec(), cloned);
     /// ```
-    pub fn from_chars(raw: impl Into<Vec<char>>) -> Self {
+    pub fn from_chars(raw: Vec<char>) -> Self {
         UString {
-            inner: unsafe { mem::transmute(raw.into()) },
+            inner: raw.into_iter().map(u32::from).collect::<Vec<_>>(),
         }
     }
 
