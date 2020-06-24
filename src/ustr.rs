@@ -21,7 +21,7 @@ use std::{
 pub struct FromUtf32Error();
 
 impl core::fmt::Display for FromUtf32Error {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "error converting from UTF-32 to UTF-8")
     }
 }

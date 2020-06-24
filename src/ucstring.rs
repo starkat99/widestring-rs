@@ -1307,8 +1307,8 @@ impl<C: UChar> From<UCString<C>> for UString<C> {
     }
 }
 
-impl<'a, C: UChar, T: ?Sized + AsRef<UCStr<C>>> From<&'a T> for UCString<C> {
-    fn from(s: &'a T) -> Self {
+impl<C: UChar, T: ?Sized + AsRef<UCStr<C>>> From<&'_ T> for UCString<C> {
+    fn from(s: &T) -> Self {
         s.as_ref().to_ucstring()
     }
 }
@@ -1468,7 +1468,7 @@ impl<C: UChar> Into<Vec<C>> for NulError<C> {
 }
 
 impl<C: UChar> core::fmt::Display for NulError<C> {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "nul value found at position {}", self.0)
     }
 }

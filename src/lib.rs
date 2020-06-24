@@ -179,7 +179,7 @@
 //! # }
 //! ```
 
-#![deny(future_incompatible)]
+#![deny(future_incompatible, rust_2018_idioms)]
 #![warn(
     unused,
     anonymous_parameters,
@@ -193,8 +193,6 @@
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 extern crate alloc;
-#[cfg(feature = "std")]
-extern crate core;
 
 use core::fmt::Debug;
 

@@ -50,7 +50,7 @@ impl<C: UChar> MissingNulError<C> {
 }
 
 impl<C: UChar> core::fmt::Display for MissingNulError<C> {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "missing terminating nul value")
     }
 }
