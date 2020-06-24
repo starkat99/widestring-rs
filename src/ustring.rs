@@ -14,6 +14,8 @@ use alloc::{
 use std::{
     borrow::{Cow, ToOwned},
     boxed::Box,
+    convert::Infallible,
+    str::FromStr,
     string::String,
     vec::Vec,
 };
@@ -287,6 +289,14 @@ impl<C: UChar> UString<C> {
     }
 }
 
+impl FromStr for UString<u16> {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from_str(s))
+    }
+}
+
 impl UString<u16> {
     /// Encodes a `U16String` copy from a `str`.
     ///
@@ -303,6 +313,7 @@ impl UString<u16> {
     ///
     /// assert_eq!(wstr.to_string().unwrap(), s);
     /// ```
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str<S: AsRef<str> + ?Sized>(s: &S) -> Self {
         Self {
             inner: s.as_ref().encode_utf16().collect(),
@@ -373,6 +384,14 @@ impl UString<u16> {
     }
 }
 
+impl FromStr for UString<u32> {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from_str(s))
+    }
+}
+
 impl UString<u32> {
     /// Constructs a `U32String` from a vector of UTF-32 data.
     ///
@@ -409,6 +428,7 @@ impl UString<u32> {
     ///
     /// assert_eq!(wstr.to_string().unwrap(), s);
     /// ```
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str<S: AsRef<str> + ?Sized>(s: &S) -> Self {
         let v: Vec<char> = s.as_ref().chars().collect();
         UString::from_chars(v)

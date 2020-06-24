@@ -13,6 +13,7 @@ use alloc::{
 use std::{
     borrow::{Cow, ToOwned},
     boxed::Box,
+    str::FromStr,
     vec::Vec,
 };
 
@@ -395,6 +396,14 @@ impl<C: UChar> UCString<C> {
     }
 }
 
+impl FromStr for UCString<u16> {
+    type Err = NulError<u16>;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_str(s)
+    }
+}
+
 impl UCString<u16> {
     /// Constructs a `U16CString` from a `str`.
     ///
@@ -425,6 +434,7 @@ impl UCString<u16> {
     /// assert!(res.is_err());
     /// assert_eq!(res.err().unwrap().nul_position(), 2);
     /// ```
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: impl AsRef<str>) -> Result<Self, NulError<u16>> {
         let v: Vec<u16> = s.as_ref().encode_utf16().collect();
         UCString::new(v)
@@ -738,6 +748,14 @@ impl UCString<u16> {
     }
 }
 
+impl FromStr for UCString<u32> {
+    type Err = NulError<u32>;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_str(s)
+    }
+}
+
 impl UCString<u32> {
     /// Constructs a `U32CString` from a container of wide character data.
     ///
@@ -866,6 +884,7 @@ impl UCString<u32> {
     /// assert!(res.is_err());
     /// assert_eq!(res.err().unwrap().nul_position(), 2);
     /// ```
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: impl AsRef<str>) -> Result<Self, NulError<u32>> {
         let v: Vec<char> = s.as_ref().chars().collect();
         UCString::from_chars(v)
