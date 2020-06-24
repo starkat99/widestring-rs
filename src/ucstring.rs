@@ -1326,6 +1326,22 @@ impl TryFrom<&'_ str> for UCString<u32> {
     }
 }
 
+impl TryFrom<&'_ String> for UCString<u16> {
+    type Error = NulError<u16>;
+
+    fn try_from(value: &String) -> Result<Self, Self::Error> {
+        Self::from_str(value)
+    }
+}
+
+impl TryFrom<&'_ String> for UCString<u32> {
+    type Error = NulError<u32>;
+
+    fn try_from(value: &String) -> Result<Self, Self::Error> {
+        Self::from_str(value)
+    }
+}
+
 impl<'a> From<UCString<u16>> for Cow<'a, UCStr<u16>> {
     fn from(s: UCString<u16>) -> Cow<'a, UCStr<u16>> {
         Cow::Owned(s)

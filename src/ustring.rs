@@ -574,6 +574,18 @@ impl From<&'_ str> for UString<u32> {
     }
 }
 
+impl From<&'_ String> for UString<u16> {
+    fn from(s: &String) -> Self {
+        Self::from_str(s)
+    }
+}
+
+impl From<&'_ String> for UString<u32> {
+    fn from(s: &String) -> Self {
+        Self::from_str(s)
+    }
+}
+
 #[cfg(feature = "std")]
 impl From<std::ffi::OsString> for UString<u16> {
     fn from(s: std::ffi::OsString) -> Self {
