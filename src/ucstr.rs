@@ -1,5 +1,5 @@
 use crate::{UChar, WideChar};
-use core::{mem, slice};
+use core::slice;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{
@@ -112,9 +112,10 @@ impl<C: UChar> UCStr<C> {
         assert!(!p.is_null());
         let mut i: isize = 0;
         while *p.offset(i) != UChar::NUL {
-            i = i + 1;
+            i += 1;
         }
-        mem::transmute(slice::from_raw_parts(p, i as usize + 1))
+        let ptr: *const [C] = slice::from_raw_parts(p, i as usize + 1);
+        &*(ptr as *const UCStr<C>)
     }
 
     /// Constructs a `UStr` from a pointer and a length.
@@ -145,8 +146,9 @@ impl<C: UChar> UCStr<C> {
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
     pub unsafe fn from_ptr_with_nul<'a>(p: *const C, len: usize) -> &'a Self {
-        assert!(*p.offset(len as isize) == UChar::NUL);
-        mem::transmute(slice::from_raw_parts(p, len + 1))
+        assert!(*p.add(len) == UChar::NUL);
+        let ptr: *const [C] = slice::from_raw_parts(p, len + 1);
+        &*(ptr as *const UCStr<C>)
     }
 
     /// Constructs a `UCStr` from a slice of values that has a nul terminator.
@@ -173,7 +175,8 @@ impl<C: UChar> UCStr<C> {
     /// is missing a terminating nul value or there are non-terminating interior nul values
     /// in the slice.
     pub unsafe fn from_slice_with_nul_unchecked(slice: &[C]) -> &Self {
-        mem::transmute(slice)
+        let ptr: *const [C] = slice;
+        &*(ptr as *const UCStr<C>)
     }
 
     /// Copies the wide string to an new owned `UString`.
@@ -281,7 +284,8 @@ impl<C: UChar> UCStr<C> {
 
     #[cfg(feature = "alloc")]
     pub(crate) fn from_inner(slice: &[C]) -> &UCStr<C> {
-        unsafe { mem::transmute(slice) }
+        let ptr: *const [C] = slice;
+        unsafe { &*(ptr as *const UCStr<C>) }
     }
 }
 
@@ -422,7 +426,8 @@ impl UCStr<u32> {
     ///
     /// If there are no no nul values in `slice`, an error is returned.
     pub fn from_char_slice_with_nul(slice: &[char]) -> Result<&Self, MissingNulError<u32>> {
-        UCStr::from_slice_with_nul(unsafe { mem::transmute(slice) })
+        let ptr: *const [char] = slice;
+        UCStr::from_slice_with_nul(unsafe { &*(ptr as *const [u32]) })
     }
 
     /// Constructs a `U32CStr` from a slice of `char` values that has a nul terminator. No
@@ -434,7 +439,8 @@ impl UCStr<u32> {
     /// is missing a terminating nul value or there are non-terminating interior nul values
     /// in the slice.
     pub unsafe fn from_char_slice_with_nul_unchecked(slice: &[char]) -> &Self {
-        UCStr::from_slice_with_nul_unchecked(mem::transmute(slice))
+        let ptr: *const [char] = slice;
+        UCStr::from_slice_with_nul_unchecked(&*(ptr as *const [u32]))
     }
 
     /// Decodes a wide string to an owned `OsString`.

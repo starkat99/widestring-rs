@@ -1,5 +1,5 @@
 use crate::{UChar, WideChar};
-use core::{char, mem, slice};
+use core::{char, slice};
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{
@@ -81,14 +81,16 @@ impl<C: UChar> UStr<C> {
     /// string, or by explicit annotation.
     pub unsafe fn from_ptr<'a>(p: *const C, len: usize) -> &'a Self {
         assert!(!p.is_null());
-        mem::transmute(slice::from_raw_parts(p, len))
+        let slice: *const [C] = slice::from_raw_parts(p, len);
+        &*(slice as *const UStr<C>)
     }
 
     /// Constructs a `UStr` from a slice of code points.
     ///
     /// No checks are performed on the slice.
     pub fn from_slice(slice: &[C]) -> &Self {
-        unsafe { mem::transmute(slice) }
+        let ptr: *const [C] = slice;
+        unsafe { &*(ptr as *const UStr<C>) }
     }
 
     /// Copies the wide string to a new owned `UString`.
@@ -226,7 +228,8 @@ impl UStr<u32> {
     ///
     /// No checks are performed on the slice.
     pub fn from_char_slice(slice: &[char]) -> &Self {
-        unsafe { mem::transmute(slice) }
+        let ptr: *const [char] = slice;
+        unsafe { &*(ptr as *const UStr<u32>) }
     }
 
     /// Decodes a wide string to an owned `OsString`.
