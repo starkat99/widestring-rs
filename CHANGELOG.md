@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.4.3] - 2020-10-05 <a name="0.4.3"></a>
+### Fixed
+- Fixed undefined behaviours and cleaned up clippy warnings. By [@joshwd36].
+
 ## [0.4.2] - 2020-06-09 <a name="0.4.2"></a>
 ### Fixed
 - Fixed compile errors on pre-1.36.0 Rust due to unstable `alloc` crate. Minimum supported version
@@ -76,8 +80,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [#14]: https://github.com/starkat99/widestring-rs/issues/14
 
 [@nicbn]: https://github.com/nicbn
+[@joshwd36]: https://github.com/joshwb36
 
-[Unreleased]: https://github.com/starkat99/widestring-rs/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/starkat99/widestring-rs/compare/v0.4.3...HEAD
+[0.4.3]: https://github.com/starkat99/widestring-rs/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/starkat99/widestring-rs/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/starkat99/widestring-rs/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/starkat99/widestring-rs/compare/v0.3.0...v0.4.0
