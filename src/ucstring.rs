@@ -1,7 +1,11 @@
 use crate::{MissingNulError, UCStr, UChar, UStr, UString, WideChar};
-use core::borrow::Borrow;
-use core::ops::{Deref, Index, RangeFull};
-use core::{mem, ptr, slice};
+use core::{
+    borrow::Borrow,
+    mem,
+    mem::ManuallyDrop,
+    ops::{Deref, Index, RangeFull},
+    ptr, slice,
+};
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{
@@ -295,7 +299,7 @@ impl<C: UChar> UCString<C> {
         assert!(!p.is_null());
         let mut i: isize = 0;
         while *p.offset(i) != UChar::NUL {
-            i = i + 1;
+            i += 1;
         }
         let slice = slice::from_raw_parts(p, i as usize + 1);
         UCString::from_vec_with_nul_unchecked(slice)
@@ -425,6 +429,7 @@ impl UCString<u16> {
     /// assert!(res.is_err());
     /// assert_eq!(res.err().unwrap().nul_position(), 2);
     /// ```
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: impl AsRef<str>) -> Result<Self, NulError<u16>> {
         let v: Vec<u16> = s.as_ref().encode_utf16().collect();
         UCString::new(v)
@@ -771,7 +776,14 @@ impl UCString<u32> {
     /// assert_eq!(res.err().unwrap().nul_position(), 1);
     /// ```
     pub fn from_chars(v: impl Into<Vec<char>>) -> Result<Self, NulError<u32>> {
-        let v: Vec<u32> = unsafe { mem::transmute(v.into()) };
+        let mut chars = v.into();
+        let v: Vec<u32> = unsafe {
+            let ptr = chars.as_mut_ptr() as *mut u32;
+            let len = chars.len();
+            let cap = chars.capacity();
+            ManuallyDrop::new(chars);
+            Vec::from_raw_parts(ptr, len, cap)
+        };
         UCString::new(v)
     }
 
@@ -806,7 +818,14 @@ impl UCString<u32> {
     /// assert!(res.is_err());
     /// ```
     pub fn from_chars_with_nul(v: impl Into<Vec<char>>) -> Result<Self, MissingNulError<u32>> {
-        let v: Vec<u32> = unsafe { mem::transmute(v.into()) };
+        let mut chars = v.into();
+        let v: Vec<u32> = unsafe {
+            let ptr = chars.as_mut_ptr() as *mut u32;
+            let len = chars.len();
+            let cap = chars.capacity();
+            ManuallyDrop::new(chars);
+            Vec::from_raw_parts(ptr, len, cap)
+        };
         UCString::from_vec_with_nul(v)
     }
 
@@ -821,7 +840,14 @@ impl UCString<u32> {
     /// contains no nul values. Providing a vector with nul values will result in an invalid
     /// `U32CString`.
     pub unsafe fn from_chars_unchecked(v: impl Into<Vec<char>>) -> Self {
-        let v: Vec<u32> = mem::transmute(v.into());
+        let mut chars = v.into();
+        let v: Vec<u32> = {
+            let ptr = chars.as_mut_ptr() as *mut u32;
+            let len = chars.len();
+            let cap = chars.capacity();
+            ManuallyDrop::new(chars);
+            Vec::from_raw_parts(ptr, len, cap)
+        };
         UCString::from_vec_unchecked(v)
     }
 
@@ -834,7 +860,14 @@ impl UCString<u32> {
     /// that `v` contains no nul values. Providing a vector with interior nul values or without a
     /// terminating nul value will result in an invalid `U32CString`.
     pub unsafe fn from_chars_with_nul_unchecked(v: impl Into<Vec<char>>) -> Self {
-        let v: Vec<u32> = mem::transmute(v.into());
+        let mut chars = v.into();
+        let v: Vec<u32> = {
+            let ptr = chars.as_mut_ptr() as *mut u32;
+            let len = chars.len();
+            let cap = chars.capacity();
+            ManuallyDrop::new(chars);
+            Vec::from_raw_parts(ptr, len, cap)
+        };
         UCString::from_vec_with_nul_unchecked(v)
     }
 
@@ -867,6 +900,7 @@ impl UCString<u32> {
     /// assert!(res.is_err());
     /// assert_eq!(res.err().unwrap().nul_position(), 2);
     /// ```
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: impl AsRef<str>) -> Result<Self, NulError<u32>> {
         let v: Vec<char> = s.as_ref().chars().collect();
         UCString::from_chars(v)
@@ -1333,14 +1367,14 @@ impl<C: UChar> Deref for UCString<C> {
 
 impl<'a> Default for &'a UCStr<u16> {
     fn default() -> Self {
-        const SLICE: &'static [u16] = &[UChar::NUL];
+        const SLICE: &[u16] = &[UChar::NUL];
         unsafe { UCStr::from_slice_with_nul_unchecked(SLICE) }
     }
 }
 
 impl<'a> Default for &'a UCStr<u32> {
     fn default() -> Self {
-        const SLICE: &'static [u32] = &[UChar::NUL];
+        const SLICE: &[u32] = &[UChar::NUL];
         unsafe { UCStr::from_slice_with_nul_unchecked(SLICE) }
     }
 }

@@ -1,7 +1,11 @@
 use crate::{UChar, UStr, WideChar};
-use core::borrow::Borrow;
-use core::ops::{Deref, Index, RangeFull};
-use core::{char, cmp, mem, slice};
+use core::{
+    borrow::Borrow,
+    char, cmp,
+    mem::ManuallyDrop,
+    ops::{Deref, Index, RangeFull},
+    slice,
+};
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{
@@ -302,6 +306,7 @@ impl UString<u16> {
     ///
     /// assert_eq!(wstr.to_string().unwrap(), s);
     /// ```
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str<S: AsRef<str> + ?Sized>(s: &S) -> Self {
         Self {
             inner: s.as_ref().encode_utf16().collect(),
@@ -388,8 +393,15 @@ impl UString<u32> {
     /// # assert_eq!(wstr.into_vec(), cloned);
     /// ```
     pub fn from_chars(raw: impl Into<Vec<char>>) -> Self {
+        let mut chars = raw.into();
         UString {
-            inner: unsafe { mem::transmute(raw.into()) },
+            inner: unsafe {
+                let ptr = chars.as_mut_ptr() as *mut u32;
+                let len = chars.len();
+                let cap = chars.capacity();
+                ManuallyDrop::new(chars);
+                Vec::from_raw_parts(ptr, len, cap)
+            },
         }
     }
 
@@ -408,6 +420,7 @@ impl UString<u32> {
     ///
     /// assert_eq!(wstr.to_string().unwrap(), s);
     /// ```
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str<S: AsRef<str> + ?Sized>(s: &S) -> Self {
         let v: Vec<char> = s.as_ref().chars().collect();
         UString::from_chars(v)
