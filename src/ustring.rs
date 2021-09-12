@@ -1,8 +1,7 @@
 use crate::{UChar, UStr, WideChar};
 use core::{
     borrow::Borrow,
-    char, cmp,
-    mem::ManuallyDrop,
+    char, cmp, mem,
     ops::{Deref, Index, RangeFull},
     slice,
 };
@@ -231,7 +230,7 @@ impl<C: UChar> UString<C> {
     /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
     /// ```
     pub fn push_slice(&mut self, s: impl AsRef<[C]>) {
-        self.inner.extend_from_slice(&s.as_ref())
+        self.inner.extend_from_slice(s.as_ref())
     }
 
     /// Shrinks the capacity of the `UString` to match its length.
@@ -399,7 +398,7 @@ impl UString<u32> {
                 let ptr = chars.as_mut_ptr() as *mut u32;
                 let len = chars.len();
                 let cap = chars.capacity();
-                ManuallyDrop::new(chars);
+                mem::forget(chars);
                 Vec::from_raw_parts(ptr, len, cap)
             },
         }
@@ -506,9 +505,9 @@ impl UString<u32> {
     }
 }
 
-impl<C: UChar> Into<Vec<C>> for UString<C> {
-    fn into(self) -> Vec<C> {
-        self.into_vec()
+impl<C: UChar> From<UString<C>> for Vec<C> {
+    fn from(value: UString<C>) -> Self {
+        value.into_vec()
     }
 }
 
@@ -524,21 +523,21 @@ impl<'a> From<UString<u32>> for Cow<'a, UStr<u32>> {
     }
 }
 
-impl Into<UString<u16>> for Vec<u16> {
-    fn into(self) -> UString<u16> {
-        UString::from_vec(self)
+impl From<Vec<u16>> for UString<u16> {
+    fn from(value: Vec<u16>) -> Self {
+        UString::from_vec(value)
     }
 }
 
-impl Into<UString<u32>> for Vec<u32> {
-    fn into(self) -> UString<u32> {
-        UString::from_vec(self)
+impl From<Vec<u32>> for UString<u32> {
+    fn from(value: Vec<u32>) -> Self {
+        UString::from_vec(value)
     }
 }
 
-impl Into<UString<u32>> for Vec<char> {
-    fn into(self) -> UString<u32> {
-        UString::from_chars(self)
+impl From<Vec<char>> for UString<u32> {
+    fn from(value: Vec<char>) -> Self {
+        UString::from_chars(value)
     }
 }
 

@@ -5,6 +5,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Changed
+- Migrated crate to Rust 2018 edition.
 - Minimum supported Rust version is now 1.48.
 - Made crate package [REUSE compliant](https://reuse.software/).
 

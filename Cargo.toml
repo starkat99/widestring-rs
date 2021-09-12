@@ -8,6 +8,7 @@ readme = "README.md"
 keywords = ["wide", "string", "win32", "utf-16", "utf-32"]
 categories = ["text-processing", "encoding"]
 license = "MIT OR Apache-2.0"
+edition = "2018"
 exclude = [".git*"]
 
 [features]

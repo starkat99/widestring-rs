@@ -179,22 +179,18 @@
 //! # }
 //! ```
 
-#![deny(future_incompatible)]
 #![warn(
-    unused,
-    anonymous_parameters,
     missing_docs,
     missing_copy_implementations,
     missing_debug_implementations,
     trivial_casts,
-    trivial_numeric_casts
+    trivial_numeric_casts,
+    future_incompatible
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 extern crate alloc;
-#[cfg(feature = "std")]
-extern crate core;
 
 use core::fmt::Debug;
 

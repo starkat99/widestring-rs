@@ -2,7 +2,6 @@ use crate::{MissingNulError, UCStr, UChar, UStr, UString, WideChar};
 use core::{
     borrow::Borrow,
     mem,
-    mem::ManuallyDrop,
     ops::{Deref, Index, RangeFull},
     ptr, slice,
 };
@@ -781,7 +780,7 @@ impl UCString<u32> {
             let ptr = chars.as_mut_ptr() as *mut u32;
             let len = chars.len();
             let cap = chars.capacity();
-            ManuallyDrop::new(chars);
+            mem::forget(chars);
             Vec::from_raw_parts(ptr, len, cap)
         };
         UCString::new(v)
@@ -823,7 +822,7 @@ impl UCString<u32> {
             let ptr = chars.as_mut_ptr() as *mut u32;
             let len = chars.len();
             let cap = chars.capacity();
-            ManuallyDrop::new(chars);
+            mem::forget(chars);
             Vec::from_raw_parts(ptr, len, cap)
         };
         UCString::from_vec_with_nul(v)
@@ -845,7 +844,7 @@ impl UCString<u32> {
             let ptr = chars.as_mut_ptr() as *mut u32;
             let len = chars.len();
             let cap = chars.capacity();
-            ManuallyDrop::new(chars);
+            mem::forget(chars);
             Vec::from_raw_parts(ptr, len, cap)
         };
         UCString::from_vec_unchecked(v)
@@ -865,7 +864,7 @@ impl UCString<u32> {
             let ptr = chars.as_mut_ptr() as *mut u32;
             let len = chars.len();
             let cap = chars.capacity();
-            ManuallyDrop::new(chars);
+            mem::forget(chars);
             Vec::from_raw_parts(ptr, len, cap)
         };
         UCString::from_vec_with_nul_unchecked(v)
@@ -1303,9 +1302,9 @@ impl UCString<u32> {
     }
 }
 
-impl<C: UChar> Into<Vec<C>> for UCString<C> {
-    fn into(self) -> Vec<C> {
-        self.into_vec()
+impl<C: UChar> From<UCString<C>> for Vec<C> {
+    fn from(value: UCString<C>) -> Self {
+        value.into_vec()
     }
 }
 
@@ -1495,9 +1494,9 @@ impl<C: UChar> NulError<C> {
     }
 }
 
-impl<C: UChar> Into<Vec<C>> for NulError<C> {
-    fn into(self) -> Vec<C> {
-        self.into_vec()
+impl<C: UChar> From<NulError<C>> for Vec<C> {
+    fn from(value: NulError<C>) -> Self {
+        value.into_vec()
     }
 }
 
