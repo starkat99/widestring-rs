@@ -1,5 +1,5 @@
 # widestring
-[![Crates.io](https://img.shields.io/crates/v/widestring.svg)](https://crates.io/crates/widestring/) [![docs.rs](https://docs.rs/widestring/badge.svg)](https://docs.rs/widestring/) [![Build status](https://ci.appveyor.com/api/projects/status/97pmbv6kk79bicww?svg=true)](https://ci.appveyor.com/project/starkat99/widestring-rs) [![Build Status](https://travis-ci.org/starkat99/widestring-rs.svg?branch=master)](https://travis-ci.org/starkat99/widestring-rs)
+[![Crates.io](https://img.shields.io/crates/v/widestring.svg)](https://crates.io/crates/widestring/) [![Documentation](https://docs.rs/widestring/badge.svg)](https://docs.rs/widestring/) ![Crates.io](https://img.shields.io/crates/l/widestring) [![Build status](https://github.com/starkat99/widestring/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/starkat99/widestring/actions/workflows/rust.yml)
 
 A wide string Rust FFI library for converting to and from wide strings, such as
 those often used in Windows API or other FFI libaries. Both UTF-16 and UTF-32 types are provided, including support for malformed encoding.
