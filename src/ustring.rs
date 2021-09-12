@@ -62,6 +62,7 @@ use std::{
 /// let rust_str = wstr.to_string_lossy();
 /// assert_eq!(rust_str, "Test");
 /// ```
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UString<C: UChar> {
     pub(crate) inner: Vec<C>,
@@ -328,6 +329,7 @@ impl UString<u16> {
     /// assert_eq!(wstr.to_string().unwrap(), s);
     /// ```
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn from_os_str<S: AsRef<std::ffi::OsStr> + ?Sized>(s: &S) -> Self {
         Self {
             inner: crate::platform::os_to_wide(s.as_ref()),
@@ -371,6 +373,7 @@ impl UString<u16> {
     /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
     /// ```
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn push_os_str(&mut self, s: impl AsRef<std::ffi::OsStr>) {
         self.inner.extend(crate::platform::os_to_wide(s.as_ref()))
     }
@@ -441,6 +444,7 @@ impl UString<u32> {
     /// assert_eq!(wstr.to_string().unwrap(), s);
     /// ```
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn from_os_str<S: AsRef<std::ffi::OsStr> + ?Sized>(s: &S) -> Self {
         let v: Vec<char> = s.as_ref().to_string_lossy().chars().collect();
         UString::from_chars(v)
@@ -499,6 +503,7 @@ impl UString<u32> {
     /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
     /// ```
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn push_os_str(&mut self, s: impl AsRef<std::ffi::OsStr>) {
         self.inner
             .extend(s.as_ref().to_string_lossy().chars().map(|c| c as u32))

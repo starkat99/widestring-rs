@@ -95,6 +95,7 @@ impl<C: UChar> UStr<C> {
 
     /// Copies the wide string to a new owned `UString`.
     #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_ustring(&self) -> crate::UString<C> {
         crate::UString::from_vec(&self.inner)
     }
@@ -123,6 +124,7 @@ impl<C: UChar> UStr<C> {
 
     /// Converts a `Box<UStr>` into a `UString` without copying or allocating.
     #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn into_ustring(self: Box<Self>) -> crate::UString<C> {
         let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut [C]) };
         crate::UString {
@@ -151,6 +153,7 @@ impl UStr<u16> {
     /// assert_eq!(osstr, OsString::from(s));
     /// ```
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn to_os_string(&self) -> std::ffi::OsString {
         crate::platform::os_from_wide(&self.inner)
     }
@@ -174,6 +177,7 @@ impl UStr<u16> {
     /// assert_eq!(s2, s);
     /// ```
     #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_string(&self) -> Result<String, FromUtf16Error> {
         String::from_utf16(&self.inner)
     }
@@ -195,6 +199,7 @@ impl UStr<u16> {
     /// assert_eq!(lossy, s);
     /// ```
     #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_string_lossy(&self) -> String {
         String::from_utf16_lossy(&self.inner)
     }
@@ -251,6 +256,7 @@ impl UStr<u32> {
     /// assert_eq!(osstr, OsString::from(s));
     /// ```
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn to_os_string(&self) -> std::ffi::OsString {
         self.to_string_lossy().into()
     }
@@ -274,6 +280,7 @@ impl UStr<u32> {
     /// assert_eq!(s2, s);
     /// ```
     #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_string(&self) -> Result<String, FromUtf32Error> {
         let chars: Vec<Option<char>> = self.inner.iter().map(|c| char::from_u32(*c)).collect();
         if chars.iter().any(|c| c.is_none()) {
@@ -307,6 +314,7 @@ impl UStr<u32> {
     /// assert_eq!(lossy, s);
     /// ```
     #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_string_lossy(&self) -> String {
         let chars: Vec<char> = self
             .inner

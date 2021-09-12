@@ -181,6 +181,7 @@ impl<C: UChar> UCStr<C> {
 
     /// Copies the wide string to an new owned `UString`.
     #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_ucstring(&self) -> crate::UCString<C> {
         unsafe { crate::UCString::from_vec_with_nul_unchecked(self.inner.to_owned()) }
     }
@@ -219,6 +220,7 @@ impl<C: UChar> UCStr<C> {
     /// assert_ne!(wvec[wvec.len()-1], 0);
     /// ```
     #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_ustring(&self) -> crate::UString<C> {
         crate::UString::from_vec(self.as_slice())
     }
@@ -275,6 +277,7 @@ impl<C: UChar> UCStr<C> {
     /// assert_eq!(boxed.into_ucstring(), U32CString::new(v).unwrap());
     /// ```
     #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn into_ucstring(self: Box<Self>) -> crate::UCString<C> {
         let raw = Box::into_raw(self) as *mut [C];
         crate::UCString {
@@ -283,6 +286,7 @@ impl<C: UChar> UCStr<C> {
     }
 
     #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub(crate) fn from_inner(slice: &[C]) -> &UCStr<C> {
         let ptr: *const [C] = slice;
         unsafe { &*(ptr as *const UCStr<C>) }
@@ -310,6 +314,7 @@ impl UCStr<u16> {
     /// assert_eq!(osstr, OsString::from(s));
     /// ```
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn to_os_string(&self) -> std::ffi::OsString {
         crate::platform::os_from_wide(self.as_slice())
     }
@@ -333,6 +338,7 @@ impl UCStr<u16> {
     /// assert_eq!(s2, s);
     /// ```
     #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_string(&self) -> Result<String, FromUtf16Error> {
         String::from_utf16(self.as_slice())
     }
@@ -354,6 +360,7 @@ impl UCStr<u16> {
     /// assert_eq!(s2, s);
     /// ```
     #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_string_lossy(&self) -> String {
         String::from_utf16_lossy(self.as_slice())
     }
@@ -463,6 +470,7 @@ impl UCStr<u32> {
     /// assert_eq!(osstr, OsString::from(s));
     /// ```
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn to_os_string(&self) -> std::ffi::OsString {
         self.to_ustring().to_os_string()
     }
@@ -486,6 +494,7 @@ impl UCStr<u32> {
     /// assert_eq!(s2, s);
     /// ```
     #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_string(&self) -> Result<String, crate::FromUtf32Error> {
         self.to_ustring().to_string()
     }
@@ -507,6 +516,7 @@ impl UCStr<u32> {
     /// assert_eq!(s2, s);
     /// ```
     #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_string_lossy(&self) -> String {
         self.to_ustring().to_string_lossy()
     }

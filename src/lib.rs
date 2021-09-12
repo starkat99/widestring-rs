@@ -94,11 +94,11 @@
 //! functions so we don't need to worry about nul values.
 //!
 //! ```rust
-//! # #[cfg(not(windows))]
+//! # #[cfg(any(not(windows), not(feature = "alloc")))]
 //! # fn main() {}
 //! # extern crate winapi;
 //! # extern crate widestring;
-//! # #[cfg(windows)]
+//! # #[cfg(all(windows, feature = "alloc"))]
 //! # fn main() {
 //! use winapi::um::winbase::{FormatMessageW, LocalFree, FORMAT_MESSAGE_FROM_SYSTEM,
 //!                           FORMAT_MESSAGE_ALLOCATE_BUFFER, FORMAT_MESSAGE_IGNORE_INSERTS};
@@ -188,6 +188,7 @@
     future_incompatible
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 extern crate alloc;

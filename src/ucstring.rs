@@ -59,6 +59,7 @@ use std::{
 /// let rust_str = wstr.to_string_lossy();
 /// assert_eq!(rust_str, "Test");
 /// ```
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UCString<C: UChar> {
     pub(crate) inner: Box<[C]>,
@@ -68,6 +69,7 @@ pub struct UCString<C: UChar> {
 ///
 /// The error indicates the position in the vector where the nul value was found, as well as
 /// returning the ownership of the invalid vector.
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NulError<C: UChar>(usize, Vec<C>);
 
@@ -651,6 +653,7 @@ impl UCString<u16> {
     /// assert_eq!(res.err().unwrap().nul_position(), 2);
     /// ```
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn from_os_str(s: impl AsRef<std::ffi::OsStr>) -> Result<Self, NulError<u16>> {
         let v = crate::platform::os_to_wide(s.as_ref());
         UCString::new(v)
@@ -675,6 +678,7 @@ impl UCString<u16> {
     /// # assert_eq!(wcstr.to_string_lossy(), s);
     /// ```
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub unsafe fn from_os_str_unchecked(s: impl AsRef<std::ffi::OsStr>) -> Self {
         let v = crate::platform::os_to_wide(s.as_ref());
         UCString::from_vec_unchecked(v)
@@ -710,6 +714,7 @@ impl UCString<u16> {
     /// assert!(res.is_err());
     /// ```
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn from_os_str_with_nul(
         s: impl AsRef<std::ffi::OsStr>,
     ) -> Result<Self, MissingNulError<u16>> {
@@ -736,6 +741,7 @@ impl UCString<u16> {
     /// assert_eq!(wcstr.to_string_lossy(), "My String");
     /// ```
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub unsafe fn from_os_str_with_nul_unchecked(s: impl AsRef<std::ffi::OsStr>) -> Self {
         let v = crate::platform::os_to_wide(s.as_ref());
         UCString::from_vec_with_nul_unchecked(v)
@@ -1211,6 +1217,7 @@ impl UCString<u32> {
     /// assert_eq!(res.err().unwrap().nul_position(), 2);
     /// ```
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn from_os_str(s: impl AsRef<std::ffi::OsStr>) -> Result<Self, NulError<u32>> {
         let v: Vec<char> = s.as_ref().to_string_lossy().chars().collect();
         UCString::from_chars(v)
@@ -1235,6 +1242,7 @@ impl UCString<u32> {
     /// # assert_eq!(wcstr.to_string_lossy(), s);
     /// ```
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub unsafe fn from_os_str_unchecked(s: impl AsRef<std::ffi::OsStr>) -> Self {
         let v: Vec<char> = s.as_ref().to_string_lossy().chars().collect();
         UCString::from_chars_unchecked(v)
@@ -1270,6 +1278,7 @@ impl UCString<u32> {
     /// assert!(res.is_err());
     /// ```
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn from_os_str_with_nul(
         s: impl AsRef<std::ffi::OsStr>,
     ) -> Result<Self, MissingNulError<u32>> {
@@ -1296,6 +1305,7 @@ impl UCString<u32> {
     /// assert_eq!(wcstr.to_string_lossy(), "My String");
     /// ```
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub unsafe fn from_os_str_with_nul_unchecked(s: impl AsRef<std::ffi::OsStr>) -> Self {
         let v: Vec<char> = s.as_ref().to_string_lossy().chars().collect();
         UCString::from_chars_with_nul_unchecked(v)
