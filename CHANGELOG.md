@@ -4,6 +4,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Minimum supported Rust version is now 1.48.
+- Made crate package [REUSE compliant](https://reuse.software/).
 
 ## [0.4.3] - 2020-10-05 <a name="0.4.3"></a>
 ### Fixed
