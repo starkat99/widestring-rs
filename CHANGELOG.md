@@ -5,9 +5,59 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Changed
+- **Breaking Change** Renamed a number of types and functions to increase consistency and clarity.
+  This also meant using "null" instead of "nul", renaming errors to more clearly convey error, 
+  and trying to be more consistent with name conventions and functionality across types. Check
+  renamed function docs for any changes in functionality, as there have been some minor tweaks 
+  (mostly relaxing/removing error conditions and reducing panics). Old names have been deprecated
+  to ease transition. Fixes [#18].
+  - `UChar::NUL` => `NULL`
+  - `MissingNulError` => `MissingNullTerminator`
+  - `NulError` => `ContainsNull`
+  - `NulError::nul_position` => `ConstainsNull::null_index`
+  - `UCStr::from_ptr_with_nul` => `from_ptr_unchecked`
+  - `UCStr::from_slice_with_nul` => `from_slice_truncate`
+  - `UCStr::from_slice_with_nul_unchecked` => `from_slice_unchecked`
+  - `UCStr::as_slice_with_nul` => `as_slice_with_null`
+  - `U32CStr::from_char_ptr_with_nul` => `from_char_ptr_unchecked`
+  - `U32CStr::from_char_slice_with_nul` => `from_char_slice_truncate`
+  - `U32CStr::from_char_slice_with_nul_unchecked` => `from_char_slice_unchecked`
+  - `UCString::new` => `from_vec`
+  - `UCString::from_vec_with_nul` => `from_vec_truncate`
+  - `UCString::from_ustr_with_nul` => `from_ustr_truncate`
+  - `UCString::from_ptr_with_nul` => `from_ptr_truncate`
+  - `UCString::from_str_with_nul` => `from_str_truncate`
+  - `UCString::from_os_str_with_nul` => `from_os_str_truncate`
+  - `UCString::into_vec_with_nul` => `into_vec_with_null`
+  - `U32CString::from_chars_with_nul` => `from_chars_truncate`
+  - `U32CString::from_char_ptr_with_nul` => `from_char_ptr_truncate`
+- Improved implementations in some areas to reduce unncessary double allocations.
 - Migrated crate to Rust 2018 edition.
 - Minimum supported Rust version is now 1.48.
 - Made crate package [REUSE compliant](https://reuse.software/).
+- Improved documentation and used intra-doc links.
+
+### Added
+- Added new functions as part of increasing consistency:
+    - `UCStr::from_ptr`
+    - `UCStr::from_ptr_truncate`
+    - `UCStr::from_slice`
+    - `U32CStr::from_char_ptr`
+    - `U32CStr::from_char_ptr_truncate`
+    - `U32CStr::from_char_slice`
+    - `UCStr::as_ustr`
+    - `U32CString::from_char_ptr_str`
+
+### Removed
+- Removed functions as part of simplifying to increase clarity. Old functions have been deprecated
+  to ease transition.
+    - `UCString::from_vec_with_nul_unchecked`. Use `from_vec_unchecked` instead.
+    - `UCString::from_ustr_with_nul_unchecked`. Use `from_ustr_unchecked` instead.
+    - `UCString::from_ptr_with_nul_unchecked`. Use `from_ptr_unchecked` instead.
+    - `UCString::from_str_with_nul_unchecked`. Use `from_str_unchecked` instead.
+    - `UCString::from_os_str_with_nul_unchecked`. Use `from_os_str_unchecked` instead.
+    - `U32CString::from_chars_with_nul_unchecked`. Use `from_chars_unchecked` instead.
+    - `U32CString::from_char_ptr_with_nul_unchecked`. Use `from_char_ptr_unchecked` instead.
 
 ## [0.4.3] - 2020-10-05 <a name="0.4.3"></a>
 ### Fixed
@@ -82,6 +132,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 [#2]: https://github.com/starkat99/widestring-rs/issues/2
 [#14]: https://github.com/starkat99/widestring-rs/issues/14
+[#18]: https://github.com/starkat99/widestring-rs/issues/18
 
 [@nicbn]: https://github.com/nicbn
 [@joshwd36]: https://github.com/joshwb36

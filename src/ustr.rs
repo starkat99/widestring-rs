@@ -1,53 +1,27 @@
 use crate::{UChar, WideChar};
-use core::{char, slice};
-
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(feature = "alloc")]
 use alloc::{
     boxed::Box,
     string::{FromUtf16Error, String},
     vec::Vec,
 };
-#[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    string::{FromUtf16Error, String},
-    vec::Vec,
-};
+use core::{char, slice};
 
-/// A possible error value when converting a String from a UTF-32 byte slice.
+/// String slice reference for [`UString`][crate::UString]
 ///
-/// This type is the error type for the `to_string` method on `U32Str`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FromUtf32Error();
-
-impl core::fmt::Display for FromUtf32Error {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "error converting from UTF-32 to UTF-8")
-    }
-}
-
-#[cfg(feature = "std")]
-impl std::error::Error for FromUtf32Error {
-    fn description(&self) -> &str {
-        "error converting from UTF-32 to UTF-8"
-    }
-}
-
-/// String slice reference for `U16String`.
+/// [`UStr`] is to [`UString`][crate::UString] as [`str`] is to [`String`].
 ///
-/// `UStr` is to `UString` as `str` is to `String`.
-///
-/// `UStr` is not aware of nul values. Strings may or may not be nul-terminated, and may
+/// [`UStr`] is not aware of null values. Strings may or may not be null-terminated, and may
 /// contain invalid and ill-formed UTF-16 or UTF-32 data. These strings are intended to be used
 /// with FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
+/// null-termination already, or where strings are merely being passed through without modification.
 ///
-/// `UCStr` should be used instead of nul-aware strings are required.
+/// [`UCStr`][crate::UCStr] should be used instead if null-aware strings are required.
 ///
-/// `UStr` can be converted to many other string types, including `OsString` and `String`, making
-/// proper Unicode FFI safe and easy.
+/// [`UStr`] can be converted to many other string types, including [`OsString`][std::ffi::OsString]
+/// and [`String`], making proper Unicode FFI safe and easy.
 ///
-/// Please prefer using the type aliases `U16Str` or `U32Str` or `WideStr` to using this type
+/// Please prefer using the type aliases [`U16Str`], [`U32Str`] or [`WideStr`] to using this type
 /// directly.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UStr<C: UChar> {
@@ -55,19 +29,25 @@ pub struct UStr<C: UChar> {
 }
 
 impl<C: UChar> UStr<C> {
-    /// Coerces a value into a `UStr`.
+    /// Coerces a value into a [`UStr`]
+    #[inline]
     pub fn new<S: AsRef<Self> + ?Sized>(s: &S) -> &Self {
         s.as_ref()
     }
 
-    /// Constructs a `UStr` from a pointer and a length.
+    /// Constructs a [`UStr`] from a pointer and a length
     ///
-    /// The `len` argument is the number of elements, **not** the number of bytes.
+    /// The `len` argument is the number of elements, **not** the number of bytes. No copying or
+    /// allocation is performed, the resulting value is a direct reference to the pointer bytes.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid for `len`
     /// elements.
+    ///
+    /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
+    /// In particular, the returned string reference *must not be mutated* for the duration of
+    /// lifetime `'a`, except inside an [`UnsafeCell`][std::cell::UnsafeCell].
     ///
     /// # Panics
     ///
@@ -79,50 +59,57 @@ impl<C: UChar> UStr<C> {
     /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
+    #[inline]
     pub unsafe fn from_ptr<'a>(p: *const C, len: usize) -> &'a Self {
         assert!(!p.is_null());
         let slice: *const [C] = slice::from_raw_parts(p, len);
         &*(slice as *const UStr<C>)
     }
 
-    /// Constructs a `UStr` from a slice of code points.
+    /// Constructs a [`UStr`] from a slice of character data
     ///
-    /// No checks are performed on the slice.
+    /// No checks are performed on the slice. It may or may not be valid for its encoding.
+    #[inline]
     pub fn from_slice(slice: &[C]) -> &Self {
         let ptr: *const [C] = slice;
         unsafe { &*(ptr as *const UStr<C>) }
     }
 
-    /// Copies the wide string to a new owned `UString`.
+    /// Copies the string reference to a new owned [`UString`][crate::UString]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[inline]
     pub fn to_ustring(&self) -> crate::UString<C> {
         crate::UString::from_vec(&self.inner)
     }
 
-    /// Converts to a slice of the wide string.
+    /// Converts to a slice of the string
+    #[inline]
     pub fn as_slice(&self) -> &[C] {
         &self.inner
     }
 
-    /// Returns a raw pointer to the wide string.
+    /// Returns a raw pointer to the string
     ///
     /// The pointer is valid only as long as the lifetime of this reference.
+    #[inline]
     pub fn as_ptr(&self) -> *const C {
         self.inner.as_ptr()
     }
 
-    /// Returns the length of the wide string as number of elements (**not** number of bytes).
+    /// Returns the length of the string as number of elements (**not** number of bytes)
+    #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
-    /// Returns whether this wide string contains no data.
+    /// Returns whether this string contains no data
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
 
-    /// Converts a `Box<UStr>` into a `UString` without copying or allocating.
+    /// Converts a [`Box<UStr>`] into a [`UString`][crate::UString] without copying or allocating
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn into_ustring(self: Box<Self>) -> crate::UString<C> {
@@ -134,10 +121,11 @@ impl<C: UChar> UStr<C> {
 }
 
 impl UStr<u16> {
-    /// Decodes a wide string to an owned `OsString`.
+    /// Decodes a string reference to an owned [`OsString`][std::ffi::OsString]
     ///
-    /// This makes a string copy of the `U16Str`. Since `U16Str` makes no guarantees that it is
-    /// valid UTF-16, there is no guarantee that the resulting `OsString` will be valid data.
+    /// This makes a string copy of the [`U16Str`]. Since [`U16Str`] makes no guarantees that it is
+    /// valid UTF-16, there is no guarantee that the resulting [`OsString`][std::ffi::OsString] will
+    /// be valid encoding either.
     ///
     /// # Examples
     ///
@@ -154,11 +142,12 @@ impl UStr<u16> {
     /// ```
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    #[inline]
     pub fn to_os_string(&self) -> std::ffi::OsString {
         crate::platform::os_from_wide(&self.inner)
     }
 
-    /// Copies the wide string to a `String` if it contains valid UTF-16 data.
+    /// Decodes the string reference to a [`String`] if it contains valid UTF-16 data.
     ///
     /// # Failures
     ///
@@ -178,13 +167,14 @@ impl UStr<u16> {
     /// ```
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[inline]
     pub fn to_string(&self) -> Result<String, FromUtf16Error> {
         String::from_utf16(&self.inner)
     }
 
-    /// Copies the wide string to a `String`.
+    /// Decodes the string reference to a [`String`] even if it is invalid UTF-16 data
     ///
-    /// Any non-Unicode sequences are replaced with *U+FFFD REPLACEMENT CHARACTER*.
+    /// Any non-Unicode sequences are replaced with `U+FFFD REPLACEMENT CHARACTER`.
     ///
     /// # Examples
     ///
@@ -200,20 +190,26 @@ impl UStr<u16> {
     /// ```
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[inline]
     pub fn to_string_lossy(&self) -> String {
         String::from_utf16_lossy(&self.inner)
     }
 }
 
 impl UStr<u32> {
-    /// Constructs a `U32Str` from a `char` pointer and a length.
+    /// Constructs a [`U32Str`] from a [`char`][prim@char] pointer and a length
     ///
-    /// The `len` argument is the number of `char` elements, **not** the number of bytes.
+    /// The `len` argument is the number of `char` elements, **not** the number of bytes. No copying
+    /// or allocation is performed, the resulting value is a direct reference to the pointer bytes.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid for `len`
     /// elements.
+    ///
+    /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
+    /// In particular, the returned string reference *must not be mutated* for the duration of
+    /// lifetime `'a`, except inside an [`UnsafeCell`][std::cell::UnsafeCell].
     ///
     /// # Panics
     ///
@@ -225,22 +221,25 @@ impl UStr<u32> {
     /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
+    #[inline]
     pub unsafe fn from_char_ptr<'a>(p: *const char, len: usize) -> &'a Self {
-        UStr::from_ptr(p as *const u32, len)
+        Self::from_ptr(p as *const u32, len)
     }
 
-    /// Constructs a `U32Str` from a slice of `u32` code points.
+    /// Constructs a [`U32Str`] from a [`char`][prim@char] slice
     ///
     /// No checks are performed on the slice.
+    #[inline]
     pub fn from_char_slice(slice: &[char]) -> &Self {
         let ptr: *const [char] = slice;
-        unsafe { &*(ptr as *const UStr<u32>) }
+        unsafe { &*(ptr as *const Self) }
     }
 
-    /// Decodes a wide string to an owned `OsString`.
+    /// Decodes a string to an owned [`OsString`][std::ffi::OsString]
     ///
-    /// This makes a string copy of the `U32Str`. Since `U32Str` makes no guarantees that it is
-    /// valid UTF-32, there is no guarantee that the resulting `OsString` will be valid data.
+    /// This makes a string copy of the [`U32Str`]. Since [`U32Str`] makes no guarantees that it is
+    /// valid UTF-32, there is no guarantee that the resulting [`OsString`][std::ffi::OsString] will
+    /// be valid data.
     ///
     /// # Examples
     ///
@@ -257,11 +256,12 @@ impl UStr<u32> {
     /// ```
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    #[inline]
     pub fn to_os_string(&self) -> std::ffi::OsString {
         self.to_string_lossy().into()
     }
 
-    /// Copies the wide string to a `String` if it contains valid UTF-32 data.
+    /// Decodes the string to a [`String`] if it contains valid UTF-32 data.
     ///
     /// # Failures
     ///
@@ -281,10 +281,10 @@ impl UStr<u32> {
     /// ```
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-    pub fn to_string(&self) -> Result<String, FromUtf32Error> {
+    pub fn to_string(&self) -> Result<String, crate::FromUtf32Error> {
         let chars: Vec<Option<char>> = self.inner.iter().map(|c| char::from_u32(*c)).collect();
         if chars.iter().any(|c| c.is_none()) {
-            return Err(FromUtf32Error());
+            return Err(crate::FromUtf32Error);
         }
         let size = chars.iter().filter_map(|o| o.map(|c| c.len_utf8())).sum();
         let mut vec = Vec::with_capacity(size);
@@ -297,9 +297,9 @@ impl UStr<u32> {
         Ok(unsafe { String::from_utf8_unchecked(vec) })
     }
 
-    /// Copies the wide string to a `String`.
+    /// Decodes the string reference to a [`String`] even if it is invalid UTF-32 data
     ///
-    /// Any non-Unicode sequences are replaced with *U+FFFD REPLACEMENT CHARACTER*.
+    /// Any non-Unicode sequences are replaced with `U+FFFD REPLACEMENT CHARACTER`.
     ///
     /// # Examples
     ///
@@ -333,35 +333,36 @@ impl UStr<u32> {
     }
 }
 
-/// String slice reference for `U16String`.
+/// String slice reference for [`U16String`][crate::U16String]
 ///
-/// `U16Str` is to `U16String` as `str` is to `String`.
+/// [`U16Str`] is to [`U16String`][crate::U16String] as [`str`] is to [`String`].
 ///
-/// `U16Str` is not aware of nul values. Strings may or may not be nul-terminated, and may
+/// [`U16Str`] is not aware of null values. Strings may or may not be null-terminated, and may
 /// contain invalid and ill-formed UTF-16 data. These strings are intended to be used with
 /// FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
+/// null-termination already, or where strings are merely being passed through without modification.
 ///
-/// `WideCStr` should be used instead of nul-aware strings are required.
+/// [`U16CStr`][crate::U16CStr] should be used instead of null-aware strings are required.
 ///
-/// `U16Str` can be converted to many other string types, including `OsString` and `String`, making
-/// proper Unicode FFI safe and easy.
+/// [`U16Str`] can be converted to many other string types, including
+/// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
 pub type U16Str = UStr<u16>;
 
-/// String slice reference for `U32String`.
+/// String slice reference for [`U32String`][crate::U32String]
 ///
-/// `U32Str` is to `U32String` as `str` is to `String`.
+/// [`U32Str`] is to [`U32String`][crate::U32String] as [`str`] is to [`String`].
 ///
-/// `U32Str` is not aware of nul values. Strings may or may not be nul-terminated, and may
+/// [`U32Str`] is not aware of null values. Strings may or may not be null-terminated, and may
 /// contain invalid and ill-formed UTF-32 data. These strings are intended to be used with
 /// FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
+/// null-termination already, or where strings are merely being passed through without modification.
 ///
-/// `WideCStr` should be used instead of nul-aware strings are required.
+/// [`U32CStr`][crate::U32CStr] should be used instead of nul-aware strings are required.
 ///
-/// `U32Str` can be converted to many other string types, including `OsString` and `String`, making
-/// proper Unicode FFI safe and easy.
+/// [`U32Str`] can be converted to many other string types, including
+/// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
 pub type U32Str = UStr<u32>;
 
-/// Alias for `U16Str` or `U32Str` depending on platform. Intended to match typical C `wchar_t` size on platform.
+/// Alias for [`U16Str`] or [`U32Str`] depending on platform. Intended to match typical C `wchar_t`
+/// size on platform.
 pub type WideStr = UStr<WideChar>;

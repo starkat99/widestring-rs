@@ -1,102 +1,51 @@
-use crate::{UChar, WideChar};
-use core::slice;
-
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+use crate::{ContainsNull, MissingNullTerminator, NullError, UChar, UStr, WideChar};
+#[cfg(feature = "alloc")]
 use alloc::{
     borrow::ToOwned,
     boxed::Box,
     string::{FromUtf16Error, String},
-    vec::Vec,
 };
-#[cfg(feature = "std")]
-use std::{
-    borrow::ToOwned,
-    boxed::Box,
-    string::{FromUtf16Error, String},
-    vec::Vec,
-};
+use core::slice;
 
-/// An error returned from `UCString` and `UCStr` to indicate that a terminating nul value
-/// was missing.
+/// C-style wide string reference for [`UCString`][crate::UCString]
 ///
-/// The error optionally returns the ownership of the invalid vector whenever a vector was owned.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MissingNulError<C> {
-    #[cfg(feature = "alloc")]
-    pub(crate) inner: Option<Vec<C>>,
-    #[cfg(not(feature = "alloc"))]
-    _p: core::marker::PhantomData<C>,
-}
-
-impl<C: UChar> MissingNulError<C> {
-    #[cfg(feature = "alloc")]
-    fn empty() -> Self {
-        Self { inner: None }
-    }
-
-    #[cfg(not(feature = "alloc"))]
-    fn empty() -> Self {
-        Self {
-            _p: core::marker::PhantomData,
-        }
-    }
-
-    /// Consumes this error, returning the underlying vector of `u16` values which generated the
-    /// error in the first place.
-    #[cfg(feature = "alloc")]
-    pub fn into_vec(self) -> Option<Vec<C>> {
-        self.inner
-    }
-}
-
-impl<C: UChar> core::fmt::Display for MissingNulError<C> {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "missing terminating nul value")
-    }
-}
-
-#[cfg(feature = "std")]
-impl<C: UChar> std::error::Error for MissingNulError<C> {
-    fn description(&self) -> &str {
-        "missing terminating nul value"
-    }
-}
-
-/// C-style wide string reference for `UCString`.
-///
-/// `UCStr` is aware of nul values. Unless unchecked conversions are used, all `UCStr`
-/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
+/// [`UCStr`] is aware of null values. Unless unchecked conversions are used, all [`UCStr`]
+/// strings end with a null-terminator in the underlying buffer and contain no internal null values.
 /// The strings may still contain invalid or ill-formed UTF-16 or UTF-32 data. These strings are
-/// intended to be used with FFI functions such as Windows API that may require nul-terminated
+/// intended to be used with FFI functions such as Windows API that may require null-terminated
 /// strings.
 ///
-/// `UCStr` can be converted to and from many other string types, including `UString`,
-/// `OsString`, and `String`, making proper Unicode FFI safe and easy.
+/// [`UCStr`] can be converted to and from many other string types, including
+/// [`UString`][crate::UString], [`OsString`][std::ffi::OsString], and [`String`], making proper
+/// Unicode FFI safe and easy.
 ///
-/// Please prefer using the type aliases `U16CStr` or `U32CStr` or `WideCStr` to using
-/// this type directly.
+/// Please prefer using the type aliases [`U16CStr`], [`U32CStr`], or [`WideCStr`] to using
+/// [`UCStr`] directly.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct UCStr<C: UChar> {
+pub struct UCStr<C> {
     inner: [C],
 }
 
 impl<C: UChar> UCStr<C> {
-    /// Coerces a value into a `UCStr`.
+    /// Coerces a value into a [`UCStr`]
+    #[inline]
     pub fn new<S: AsRef<UCStr<C>> + ?Sized>(s: &S) -> &Self {
         s.as_ref()
     }
 
-    /// Constructs a `UStr` from a nul-terminated string pointer.
+    /// Constructs a [`UCStr`] from a null-terminated string pointer
     ///
-    /// This will scan for nul values beginning with `p`. The first nul value will be used as the
-    /// nul terminator for the string, similar to how libc string functions such as `strlen` work.
+    /// This will scan for null values beginning with `p`. The first null value will be used as the
+    /// null terminator for the string, similar to how libc string functions such as `strlen` work.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid or has a
-    /// nul terminator, and the function could scan past the underlying buffer.
+    /// null terminator, and the function could scan past the underlying buffer.
     ///
-    /// `p` must be non-null.
+    /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
+    /// In particular, the returned string reference *must not be mutated* for the duration of
+    /// lifetime `'a`, except inside an [`UnsafeCell`][std::cell::UnsafeCell].
     ///
     /// # Panics
     ///
@@ -110,34 +59,39 @@ impl<C: UChar> UCStr<C> {
     /// string, or by explicit annotation.
     pub unsafe fn from_ptr_str<'a>(p: *const C) -> &'a Self {
         assert!(!p.is_null());
-        let mut i: isize = 0;
-        while *p.offset(i) != UChar::NUL {
+        let mut i = 0;
+        while *p.add(i) != UChar::NULL {
             i += 1;
         }
-        let ptr: *const [C] = slice::from_raw_parts(p, i as usize + 1);
-        &*(ptr as *const UCStr<C>)
+        Self::from_ptr_unchecked(p, i)
     }
 
-    /// Constructs a `UStr` from a pointer and a length.
+    /// Constructs a [`UCStr`] from a pointer and a length
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
-    /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means that
-    /// `p` is a pointer directly to the nul terminator of the string.
+    /// **not** include the null terminator of the string. Thus, a `len` of 0 is valid and means
+    /// that `p` is a pointer directly to the null terminator of the string.
+    ///
+    /// # Errors
+    ///
+    /// This will scan the pointer string for an interior null value and error if one is found
+    /// before the null terminator at `len` offset. To avoid scanning for interior nulls,
+    /// [`from_ptr_unchecked`][Self::from_ptr_unchecked] may be used instead.
+    ///
+    /// An error is returned if the value at `len` offset is not a null terminator.
     ///
     /// # Safety
     ///
-    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len`
-    /// elements.
+    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len +
+    /// 1` elements.
     ///
-    /// `p` must be non-null, even for zero `len`.
-    ///
-    /// The interior values of the pointer are not scanned for nul. Any interior nul values will
-    /// result in an invalid `UCStr`.
+    /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
+    /// In particular, the returned string reference *must not be mutated* for the duration of
+    /// lifetime `'a`, except inside an [`UnsafeCell`][std::cell::UnsafeCell].
     ///
     /// # Panics
     ///
-    /// This function panics if `p` is null or if a nul value is not found at offset `len` of `p`.
-    /// Only pointers with a nul terminator are valid.
+    /// This function panics if `p` is null.
     ///
     /// # Caveat
     ///
@@ -145,50 +99,154 @@ impl<C: UChar> UCStr<C> {
     /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
-    pub unsafe fn from_ptr_with_nul<'a>(p: *const C, len: usize) -> &'a Self {
-        assert!(*p.add(len) == UChar::NUL);
-        let ptr: *const [C] = slice::from_raw_parts(p, len + 1);
-        &*(ptr as *const UCStr<C>)
-    }
-
-    /// Constructs a `UCStr` from a slice of values that has a nul terminator.
-    ///
-    /// The slice will be scanned for nul values. When a nul value is found, it is treated as the
-    /// terminator for the string, and the `UCStr` slice will be truncated to that nul.
-    ///
-    /// # Failure
-    ///
-    /// If there are no no nul values in the slice, an error is returned.
-    pub fn from_slice_with_nul(slice: &[C]) -> Result<&Self, MissingNulError<C>> {
-        match slice.iter().position(|x| *x == UChar::NUL) {
-            None => Err(MissingNulError::empty()),
-            Some(i) => Ok(unsafe { UCStr::from_slice_with_nul_unchecked(&slice[..i + 1]) }),
+    pub unsafe fn from_ptr<'a>(p: *const C, len: usize) -> Result<&'a Self, NullError<C>> {
+        assert!(!p.is_null());
+        if *p.add(len) != UChar::NULL {
+            return Err(MissingNullTerminator.into());
         }
+        for i in 0..len {
+            if *p.add(i) == UChar::NULL {
+                return Err(ContainsNull::empty(i).into());
+            }
+        }
+        Ok(Self::from_ptr_unchecked(p, len))
     }
 
-    /// Constructs a `UCStr` from a slice of values that has a nul terminator. No
-    /// checking for nul values is performed.
+    /// Constructs a [`UCStr`] from a pointer and a length, truncating at the first null terminator
+    ///
+    /// The `len` argument is the number of elements, **not** the number of bytes. This will scan
+    /// for null values beginning with `p` until offset `len`. The first null value will be used as
+    /// the null terminator for the string, ignoring any remaining values left before `len`.
+    ///
+    /// # Errors
+    ///
+    /// If no null terminator is found after `len` + 1 elements, an error is returned.
     ///
     /// # Safety
     ///
-    /// This function is unsafe because it can lead to invalid `UCStr` values when the slice
-    /// is missing a terminating nul value or there are non-terminating interior nul values
-    /// in the slice.
-    pub unsafe fn from_slice_with_nul_unchecked(slice: &[C]) -> &Self {
-        let ptr: *const [C] = slice;
-        &*(ptr as *const UCStr<C>)
+    /// This function is unsafe as there is no guarantee that the given pointer is valid or has a
+    /// null terminator, and the function could scan past the underlying buffer.
+    ///
+    /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
+    /// In particular, the returned string reference *must not be mutated* for the duration of
+    /// lifetime `'a`, except inside an [`UnsafeCell`][std::cell::UnsafeCell].
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `p` is null.
+    ///
+    /// # Caveat
+    ///
+    /// The lifetime for the returned string is inferred from its usage. To prevent accidental
+    /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
+    /// context, such as by providing a helper function taking the lifetime of a host value for the
+    /// string, or by explicit annotation.
+    pub unsafe fn from_ptr_truncate<'a>(
+        p: *const C,
+        len: usize,
+    ) -> Result<&'a Self, MissingNullTerminator> {
+        assert!(!p.is_null());
+        for i in 0..=len {
+            if *p.add(i) == UChar::NULL {
+                return Ok(Self::from_ptr_unchecked(p, i));
+            }
+        }
+        Err(MissingNullTerminator)
     }
 
-    /// Copies the wide string to an new owned `UString`.
+    /// Constructs a [`UCStr`] from a pointer and a length without checking for any null values
+    ///
+    /// The `len` argument is the number of elements, **not** the number of bytes, and does
+    /// **not** include the null terminator of the string. Thus, a `len` of 0 is valid and means
+    /// that `p` is a pointer directly to the null terminator of the string.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len +
+    /// 1` elements, nor that is has a terminating null value.
+    ///
+    /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
+    /// In particular, the returned string reference *must not be mutated* for the duration of
+    /// lifetime `'a`, except inside an [`UnsafeCell`][std::cell::UnsafeCell].
+    ///
+    /// The interior values of the pointer are not scanned for null. Any interior null values or
+    /// a missing null terminator at pointer offset `len` + 1 will result in an invalid [`UCStr`].
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `p` is null.
+    ///
+    /// # Caveat
+    ///
+    /// The lifetime for the returned string is inferred from its usage. To prevent accidental
+    /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
+    /// context, such as by providing a helper function taking the lifetime of a host value for the
+    /// string, or by explicit annotation.
+    pub unsafe fn from_ptr_unchecked<'a>(p: *const C, len: usize) -> &'a Self {
+        assert!(!p.is_null());
+        let ptr: *const [C] = slice::from_raw_parts(p, len + 1);
+        &*(ptr as *const Self)
+    }
+
+    /// Constructs a [`UCStr`] from a slice of values with a terminating null, checking for invalid
+    /// interior null values
+    ///
+    /// The slice must have at least one item, the null terminator, even for an empty string.
+    ///
+    /// # Errors
+    ///
+    /// If there are null values in the slice except for the last value, an error is returned.
+    ///
+    /// An error is also returned if the last value of the slice is not a null terminator.
+    pub fn from_slice(slice: &[C]) -> Result<&Self, NullError<C>> {
+        if slice.last() != Some(&UChar::NULL) {
+            return Err(MissingNullTerminator.into());
+        }
+        match slice[..slice.len()].iter().position(|x| *x == UChar::NULL) {
+            None => Ok(unsafe { Self::from_slice_unchecked(slice) }),
+            Some(i) => Err(ContainsNull::empty(i).into()),
+        }
+    }
+
+    /// Constructs a [`UCStr`] from a slice of values, truncating at the first null terminator
+    ///
+    /// The slice will be scanned for null values. When a null value is found, it is treated as the
+    /// terminator for the string, and the [`UCStr`] slice will be truncated to that null.
+    ///
+    /// # Errors
+    ///
+    /// If there are no null values in the slice, an error is returned.
+    pub fn from_slice_truncate(slice: &[C]) -> Result<&Self, MissingNullTerminator> {
+        match slice.iter().position(|x| *x == UChar::NULL) {
+            None => Err(MissingNullTerminator),
+            Some(i) => Ok(unsafe { Self::from_slice_unchecked(&slice[..i + 1]) }),
+        }
+    }
+
+    /// Constructs a [`UCStr`] from a slice of values without checking for a terminating or interior
+    /// null values
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it can lead to invalid [`UCStr`] values when the slice
+    /// is missing a terminating null value or there are non-terminating interior null values
+    /// in the slice. In particular, an empty slice will result in an invalid [`UCStr`].
+    pub unsafe fn from_slice_unchecked(slice: &[C]) -> &Self {
+        let ptr: *const [C] = slice;
+        &*(ptr as *const Self)
+    }
+
+    /// Copies the string reference to a new owned [`UCString`][crate::UCString]
+    #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_ucstring(&self) -> crate::UCString<C> {
-        unsafe { crate::UCString::from_vec_with_nul_unchecked(self.inner.to_owned()) }
+        unsafe { crate::UCString::from_vec_unchecked(self.inner.to_owned()) }
     }
 
-    /// Copies the wide string to a new owned `UString`.
+    /// Copies the string reference to a new owned [`UString`][crate::UString]
     ///
-    /// The `UString` will **not** have a nul terminator.
+    /// The resulting [`UString`][crate::UString] will **not** have a null terminator
     ///
     /// # Examples
     ///
@@ -198,10 +256,10 @@ impl<C: UChar> UCStr<C> {
     /// // Convert U16CString to a U16String
     /// let wstr = wcstr.to_ustring();
     ///
-    /// // U16CString will have a terminating nul
-    /// let wcvec = wcstr.into_vec_with_nul();
+    /// // U16CString will have a terminating null
+    /// let wcvec = wcstr.into_vec_with_null();
     /// assert_eq!(wcvec[wcvec.len()-1], 0);
-    /// // The resulting U16String will not have the terminating nul
+    /// // The resulting U16String will not have the terminating null
     /// let wvec = wstr.into_vec();
     /// assert_ne!(wvec[wvec.len()-1], 0);
     /// ```
@@ -212,50 +270,56 @@ impl<C: UChar> UCStr<C> {
     /// // Convert U32CString to a U32String
     /// let wstr = wcstr.to_ustring();
     ///
-    /// // U32CString will have a terminating nul
-    /// let wcvec = wcstr.into_vec_with_nul();
+    /// // U32CString will have a terminating null
+    /// let wcvec = wcstr.into_vec_with_null();
     /// assert_eq!(wcvec[wcvec.len()-1], 0);
-    /// // The resulting U32String will not have the terminating nul
+    /// // The resulting U32String will not have the terminating null
     /// let wvec = wstr.into_vec();
     /// assert_ne!(wvec[wvec.len()-1], 0);
     /// ```
+    #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_ustring(&self) -> crate::UString<C> {
         crate::UString::from_vec(self.as_slice())
     }
 
-    /// Converts to a slice of the wide string.
+    /// Converts to a slice of the underlying code units
     ///
-    /// The slice will **not** include the nul terminator.
+    /// The slice will **not** include the null terminator.
+    #[inline]
     pub fn as_slice(&self) -> &[C] {
         &self.inner[..self.len()]
     }
 
-    /// Converts to a slice of the wide string, including the nul terminator.
-    pub fn as_slice_with_nul(&self) -> &[C] {
+    /// Converts to a slice of the underlying code units, including the null terminator
+    #[inline]
+    pub fn as_slice_with_null(&self) -> &[C] {
         &self.inner
     }
 
-    /// Returns a raw pointer to the wide string.
+    /// Returns a raw pointer to the string
     ///
     /// The pointer is valid only as long as the lifetime of this reference.
+    #[inline]
     pub fn as_ptr(&self) -> *const C {
         self.inner.as_ptr()
     }
 
-    /// Returns the length of the wide string as number of elements (**not** number of bytes)
-    /// **not** including nul terminator.
+    /// Returns the length of the string as number of elements (**not** number of bytes)
+    /// **not** including null terminator
+    #[inline]
     pub fn len(&self) -> usize {
         self.inner.len() - 1
     }
 
-    /// Returns whether this wide string contains no data (i.e. is only the nul terminator).
+    /// Returns whether this string contains no data (i.e. is only the null terminator)
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    /// Converts a `Box<UCStr>` into a `UCString` without copying or allocating.
+    /// Converts a [`Box<UCStr>`] into a [`UCString`][crate::UCString] without copying or allocating
     ///
     /// # Examples
     ///
@@ -285,8 +349,40 @@ impl<C: UChar> UCStr<C> {
         }
     }
 
+    /// Returns a [`UStr`] reference to this string reference
+    ///
+    /// The [`UStr`] reference will not include the null-terminator.
+    #[inline]
+    pub fn as_ustr(&self) -> &UStr<C> {
+        UStr::from_slice(self.as_slice())
+    }
+
+    #[doc(hidden)]
+    #[deprecated = "use `from_ptr_unchecked` instead"]
+    pub unsafe fn from_ptr_with_nul<'a>(p: *const C, len: usize) -> &'a Self {
+        Self::from_ptr_unchecked(p, len)
+    }
+
+    #[allow(deprecated)]
+    #[doc(hidden)]
+    #[deprecated = "use `from_slice_truncate` instead"]
+    pub fn from_slice_with_nul(slice: &[C]) -> Result<&Self, crate::MissingNulError> {
+        Self::from_slice_truncate(slice)
+    }
+
+    #[doc(hidden)]
+    #[deprecated = "use `from_slice_unchecked` instead"]
+    pub unsafe fn from_slice_with_nul_unchecked(slice: &[C]) -> &Self {
+        Self::from_slice_unchecked(slice)
+    }
+
+    #[doc(hidden)]
+    #[deprecated = "use `from_slice_with_null` instead"]
+    pub fn as_slice_with_nul(&self) -> &[C] {
+        self.as_slice_with_null()
+    }
+
     #[cfg(feature = "alloc")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub(crate) fn from_inner(slice: &[C]) -> &UCStr<C> {
         let ptr: *const [C] = slice;
         unsafe { &*(ptr as *const UCStr<C>) }
@@ -294,11 +390,12 @@ impl<C: UChar> UCStr<C> {
 }
 
 impl UCStr<u16> {
-    /// Decodes a wide string to an owned `OsString`.
+    /// Decodes a string reference to an owned [`OsString`][std::ffi::OsString]
     ///
-    /// This makes a string copy of the `U16CStr`. Since `U16CStr` makes no guarantees that it is
-    /// valid UTF-16, there is no guarantee that the resulting `OsString` will be valid data. The
-    /// `OsString` will **not** have a nul terminator.
+    /// This makes a string copy of the [`U16CStr`]. Since [`U16CStr`] makes no guarantees that it
+    /// is valid UTF-16, there is no guarantee that the resulting [`OsString`][std::ffi::OsString]
+    /// will be valid data. The [`OsString`][std::ffi::OsString] will **not** have a null
+    /// terminator.
     ///
     /// # Examples
     ///
@@ -313,15 +410,16 @@ impl UCStr<u16> {
     ///
     /// assert_eq!(osstr, OsString::from(s));
     /// ```
+    #[inline]
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn to_os_string(&self) -> std::ffi::OsString {
         crate::platform::os_from_wide(self.as_slice())
     }
 
-    /// Copies the wide string to a `String` if it contains valid UTF-16 data.
+    /// Decodes the string reference to a [`String`] if it contains valid UTF-16 data
     ///
-    /// # Failures
+    /// # Errors
     ///
     /// Returns an error if the string contains any invalid UTF-16 data.
     ///
@@ -337,15 +435,16 @@ impl UCStr<u16> {
     ///
     /// assert_eq!(s2, s);
     /// ```
+    #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_string(&self) -> Result<String, FromUtf16Error> {
         String::from_utf16(self.as_slice())
     }
 
-    /// Copies the wide string to a `String`.
+    /// Decodes the string reference to a [`String`] even if it is invalid UTF-16 data
     ///
-    /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+    /// Any non-Unicode sequences are replaced with `U+FFFD REPLACEMENT CHARACTER`.
     ///
     /// # Examples
     ///
@@ -359,6 +458,7 @@ impl UCStr<u16> {
     ///
     /// assert_eq!(s2, s);
     /// ```
+    #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_string_lossy(&self) -> String {
@@ -367,17 +467,19 @@ impl UCStr<u16> {
 }
 
 impl UCStr<u32> {
-    /// Constructs a `U32Str` from a `char` nul-terminated string pointer.
+    /// Constructs a string reference from a [`char`] null-terminated string pointer
     ///
-    /// This will scan for nul values beginning with `p`. The first nul value will be used as the
-    /// nul terminator for the string, similar to how libc string functions such as `strlen` work.
+    /// This will scan for null values beginning with `p`. The first null value will be used as the
+    /// null terminator for the string, similar to how libc string functions such as `strlen` work.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid or has a
-    /// nul terminator, and the function could scan past the underlying buffer.
+    /// null terminator, and the function could scan past the underlying buffer.
     ///
-    /// `p` must be non-null.
+    /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
+    /// In particular, the returned string reference *must not be mutated* for the duration of
+    /// lifetime `'a`, except inside an [`UnsafeCell`][std::cell::UnsafeCell].
     ///
     /// # Panics
     ///
@@ -389,30 +491,37 @@ impl UCStr<u32> {
     /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
+    #[inline]
     pub unsafe fn from_char_ptr_str<'a>(p: *const char) -> &'a Self {
-        UCStr::from_ptr_str(p as *const u32)
+        Self::from_ptr_str(p as *const u32)
     }
 
-    /// Constructs a `U32Str` from a `char` pointer and a length.
+    /// Constructs a string reference from a [`char`] pointer and a length
     ///
-    /// The `len` argument is the number of `char` elements, **not** the number of bytes, and does
-    /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means that
-    /// `p` is a pointer directly to the nul terminator of the string.
+    /// The `len` argument is the number of elements, **not** the number of bytes, and does
+    /// **not** include the null terminator of the string. Thus, a `len` of 0 is valid and means
+    /// that `p` is a pointer directly to the null terminator of the string.
+    ///
+    /// # Errors
+    ///
+    /// This will scan the pointer string for an interior null value and error if one is found
+    /// before the null terminator at `len` offset. To avoid scanning for interior nulls,
+    /// [`from_ptr_unchecked`][Self::from_ptr_unchecked] may be used instead.
+    ///
+    /// An error is returned if the value at `len` offset is not a null terminator.
     ///
     /// # Safety
     ///
-    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len`
-    /// elements.
+    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len +
+    /// 1` elements.
     ///
-    /// `p` must be non-null, even for zero `len`.
-    ///
-    /// The interior values of the pointer are not scanned for nul. Any interior nul values will
-    /// result in an invalid `U32CStr`.
+    /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
+    /// In particular, the returned string reference *must not be mutated* for the duration of
+    /// lifetime `'a`, except inside an [`UnsafeCell`][std::cell::UnsafeCell].
     ///
     /// # Panics
     ///
-    /// This function panics if `p` is null or if a nul value is not found at offset `len` of `p`.
-    /// Only pointers with a nul terminator are valid.
+    /// This function panics if `p` is null.
     ///
     /// # Caveat
     ///
@@ -420,41 +529,134 @@ impl UCStr<u32> {
     /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
-    pub unsafe fn from_char_ptr_with_nul<'a>(p: *const char, len: usize) -> &'a Self {
-        UCStr::from_ptr_with_nul(p as *const u32, len)
+    pub unsafe fn from_char_ptr<'a>(
+        p: *const char,
+        len: usize,
+    ) -> Result<&'a Self, NullError<u32>> {
+        Self::from_ptr(p as *const u32, len)
     }
 
-    /// Constructs a `U32CStr` from a slice of `char` values that has a nul terminator.
+    /// Constructs a string reference from a [`char`] pointer and a length, truncating at the first
+    /// null terminator
     ///
-    /// The slice will be scanned for nul values. When a nul value is found, it is treated as the
-    /// terminator for the string, and the `U32CStr` slice will be truncated to that nul.
+    /// The `len` argument is the number of elements, **not** the number of bytes. This will scan
+    /// for null values beginning with `p` until offset `len`. The first null value will be used as
+    /// the null terminator for the string, ignoring any remaining values left before `len`.
     ///
-    /// # Failure
+    /// # Errors
     ///
-    /// If there are no no nul values in `slice`, an error is returned.
-    pub fn from_char_slice_with_nul(slice: &[char]) -> Result<&Self, MissingNulError<u32>> {
-        let ptr: *const [char] = slice;
-        UCStr::from_slice_with_nul(unsafe { &*(ptr as *const [u32]) })
-    }
-
-    /// Constructs a `U32CStr` from a slice of `char` values that has a nul terminator. No
-    /// checking for nul values is performed.
+    /// If no null terminator is found after `len` + 1 elements, an error is returned.
     ///
     /// # Safety
     ///
-    /// This function is unsafe because it can lead to invalid `U32CStr` values when `slice`
-    /// is missing a terminating nul value or there are non-terminating interior nul values
-    /// in the slice.
-    pub unsafe fn from_char_slice_with_nul_unchecked(slice: &[char]) -> &Self {
-        let ptr: *const [char] = slice;
-        UCStr::from_slice_with_nul_unchecked(&*(ptr as *const [u32]))
+    /// This function is unsafe as there is no guarantee that the given pointer is valid or has a
+    /// null terminator, and the function could scan past the underlying buffer.
+    ///
+    /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
+    /// In particular, the returned string reference *must not be mutated* for the duration of
+    /// lifetime `'a`, except inside an [`UnsafeCell`][std::cell::UnsafeCell].
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `p` is null.
+    ///
+    /// # Caveat
+    ///
+    /// The lifetime for the returned string is inferred from its usage. To prevent accidental
+    /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
+    /// context, such as by providing a helper function taking the lifetime of a host value for the
+    /// string, or by explicit annotation.
+    pub unsafe fn from_char_ptr_truncate<'a>(
+        p: *const char,
+        len: usize,
+    ) -> Result<&'a Self, MissingNullTerminator> {
+        Self::from_ptr_truncate(p as *const u32, len)
     }
 
-    /// Decodes a wide string to an owned `OsString`.
+    /// Constructs a string reference from a [`char`] pointer and a length without checking for any
+    /// null values
     ///
-    /// This makes a string copy of the `U32CStr`. Since `U32CStr` makes no guarantees that it is
-    /// valid UTF-32, there is no guarantee that the resulting `OsString` will be valid data. The
-    /// `OsString` will **not** have a nul terminator.
+    /// The `len` argument is the number of elements, **not** the number of bytes, and does
+    /// **not** include the null terminator of the string. Thus, a `len` of 0 is valid and means
+    /// that `p` is a pointer directly to the null terminator of the string.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len +
+    /// 1` elements, nor that is has a terminating null value.
+    ///
+    /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
+    /// In particular, the returned string reference *must not be mutated* for the duration of
+    /// lifetime `'a`, except inside an [`UnsafeCell`][std::cell::UnsafeCell].
+    ///
+    /// The interior values of the pointer are not scanned for null. Any interior null values or
+    /// a missing null terminator at pointer offset `len` + 1 will result in an invalid [`UCStr`].
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `p` is null.
+    ///
+    /// # Caveat
+    ///
+    /// The lifetime for the returned string is inferred from its usage. To prevent accidental
+    /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
+    /// context, such as by providing a helper function taking the lifetime of a host value for the
+    /// string, or by explicit annotation.
+    #[inline]
+    pub unsafe fn from_char_ptr_unchecked<'a>(p: *const char, len: usize) -> &'a Self {
+        Self::from_ptr_unchecked(p as *const u32, len)
+    }
+
+    /// Constructs a string reference from a [`char`] slice with a terminating null, checking for
+    /// invalid interior null values
+    ///
+    /// The slice must have at least one item, the null terminator, even for an empty string.
+    ///
+    /// # Errors
+    ///
+    /// If there are null values in the slice except for the last value, an error is returned.
+    ///
+    /// An error is also returned if the last value of the slice is not a null terminator.
+    pub fn from_char_slice(slice: &[char]) -> Result<&Self, NullError<u32>> {
+        let ptr: *const [char] = slice;
+        Self::from_slice(unsafe { &*(ptr as *const [u32]) })
+    }
+
+    /// Constructs a string reference from a slice of [`char`] values, truncating at the first null
+    /// terminator
+    ///
+    /// The slice will be scanned for null values. When a null value is found, it is treated as the
+    /// terminator for the string, and the [`UCStr`] slice will be truncated to that null.
+    ///
+    /// # Errors
+    ///
+    /// If there are no null values in the slice, an error is returned.
+    #[inline]
+    pub fn from_char_slice_truncate(slice: &[char]) -> Result<&Self, MissingNullTerminator> {
+        let ptr: *const [char] = slice;
+        Self::from_slice_truncate(unsafe { &*(ptr as *const [u32]) })
+    }
+
+    /// Constructs a string reference from a [`char`] slice without checking for a terminating or
+    /// interior null values
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it can lead to invalid [`UCStr`] values when the slice
+    /// is missing a terminating null value or there are non-terminating interior null values
+    /// in the slice. In particular, an empty slice will result in an invalid [`UCStr`].
+    #[inline]
+    pub unsafe fn from_char_slice_unchecked(slice: &[char]) -> &Self {
+        let ptr: *const [char] = slice;
+        Self::from_slice_unchecked(&*(ptr as *const [u32]))
+    }
+
+    /// Decodes a string reference to an owned [`OsString`][std::ffi::OsString]
+    ///
+    /// This makes a string copy of this reference. Since [`UCStr<u32>`] makes no guarantees that it
+    /// is valid UTF-32, there is no guarantee that the resulting [`OsString`][std::ffi::OsString]
+    /// will be valid data. The [`OsString`][std::ffi::OsString] will **not** have a null
+    /// terminator.
     ///
     /// # Examples
     ///
@@ -469,15 +671,16 @@ impl UCStr<u32> {
     ///
     /// assert_eq!(osstr, OsString::from(s));
     /// ```
+    #[inline]
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn to_os_string(&self) -> std::ffi::OsString {
-        self.to_ustring().to_os_string()
+        self.as_ustr().to_os_string()
     }
 
-    /// Copies the wide string to a `String` if it contains valid UTF-32 data.
+    /// Decodes the string reference to a [`String`] if it contains valid UTF-32 data
     ///
-    /// # Failures
+    /// # Errors
     ///
     /// Returns an error if the string contains any invalid UTF-32 data.
     ///
@@ -493,15 +696,16 @@ impl UCStr<u32> {
     ///
     /// assert_eq!(s2, s);
     /// ```
+    #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_string(&self) -> Result<String, crate::FromUtf32Error> {
-        self.to_ustring().to_string()
+        self.as_ustr().to_string()
     }
 
-    /// Copies the wide string to a `String`.
+    /// Decodes the string reference to a [`String`] even if it is invalid UTF-32 data
     ///
-    /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+    /// Any non-Unicode sequences are replaced with `U+FFFD REPLACEMENT CHARACTER`.
     ///
     /// # Examples
     ///
@@ -515,34 +719,112 @@ impl UCStr<u32> {
     ///
     /// assert_eq!(s2, s);
     /// ```
+    #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_string_lossy(&self) -> String {
-        self.to_ustring().to_string_lossy()
+        self.as_ustr().to_string_lossy()
+    }
+
+    #[doc(hidden)]
+    #[deprecated = "use `from_char_ptr_unchecked` instead"]
+    pub unsafe fn from_char_ptr_with_nul<'a>(p: *const char, len: usize) -> &'a Self {
+        Self::from_char_ptr_unchecked(p, len)
+    }
+
+    #[allow(deprecated)]
+    #[doc(hidden)]
+    #[deprecated = "use `from_char_slice_truncate` instead"]
+    pub fn from_char_slice_with_nul(slice: &[char]) -> Result<&Self, crate::MissingNulError> {
+        Self::from_char_slice_truncate(slice)
+    }
+
+    #[doc(hidden)]
+    #[deprecated = "use `from_char_slice_unchecked` instead"]
+    pub unsafe fn from_char_slice_with_nul_unchecked(slice: &[char]) -> &Self {
+        Self::from_char_slice_unchecked(slice)
     }
 }
 
-/// C-style wide string reference for `U16CString`.
+impl<'a> Default for &'a UCStr<u16> {
+    #[inline]
+    fn default() -> Self {
+        const SLICE: &[u16] = &[UChar::NULL];
+        unsafe { UCStr::from_slice_unchecked(SLICE) }
+    }
+}
+
+impl<'a> Default for &'a UCStr<u32> {
+    #[inline]
+    fn default() -> Self {
+        const SLICE: &[u32] = &[UChar::NULL];
+        unsafe { UCStr::from_slice_unchecked(SLICE) }
+    }
+}
+
+impl<C: UChar> AsRef<UStr<C>> for UCStr<C> {
+    #[inline]
+    fn as_ref(&self) -> &UStr<C> {
+        self.as_ustr()
+    }
+}
+
+impl<C: UChar> AsRef<UCStr<C>> for UCStr<C> {
+    #[inline]
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
+
+impl<C: UChar> AsRef<[C]> for UCStr<C> {
+    #[inline]
+    fn as_ref(&self) -> &[C] {
+        self.as_slice()
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<'a, C: UChar> From<&'a UCStr<C>> for Box<UCStr<C>> {
+    #[inline]
+    fn from(s: &'a UCStr<C>) -> Box<UCStr<C>> {
+        let boxed: Box<[C]> = Box::from(s.as_slice_with_null());
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut UCStr<C>) }
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<C: UChar> Default for Box<UCStr<C>> {
+    #[inline]
+    fn default() -> Box<UCStr<C>> {
+        let boxed: Box<[C]> = Box::from([UChar::NULL]);
+        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut UCStr<C>) }
+    }
+}
+
+/// C-style string reference for [`U16CString`][crate::U16CString]
 ///
-/// `U16CStr` is aware of nul values. Unless unchecked conversions are used, all `U16CStr`
-/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
+/// [`U16CStr`] is aware of null values. Unless unchecked conversions are used, all [`U16CStr`]
+/// strings end with a null-terminator in the underlying buffer and contain no internal null values.
 /// The strings may still contain invalid or ill-formed UTF-16 data. These strings are intended to
-/// be used with FFI functions such as Windows API that may require nul-terminated strings.
+/// be used with FFI functions such as Windows API that may require null-terminated strings.
 ///
-/// `U16CStr` can be converted to and from many other string types, including `U16String`,
-/// `OsString`, and `String`, making proper Unicode FFI safe and easy.
+/// [`U16CStr`] can be converted to and from many other string types, including
+/// [`U16String`][crate::U16String], [`OsString`][std::ffi::OsString], and [`String`], making proper
+/// Unicode FFI safe and easy.
 pub type U16CStr = UCStr<u16>;
 
-/// C-style wide string reference for `U32CString`.
+/// C-style string reference for [`U32CString`][crate::U32CString]
 ///
-/// `U32CStr` is aware of nul values. Unless unchecked conversions are used, all `U32CStr`
-/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
+/// [`U32CStr`] is aware of null values. Unless unchecked conversions are used, all [`U32CStr`]
+/// strings end with a null-terminator in the underlying buffer and contain no internal null values.
 /// The strings may still contain invalid or ill-formed UTF-32 data. These strings are intended to
-/// be used with FFI functions such as Windows API that may require nul-terminated strings.
+/// be used with FFI functions such as Windows API that may require null-terminated strings.
 ///
-/// `U32CStr` can be converted to and from many other string types, including `U32String`,
-/// `OsString`, and `String`, making proper Unicode FFI safe and easy.
+/// [`U32CStr`] can be converted to and from many other string types, including
+/// [`U32String`][crate::U32String], [`OsString`][std::ffi::OsString], and [`String`], making proper
+/// Unicode FFI safe and easy.
 pub type U32CStr = UCStr<u32>;
 
-/// Alias for `U16CStr` or `U32CStr` depending on platform. Intended to match typical C `wchar_t` size on platform.
+/// Alias for [`U16CStr`] or [`U32CStr`] depending on platform. Intended to match typical C
+/// `wchar_t` size on platform.
 pub type WideCStr = UCStr<WideChar>;
