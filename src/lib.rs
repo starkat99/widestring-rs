@@ -225,14 +225,14 @@ pub use error::{
 };
 pub use ucstr::{U16CStr, U32CStr, UCStr, WideCStr};
 #[cfg(feature = "alloc")]
-pub use ucstring::*;
-pub use ustr::*;
+pub use ucstring::{U16CString, U32CString, UCString, WideCString};
+pub use ustr::{U16Str, U32Str, UStr, WideStr};
 #[cfg(feature = "alloc")]
-pub use ustring::*;
+pub use ustring::{U16String, U32String, UString, WideString};
 
 /// Marker trait for primitive types used to represent wide character data. Should not be used
 /// directly.
-pub trait UChar: core::fmt::Debug + Sized + Copy + Ord + Eq {
+pub trait UChar: core::fmt::Debug + Sized + Copy + Ord + Eq + private::Sealed {
     /// NULL character value
     const NULL: Self;
     #[doc(hidden)]
@@ -261,3 +261,10 @@ pub type WideChar = u32;
 /// Alias for [`u16`] or [`u32`] depending on platform. Intended to match typical C `wchar_t` size
 /// on platform.
 pub type WideChar = u16;
+
+mod private {
+    pub trait Sealed {}
+
+    impl Sealed for u16 {}
+    impl Sealed for u32 {}
+}
