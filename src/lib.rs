@@ -139,7 +139,7 @@
 //!     LocalFree(buffer as HLOCAL);
 //! }
 //! // Convert to a regular Rust String and use it to your heart's desire!
-//! let message = U16Str.to_string_lossy();
+//! let message = s.to_string_lossy();
 //! # assert_eq!(message, "The operation completed successfully.\r\n");
 //! # }
 //! ```
@@ -183,7 +183,7 @@
 //!     LocalFree(buffer as HLOCAL);
 //! }
 //! // Convert to a regular Rust String and use it to your heart's desire!
-//! let message = U16Str.to_string_lossy();
+//! let message = s.to_string_lossy();
 //! # assert_eq!(message, "The operation completed successfully.\r\n");
 //! # }
 //! ```
