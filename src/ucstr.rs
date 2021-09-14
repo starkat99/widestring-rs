@@ -202,7 +202,10 @@ impl<C: UChar> UCStr<C> {
         if slice.last() != Some(&UChar::NULL) {
             return Err(MissingNullTerminator.into());
         }
-        match slice[..slice.len()].iter().position(|x| *x == UChar::NULL) {
+        match slice[..slice.len() - 1]
+            .iter()
+            .position(|x| *x == UChar::NULL)
+        {
             None => Ok(unsafe { Self::from_slice_unchecked(slice) }),
             Some(i) => Err(ContainsNull::empty(i).into()),
         }
@@ -327,18 +330,18 @@ impl<C: UChar> UCStr<C> {
     /// use widestring::U16CString;
     ///
     /// let v = vec![102u16, 111u16, 111u16]; // "foo"
-    /// let c_string = U16CString::new(v.clone()).unwrap();
+    /// let c_string = U16CString::from_vec(v.clone()).unwrap();
     /// let boxed = c_string.into_boxed_ucstr();
-    /// assert_eq!(boxed.into_ucstring(), U16CString::new(v).unwrap());
+    /// assert_eq!(boxed.into_ucstring(), U16CString::from_vec(v).unwrap());
     /// ```
     ///
     /// ```
     /// use widestring::U32CString;
     ///
     /// let v = vec![102u32, 111u32, 111u32]; // "foo"
-    /// let c_string = U32CString::new(v.clone()).unwrap();
+    /// let c_string = U32CString::from_vec(v.clone()).unwrap();
     /// let boxed = c_string.into_boxed_ucstr();
-    /// assert_eq!(boxed.into_ucstring(), U32CString::new(v).unwrap());
+    /// assert_eq!(boxed.into_ucstring(), U32CString::from_vec(v).unwrap());
     /// ```
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]

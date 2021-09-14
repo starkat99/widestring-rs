@@ -77,7 +77,7 @@ impl<C: UChar> UCString<C> {
     /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
     /// # let cloned = v.clone();
     /// // Create a wide string from the vector
-    /// let wcstr = U16CString::new(v).unwrap();
+    /// let wcstr = U16CString::from_vec(v).unwrap();
     /// # assert_eq!(wcstr.into_vec(), cloned);
     /// ```
     ///
@@ -86,7 +86,7 @@ impl<C: UChar> UCString<C> {
     /// let v = vec![84u32, 104u32, 101u32]; // 'T' 'h' 'e'
     /// # let cloned = v.clone();
     /// // Create a wide string from the vector
-    /// let wcstr = U32CString::new(v).unwrap();
+    /// let wcstr = U32CString::from_vec(v).unwrap();
     /// # assert_eq!(wcstr.into_vec(), cloned);
     /// ```
     ///
@@ -112,7 +112,7 @@ impl<C: UChar> UCString<C> {
     pub fn from_vec(v: impl Into<Vec<C>>) -> Result<Self, ContainsNull<C>> {
         let v = v.into();
         // Check for null vals, ignoring null terminator
-        match v[..v.len()].iter().position(|&val| val == UChar::NULL) {
+        match v[..v.len() - 1].iter().position(|&val| val == UChar::NULL) {
             None => Ok(unsafe { Self::from_vec_unchecked(v) }),
             Some(pos) => Err(ContainsNull::new(pos, v)),
         }
@@ -130,7 +130,7 @@ impl<C: UChar> UCString<C> {
     /// let v = vec![84u16, 104u16, 101u16, 0u16]; // 'T' 'h' 'e' NUL
     /// # let cloned = v[..3].to_owned();
     /// // Create a wide string from the vector
-    /// let wcstr = U16CString::from_vec_with_nul(v).unwrap();
+    /// let wcstr = U16CString::from_vec_truncate(v);
     /// # assert_eq!(wcstr.into_vec(), cloned);
     /// ```
     ///
@@ -139,7 +139,7 @@ impl<C: UChar> UCString<C> {
     /// let v = vec![84u32, 104u32, 101u32, 0u32]; // 'T' 'h' 'e' NUL
     /// # let cloned = v[..3].to_owned();
     /// // Create a wide string from the vector
-    /// let wcstr = U32CString::from_vec_with_nul(v).unwrap();
+    /// let wcstr = U32CString::from_vec_truncate(v);
     /// # assert_eq!(wcstr.into_vec(), cloned);
     /// ```
     pub fn from_vec_truncate(v: impl Into<Vec<C>>) -> Self {
@@ -401,20 +401,20 @@ impl<C: UChar> UCString<C> {
     /// use widestring::{U16CString, U16CStr};
     ///
     /// let mut v = vec![102u16, 111u16, 111u16]; // "foo"
-    /// let c_string = U16CString::new(v.clone()).unwrap();
+    /// let c_string = U16CString::from_vec(v.clone()).unwrap();
     /// let boxed = c_string.into_boxed_ucstr();
     /// v.push(0);
-    /// assert_eq!(&*boxed, U16CStr::from_slice_with_nul(&v).unwrap());
+    /// assert_eq!(&*boxed, U16CStr::from_slice(&v).unwrap());
     /// ```
     ///
     /// ```
     /// use widestring::{U32CString, U32CStr};
     ///
     /// let mut v = vec![102u32, 111u32, 111u32]; // "foo"
-    /// let c_string = U32CString::new(v.clone()).unwrap();
+    /// let c_string = U32CString::from_vec(v.clone()).unwrap();
     /// let boxed = c_string.into_boxed_ucstr();
     /// v.push(0);
-    /// assert_eq!(&*boxed, U32CStr::from_slice_with_nul(&v).unwrap());
+    /// assert_eq!(&*boxed, U32CStr::from_slice(&v).unwrap());
     /// ```
     #[inline]
     pub fn into_boxed_ucstr(self) -> Box<UCStr<C>> {
@@ -561,7 +561,7 @@ impl UCString<u16> {
     /// use widestring::U16CString;
     /// let s = "My\u{0}String";
     /// // Create a wide string from the string
-    /// let wcstr = U16CString::from_str_with_nul(s).unwrap();
+    /// let wcstr = U16CString::from_str_truncate(s);
     /// assert_eq!(wcstr.to_string_lossy(), "My");
     /// ```
     #[inline]
@@ -650,7 +650,7 @@ impl UCString<u16> {
     /// use widestring::U16CString;
     /// let s = "My\u{0}String";
     /// // Create a wide string from the string
-    /// let wcstr = U16CString::from_os_str_with_nul(s).unwrap();
+    /// let wcstr = U16CString::from_os_str_truncate(s);
     /// assert_eq!(wcstr.to_string_lossy(), "My");
     /// ```
     #[inline]
@@ -754,7 +754,7 @@ impl UCString<u32> {
     /// let v: Vec<char> = "Test\u{0}".chars().collect();
     /// # let cloned: Vec<u32> = v[..4].iter().map(|&c| c as u32).collect();
     /// // Create a wide string from the vector
-    /// let wcstr = U32CString::from_chars_with_nul(v).unwrap();
+    /// let wcstr = U32CString::from_chars_truncate(v);
     /// # assert_eq!(wcstr.into_vec(), cloned);
     /// ```
     pub fn from_chars_truncate(v: impl Into<Vec<char>>) -> Self {
@@ -866,7 +866,7 @@ impl UCString<u32> {
     /// use widestring::U32CString;
     /// let s = "My\u{0}String";
     /// // Create a wide string from the string
-    /// let wcstr = U32CString::from_str_with_nul(s).unwrap();
+    /// let wcstr = U32CString::from_str_truncate(s);
     /// assert_eq!(wcstr.to_string_lossy(), "My");
     /// ```
     #[inline]
@@ -1066,7 +1066,7 @@ impl UCString<u32> {
     /// use widestring::U32CString;
     /// let s = "My\u{0}String";
     /// // Create a wide string from the string
-    /// let wcstr = U32CString::from_os_str_with_nul(s).unwrap();
+    /// let wcstr = U32CString::from_os_str_truncate(s);
     /// assert_eq!(wcstr.to_string_lossy(), "My");
     /// ```
     #[cfg(feature = "std")]
