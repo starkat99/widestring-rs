@@ -33,7 +33,7 @@ install_crate = false
 env = { RUSTDOCFLAGS = "-D warnings" }
 command = "cargo"
 args = [
-    "doc", 
+    "doc",
     "--workspace",
     "--no-deps",
     "@@remove-empty(CARGO_MAKE_CARGO_VERBOSE_FLAGS)",
@@ -42,7 +42,7 @@ args = [
 
 # Build & Test with no features enabled
 [tasks.post-ci-flow]
-run_task = [{ name = ["check-docs", "build-no-std", "test-no-std"] }]
+run_task = [{ name = ["check-docs", "build-no-std", "test-no-std", "build-alloc", "test-alloc"] }]
 
 [tasks.build-no-std]
 description = "Build without any features"
@@ -54,4 +54,16 @@ run_task = "build"
 description = "Run tests without any features"
 category = "Test"
 env = { CARGO_MAKE_CARGO_BUILD_TEST_FLAGS = "--no-default-features" }
+run_task = "test"
+
+[tasks.build-alloc]
+description = "Build with only the alloc feature"
+category = "Build"
+env = { CARGO_MAKE_CARGO_BUILD_TEST_FLAGS = "--no-default-features --features=alloc" }
+run_task = "build"
+
+[tasks.test-alloc]
+description = "Run tests with only the alloc feature"
+category = "Test"
+env = { CARGO_MAKE_CARGO_BUILD_TEST_FLAGS = "--no-default-features --features=alloc" }
 run_task = "test"
