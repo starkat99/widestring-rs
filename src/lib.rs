@@ -118,7 +118,7 @@
 //! # use winapi::shared::minwindef::DWORD;
 //! # let error_code: DWORD = 0;
 //!
-//! let U16Str: U16String;
+//! let s: U16String;
 //! unsafe {
 //!     // First, get a string buffer from some windows api such as FormatMessageW...
 //!     let mut buffer: LPWSTR = ptr::null_mut();
@@ -133,7 +133,7 @@
 //!                                 ptr::null_mut());
 //!
 //!     // Get the buffer as a wide string
-//!     U16Str = U16String::from_ptr(buffer, strlen as usize);
+//!     s = U16String::from_ptr(buffer, strlen as usize);
 //!     // Since U16String creates an owned copy, it's safe to free original buffer now
 //!     // If you didn't want an owned copy, you could use &U16Str.
 //!     LocalFree(buffer as HLOCAL);
@@ -162,7 +162,7 @@
 //! # use winapi::shared::minwindef::DWORD;
 //! # let error_code: DWORD = 0;
 //!
-//! let U16Str: U16CString;
+//! let s: U16CString;
 //! unsafe {
 //!     // First, get a string buffer from some windows api such as FormatMessageW...
 //!     let mut buffer: LPWSTR = ptr::null_mut();
@@ -177,7 +177,7 @@
 //!                    ptr::null_mut());
 //!
 //!     // Get the buffer as a wide string
-//!     U16Str = U16CString::from_ptr_str(buffer);
+//!     s = U16CString::from_ptr_str(buffer);
 //!     // Since U16CString creates an owned copy, it's safe to free original buffer now
 //!     // If you didn't want an owned copy, you could use &U16CStr.
 //!     LocalFree(buffer as HLOCAL);
