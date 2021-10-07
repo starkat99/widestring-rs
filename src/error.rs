@@ -155,13 +155,42 @@ impl core::fmt::Display for FromUtf32Error {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(
             f,
-            "error converting from to UTF-8, the UTF-32 value is invalid"
+            "error converting from UTF-32 to UTF-8, the UTF-32 value is invalid"
         )
     }
 }
 
 #[cfg(feature = "std")]
 impl std::error::Error for FromUtf32Error {}
+
+/// An error that can be returned when decoding UTF-32 code points
+///
+/// This error occurs when a [`u32`] value is outside the 21-bit Unicode code point range
+/// (>`U+10FFFF`) or is a UTF-16 surrogate value.
+#[derive(Debug, Clone)]
+pub struct DecodeUtf32Error {
+    code: u32,
+}
+
+impl DecodeUtf32Error {
+    pub(crate) fn new(code: u32) -> Self {
+        Self { code }
+    }
+
+    /// Returns the invalid code point value which caused the error
+    pub fn invalid_code_point(&self) -> u32 {
+        self.code
+    }
+}
+
+impl core::fmt::Display for DecodeUtf32Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "invalid UTF-32 code point: {:x}", self.code)
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for DecodeUtf32Error {}
 
 #[doc(hidden)]
 #[deprecated = "use `ContainsNull` instead"]

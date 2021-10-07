@@ -47,6 +47,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
     - `U32CStr::from_char_slice`
     - `UCStr::as_ustr`
     - `U32CString::from_char_ptr_str`
+- Added functions `decode_utf16_lossy`, `decode_utf32`, and `decode_utf32_lossy` and associated
+  iterators.
 
 ### Removed
 - Removed functions as part of simplifying to increase clarity. Old functions have been deprecated

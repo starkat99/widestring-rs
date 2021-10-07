@@ -209,6 +209,7 @@
 extern crate alloc;
 
 pub mod error;
+pub mod iter;
 #[cfg(feature = "std")]
 mod platform;
 mod ucstr;
@@ -261,6 +262,107 @@ pub type WideChar = u32;
 /// Alias for [`u16`] or [`u32`] depending on platform. Intended to match typical C `wchar_t` size
 /// on platform.
 pub type WideChar = u16;
+
+/// Creates a lossy decoder iterator over the possibly ill-formed UTF-16 encoded code points in
+/// `iter`
+///
+/// This is equivalent to [`char::decode_utf16`][core::char::decode_utf16] except that any unpaired
+/// UTF-16 surrogate values are replaced by
+/// [`U+FFFD REPLACEMENT_CHARACTER`][core::char::REPLACEMENT_CHARACTER] (�) instead of returning
+/// errors.
+///
+/// # Examples
+///
+/// ```
+/// use widestring::decode_utf16_lossy;
+///
+/// // 𝄞mus<invalid>ic<invalid>
+/// let v = [
+///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
+/// ];
+///
+/// assert_eq!(
+/// decode_utf16_lossy(v.iter().copied()).collect::<String>(),
+/// "𝄞mus�ic�"
+/// );
+/// ```
+#[inline]
+pub fn decode_utf16_lossy<I>(iter: I) -> iter::DecodeUtf16Lossy<<I as IntoIterator>::IntoIter>
+where
+    I: IntoIterator<Item = u16>,
+{
+    iter::DecodeUtf16Lossy {
+        iter: core::char::decode_utf16(iter),
+    }
+}
+
+/// Creates a decoder iterator over UTF-32 encoded code points in `iter`, returning invalid values
+/// as `Err`s
+///
+/// # Examples
+///
+/// ```
+/// use widestring::decode_utf32;
+///
+/// // 𝄞mus<invalid>ic<invalid>
+/// let v = [
+///     0x1D11E, 0x6d, 0x75, 0x73, 0xDD1E, 0x69, 0x63, 0x23FD5A,
+/// ];
+///
+/// assert_eq!(
+///     decode_utf32(v)
+///         .map(|r| r.map_err(|e| e.invalid_code_point()))
+///         .collect::<Vec<_>>(),
+///     vec![
+///         Ok('𝄞'),
+///         Ok('m'), Ok('u'), Ok('s'),
+///         Err(0xDD1E),
+///         Ok('i'), Ok('c'),
+///         Err(0x23FD5A)
+///     ]
+/// );
+/// ```
+#[inline]
+pub fn decode_utf32<I>(iter: I) -> iter::DecodeUtf32<<I as IntoIterator>::IntoIter>
+where
+    I: IntoIterator<Item = u32>,
+{
+    iter::DecodeUtf32 {
+        iter: iter.into_iter(),
+    }
+}
+
+/// Creates a lossy decoder iterator over the possibly ill-formed UTF-32 encoded code points in
+/// `iter`
+///
+/// This is equivalent to [`decode_utf32`] except that any invalid UTF-32 values are replaced by
+/// [`U+FFFD REPLACEMENT_CHARACTER`][core::char::REPLACEMENT_CHARACTER] (�) instead of returning
+/// errors.
+///
+/// # Examples
+///
+/// ```
+/// use widestring::decode_utf32_lossy;
+///
+/// // 𝄞mus<invalid>ic<invalid>
+/// let v = [
+///     0x1D11E, 0x6d, 0x75, 0x73, 0xDD1E, 0x69, 0x63, 0x23FD5A,
+/// ];
+///
+/// assert_eq!(
+/// decode_utf32_lossy(v.iter().copied()).collect::<String>(),
+/// "𝄞mus�ic�"
+/// );
+/// ```
+#[inline]
+pub fn decode_utf32_lossy<I>(iter: I) -> iter::DecodeUtf32Lossy<<I as IntoIterator>::IntoIter>
+where
+    I: IntoIterator<Item = u32>,
+{
+    iter::DecodeUtf32Lossy {
+        iter: decode_utf32(iter),
+    }
+}
 
 mod private {
     pub trait Sealed {}
