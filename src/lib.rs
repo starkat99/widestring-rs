@@ -319,7 +319,7 @@ where
 /// ];
 ///
 /// assert_eq!(
-///     decode_utf32(v)
+///     decode_utf32(v.iter().copied())
 ///         .map(|r| r.map_err(|e| e.invalid_code_point()))
 ///         .collect::<Vec<_>>(),
 ///     vec![
