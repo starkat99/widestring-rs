@@ -26,7 +26,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         self.iter
             .next()
-            .map(|res| res.unwrap_or(char::REPLACEMENT_CHARACTER))
+            .map(|res| res.unwrap_or(core::char::REPLACEMENT_CHARACTER))
     }
 
     #[inline]
@@ -54,7 +54,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         self.iter
             .next()
-            .map(|u| char::from_u32(u).ok_or_else(|| DecodeUtf32Error::new(u)))
+            .map(|u| core::char::from_u32(u).ok_or_else(|| DecodeUtf32Error::new(u)))
     }
 
     #[inline]
@@ -86,7 +86,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         self.iter
             .next()
-            .map(|res| res.unwrap_or(char::REPLACEMENT_CHARACTER))
+            .map(|res| res.unwrap_or(core::char::REPLACEMENT_CHARACTER))
     }
 
     #[inline]

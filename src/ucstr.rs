@@ -931,7 +931,7 @@ impl<'a> core::fmt::Display for Display<'a, u16> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for c in crate::decode_utf16_lossy(self.str.as_slice().iter().copied()) {
             // Allow alternate {:#} format which skips replacment chars entirely
-            if c != char::REPLACEMENT_CHARACTER || !f.alternate() {
+            if c != core::char::REPLACEMENT_CHARACTER || !f.alternate() {
                 f.write_char(c)?;
             }
         }
@@ -943,7 +943,7 @@ impl<'a> core::fmt::Display for Display<'a, u32> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for c in crate::decode_utf32_lossy(self.str.as_slice().iter().copied()) {
             // Allow alternate {:#} format which skips replacment chars entirely
-            if c != char::REPLACEMENT_CHARACTER || !f.alternate() {
+            if c != core::char::REPLACEMENT_CHARACTER || !f.alternate() {
                 f.write_char(c)?;
             }
         }
