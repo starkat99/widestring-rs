@@ -858,14 +858,14 @@ impl<C: UChar> Default for Box<UCStr<C>> {
 
 impl core::fmt::Debug for U16CStr {
     #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         crate::debug_fmt_u16(self.as_slice_with_null(), f)
     }
 }
 
 impl core::fmt::Debug for U32CStr {
     #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         crate::debug_fmt_u32(self.as_slice_with_null(), f)
     }
 }
@@ -915,14 +915,14 @@ pub struct Display<'a, C: UChar> {
 
 impl<'a> core::fmt::Debug for Display<'a, u16> {
     #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::fmt::Debug::fmt(&self.str, f)
     }
 }
 
 impl<'a> core::fmt::Debug for Display<'a, u32> {
     #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::fmt::Debug::fmt(&self.str, f)
     }
 }

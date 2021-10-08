@@ -184,7 +184,7 @@ impl DecodeUtf32Error {
 }
 
 impl core::fmt::Display for DecodeUtf32Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "invalid UTF-32 code point: {:x}", self.code)
     }
 }

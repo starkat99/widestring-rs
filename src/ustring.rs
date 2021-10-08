@@ -533,14 +533,14 @@ impl UString<u32> {
 
 impl core::fmt::Debug for U16String {
     #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         crate::debug_fmt_u16(self.as_slice(), f)
     }
 }
 
 impl core::fmt::Debug for U32String {
     #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         crate::debug_fmt_u32(self.as_slice(), f)
     }
 }
