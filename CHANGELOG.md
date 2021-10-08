@@ -52,6 +52,31 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   iterators.
 - Added `display` method to to both `UStr` and `UCStr` to display strings in formatting without heap
   allocations, similar to `Path::display`. Fixes [#20].
+- Added more trait implementations.
+- Added new mutable functions to strings:
+    - `UStr::from_ptr_mut`
+    - `UStr::from_slice_mut`
+    - `UStr::as_mut_slice`
+    - `UStr::as_mut_ptr`
+    - `U32Str::from_char_ptr_mut`
+    - `U32Str::from_char_slice_mut`
+    - `UCStr::from_ptr_str_mut`
+    - `UCStr::from_ptr_mut`
+    - `UCStr::from_ptr_truncate_mut`
+    - `UCStr::from_ptr_unchecked_mut`
+    - `UCStr::from_slice_mut`
+    - `UCStr::from_slice_truncate_mut`
+    - `UCStr::from_slice_unchecked_mut`
+    - `UCStr::as_mut_slice`
+    - `UCStr::as_mut_ptr`
+    - `UCStr::as_mut_ustr`
+    - `U32CStr::from_char_ptr_str_mut`
+    - `U32CStr::from_char_ptr_mut`
+    - `U32CStr::from_char_ptr_truncate_mut`
+    - `U32CStr::from_char_ptr_unchecked_mut`
+    - `U32CStr::from_char_slice_mut`
+    - `U32CStr::from_char_slice_truncate_mut`
+    - `U32CStr::from_char_slice_unchecked_mut`
 
 ### Deprecated
 - Deprecated functions as part of simplifying to increase clarity. These will be removed entirely

@@ -11,7 +11,7 @@ use alloc::{
 use core::{
     borrow::Borrow,
     mem,
-    ops::{Deref, Index, RangeFull},
+    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
     ptr, slice,
 };
 
@@ -581,6 +581,10 @@ impl UCString<u16> {
     /// character.
     /// The resulting string will always be null-terminated even if the original string is not.
     ///
+    /// Note that the encoding of [`OsStr`][std::ffi::OsStr] is platform-dependent, so on
+    /// some platforms this may make an encoding conversions, while on other platforms (such as
+    /// windows) no changes to the string will be made.
+    ///
     /// # Errors
     ///
     /// This function will return an error if the data contains a null value anywhere except the
@@ -620,6 +624,10 @@ impl UCString<u16> {
     ///
     /// The resulting string will always be null-terminated even if the original string is not.
     ///
+    /// Note that the encoding of [`OsStr`][std::ffi::OsStr] is platform-dependent, so on
+    /// some platforms this may make an encoding conversions, while on other platforms (such as
+    /// windows) no changes to the string will be made.
+    ///
     /// # Safety
     ///
     /// This method is equivalent to [`from_os_str`][Self::from_os_str] except that no runtime
@@ -647,6 +655,10 @@ impl UCString<u16> {
     ///
     /// The string will be truncated at the first null value in the string.
     /// The resulting string will always be null-terminated even if the original string is not.
+    ///
+    /// Note that the encoding of [`OsStr`][std::ffi::OsStr] is platform-dependent, so on
+    /// some platforms this may make an encoding conversions, while on other platforms (such as
+    /// windows) no changes to the string will be made.
     ///
     /// # Examples
     ///
@@ -996,6 +1008,10 @@ impl UCString<u32> {
     /// character.
     /// The resulting string will always be null-terminated even if the string is not.
     ///
+    /// Note that the encoding of [`OsStr`][std::ffi::OsStr] is platform-dependent, so on
+    /// some platforms this may make an encoding conversions, while on other platforms no changes to
+    /// the string will be made.
+    ///
     /// # Errors
     ///
     /// This function will return an error if the data contains a null value anywhere except the
@@ -1035,6 +1051,10 @@ impl UCString<u32> {
     ///
     /// The resulting string will always be null-terminated even if the string is not.
     ///
+    /// Note that the encoding of [`OsStr`][std::ffi::OsStr] is platform-dependent, so on
+    /// some platforms this may make an encoding conversions, while on other platforms no changes to
+    /// the string will be made.
+    ///
     /// # Safety
     ///
     /// This method is equivalent to [`from_os_str`][Self::from_os_str] except that no runtime
@@ -1063,6 +1083,10 @@ impl UCString<u32> {
     ///
     /// The string will be truncated at the first null value in the string.
     /// The resulting string will always be null-terminated even if the string is not.
+    ///
+    /// Note that the encoding of [`OsStr`][std::ffi::OsStr] is platform-dependent, so on
+    /// some platforms this may make an encoding conversions, while on other platforms no changes to
+    /// the string will be made.
     ///
     /// # Examples
     ///
@@ -1208,12 +1232,24 @@ impl<C: UChar> Index<RangeFull> for UCString<C> {
     }
 }
 
+impl<C: UChar> IndexMut<RangeFull> for UCString<C> {
+    fn index_mut(&mut self, _index: RangeFull) -> &mut Self::Output {
+        UCStr::from_inner_mut(&mut self.inner)
+    }
+}
+
 impl<C: UChar> Deref for UCString<C> {
     type Target = UCStr<C>;
 
     #[inline]
     fn deref(&self) -> &UCStr<C> {
         &self[..]
+    }
+}
+
+impl<C: UChar> DerefMut for UCString<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self[..]
     }
 }
 
@@ -1262,6 +1298,12 @@ impl<'a> From<&'a UCStr<u32>> for Cow<'a, UCStr<u32>> {
     #[inline]
     fn from(s: &'a UCStr<u32>) -> Cow<'a, UCStr<u32>> {
         Cow::Borrowed(s)
+    }
+}
+
+impl<C: UChar> AsMut<UCStr<C>> for UCString<C> {
+    fn as_mut(&mut self) -> &mut UCStr<C> {
+        self
     }
 }
 

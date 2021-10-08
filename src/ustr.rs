@@ -70,6 +70,35 @@ impl<C: UChar> UStr<C> {
         &*(slice as *const UStr<C>)
     }
 
+    /// Constructs a mutable [`UStr`] from a mutable pointer and a length
+    ///
+    /// The `len` argument is the number of elements, **not** the number of bytes. No copying or
+    /// allocation is performed, the resulting value is a direct reference to the pointer bytes.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len`
+    /// elements.
+    ///
+    /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts_mut].
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `p` is null.
+    ///
+    /// # Caveat
+    ///
+    /// The lifetime for the returned string is inferred from its usage. To prevent accidental
+    /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
+    /// context, such as by providing a helper function taking the lifetime of a host value for the
+    /// string, or by explicit annotation.
+    #[inline]
+    pub unsafe fn from_ptr_mut<'a>(p: *mut C, len: usize) -> &'a mut Self {
+        assert!(!p.is_null());
+        let slice: *mut [C] = slice::from_raw_parts_mut(p, len);
+        &mut *(slice as *mut UStr<C>)
+    }
+
     /// Constructs a [`UStr`] from a slice of character data
     ///
     /// No checks are performed on the slice. It may or may not be valid for its encoding.
@@ -77,6 +106,15 @@ impl<C: UChar> UStr<C> {
     pub fn from_slice(slice: &[C]) -> &Self {
         let ptr: *const [C] = slice;
         unsafe { &*(ptr as *const UStr<C>) }
+    }
+
+    /// Constructs a mutable [`UStr`] from a mutable slice of character data
+    ///
+    /// No checks are performed on the slice. It may or may not be valid for its encoding.
+    #[inline]
+    pub fn from_slice_mut(slice: &mut [C]) -> &mut Self {
+        let ptr: *mut [C] = slice;
+        unsafe { &mut *(ptr as *mut UStr<C>) }
     }
 
     /// Copies the string reference to a new owned [`UString`][crate::UString]
@@ -93,12 +131,38 @@ impl<C: UChar> UStr<C> {
         &self.inner
     }
 
+    /// Converts to a mutable slice of the string
+    pub fn as_mut_slice(&mut self) -> &mut [C] {
+        &mut self.inner
+    }
+
     /// Returns a raw pointer to the string
     ///
-    /// The pointer is valid only as long as the lifetime of this reference.
+    /// The caller must ensure that the string outlives the pointer this function returns, or else
+    /// it will end up pointing to garbage.
+    ///
+    /// The caller must also ensure that the memory the pointer (non-transitively) points to is
+    /// never written to (except inside an `UnsafeCell`) using this pointer or any pointer derived
+    /// from it. If you need to mutate the contents of the string, use
+    /// [`as_mut_ptr`][Self::as_mut_ptr].
+    ///
+    /// Modifying the container referenced by this string may cause its buffer to be reallocated,
+    /// which would also make any pointers to it invalid.
     #[inline]
     pub fn as_ptr(&self) -> *const C {
         self.inner.as_ptr()
+    }
+
+    /// Returns an unsafe mutable raw pointer to the string
+    ///
+    /// The caller must ensure that the string outlives the pointer this function returns, or else
+    /// it will end up pointing to garbage.
+    ///
+    /// Modifying the container referenced by this string may cause its buffer to be reallocated,
+    /// which would also make any pointers to it invalid.
+    #[inline]
+    pub fn as_mut_ptr(&mut self) -> *mut C {
+        self.inner.as_mut_ptr()
     }
 
     /// Returns the length of the string as number of elements (**not** number of bytes)
@@ -178,6 +242,10 @@ impl UStr<u16> {
     /// This makes a string copy of the [`U16Str`]. Since [`U16Str`] makes no guarantees that it is
     /// valid UTF-16, there is no guarantee that the resulting [`OsString`][std::ffi::OsString] will
     /// be valid encoding either.
+    ///
+    /// Note that the encoding of [`OsString`][std::ffi::OsString] is platform-dependent, so on
+    /// some platforms this may make an encoding conversions, while on other platforms (such as
+    /// windows) no changes to the string will be made.
     ///
     /// # Examples
     ///
@@ -278,6 +346,33 @@ impl UStr<u32> {
         Self::from_ptr(p as *const u32, len)
     }
 
+    /// Constructs a mutable [`U32Str`] from a mutable [`char`][prim@char] pointer and a length
+    ///
+    /// The `len` argument is the number of `char` elements, **not** the number of bytes. No copying
+    /// or allocation is performed, the resulting value is a direct reference to the pointer bytes.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len`
+    /// elements.
+    ///
+    /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts_mut].
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `p` is null.
+    ///
+    /// # Caveat
+    ///
+    /// The lifetime for the returned string is inferred from its usage. To prevent accidental
+    /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
+    /// context, such as by providing a helper function taking the lifetime of a host value for the
+    /// string, or by explicit annotation.
+    #[inline]
+    pub unsafe fn from_char_ptr_mut<'a>(p: *mut char, len: usize) -> &'a mut Self {
+        Self::from_ptr_mut(p as *mut u32, len)
+    }
+
     /// Constructs a [`U32Str`] from a [`char`][prim@char] slice
     ///
     /// No checks are performed on the slice.
@@ -287,11 +382,24 @@ impl UStr<u32> {
         unsafe { &*(ptr as *const Self) }
     }
 
+    /// Constructs a mutable [`U32Str`] from a mutable [`char`][prim@char] slice
+    ///
+    /// No checks are performed on the slice.
+    #[inline]
+    pub fn from_char_slice_mut(slice: &mut [char]) -> &mut Self {
+        let ptr: *mut [char] = slice;
+        unsafe { &mut *(ptr as *mut Self) }
+    }
+
     /// Decodes a string to an owned [`OsString`][std::ffi::OsString]
     ///
     /// This makes a string copy of the [`U32Str`]. Since [`U32Str`] makes no guarantees that it is
     /// valid UTF-32, there is no guarantee that the resulting [`OsString`][std::ffi::OsString] will
     /// be valid data.
+    ///
+    /// Note that the encoding of [`OsString`][std::ffi::OsString] is platform-dependent, so on
+    /// some platforms this may make an encoding conversions, while on other platforms no changes to
+    /// the string will be made.
     ///
     /// # Examples
     ///

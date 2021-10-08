@@ -12,7 +12,7 @@ use alloc::{
 use core::{
     borrow::Borrow,
     char, cmp, mem,
-    ops::{Deref, Index, RangeFull},
+    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
     slice,
 };
 
@@ -176,6 +176,12 @@ impl<C: UChar> UString<C> {
         self
     }
 
+    /// Converts to a mutable [`UStr`] reference
+    #[inline]
+    pub fn as_mut_ustr(&mut self) -> &mut UStr<C> {
+        self
+    }
+
     /// Extends the string with the given string slice
     ///
     /// No checks are performed on the strings. It is possible to end up null values inside the
@@ -329,6 +335,10 @@ impl UString<u16> {
     /// makes no  guarantees that it is valid data, there is no guarantee that the resulting
     /// [`U16String`] will be valid UTF-16.
     ///
+    /// Note that the encoding of [`OsStr`][std::ffi::OsStr] is platform-dependent, so on
+    /// some platforms this may make an encoding conversions, while on other platforms (such as
+    /// windows) no changes to the string will be made.
+    ///
     /// # Examples
     ///
     /// ```rust
@@ -448,6 +458,10 @@ impl UString<u32> {
     /// This makes a string copy of the [`OsStr`][std::ffi::OsStr]. Since [`OsStr`][std::ffi::OsStr]
     /// makes no guarantees that it is valid data, there is no guarantee that the resulting
     /// [`U32String`] will be valid UTF-32.
+    ///
+    /// Note that the encoding of [`OsStr`][std::ffi::OsStr] is platform-dependent, so on
+    /// some platforms this may make an encoding conversions, while on other platforms no changes to
+    /// the string will be made.
     ///
     /// # Examples
     ///
@@ -649,12 +663,24 @@ impl<C: UChar> Index<RangeFull> for UString<C> {
     }
 }
 
+impl<C: UChar> IndexMut<RangeFull> for UString<C> {
+    fn index_mut(&mut self, _index: RangeFull) -> &mut Self::Output {
+        UStr::from_slice_mut(&mut self.inner)
+    }
+}
+
 impl<C: UChar> Deref for UString<C> {
     type Target = UStr<C>;
 
     #[inline]
     fn deref(&self) -> &UStr<C> {
         &self[..]
+    }
+}
+
+impl<C: UChar> DerefMut for UString<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self[..]
     }
 }
 
@@ -727,6 +753,34 @@ impl<'a> From<&'a UStr<u32>> for Cow<'a, UStr<u32>> {
     #[inline]
     fn from(s: &'a UStr<u32>) -> Self {
         Cow::Borrowed(s)
+    }
+}
+
+impl<C: UChar> AsMut<UStr<C>> for UStr<C> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut UStr<C> {
+        self
+    }
+}
+
+impl<C: UChar> AsMut<UStr<C>> for UString<C> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut UStr<C> {
+        self
+    }
+}
+
+impl<C: UChar> AsMut<[C]> for UStr<C> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut [C] {
+        self.as_mut_slice()
+    }
+}
+
+impl<C: UChar> AsMut<[C]> for UString<C> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut [C] {
+        self.as_mut_slice()
     }
 }
 
