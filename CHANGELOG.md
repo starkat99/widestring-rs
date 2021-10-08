@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   and trying to be more consistent with name conventions and functionality across types. Check
   renamed function docs for any changes in functionality, as there have been some minor tweaks 
   (mostly relaxing/removing error conditions and reducing panics). Old names have been deprecated
-  to ease transition. Fixes [#18].
+  to ease transition and will be removed in a future release. Fixes [#18].
   - `UChar::NUL` => `NULL`
   - `MissingNulError` => `MissingNullTerminator`
   - `NulError` => `ContainsNull`
@@ -53,9 +53,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added `display` method to to both `UStr` and `UCStr` to display strings in formatting without heap
   allocations, similar to `Path::display`. Fixes [#20].
 
-### Removed
-- Removed functions as part of simplifying to increase clarity. Old functions have been deprecated
-  to ease transition.
+### Deprecated
+- Deprecated functions as part of simplifying to increase clarity. These will be removed entirely
+  in a future release.
     - `UCString::from_vec_with_nul_unchecked`. Use `from_vec_unchecked` instead.
     - `UCString::from_ustr_with_nul_unchecked`. Use `from_ustr_unchecked` instead.
     - `UCString::from_ptr_with_nul_unchecked`. Use `from_ptr_unchecked` instead.
