@@ -106,7 +106,7 @@ impl<C: UChar> UCStr<C> {
     pub unsafe fn from_ptr<'a>(p: *const C, len: usize) -> Result<&'a Self, NullError<C>> {
         assert!(!p.is_null());
         if *p.add(len) != UChar::NULL {
-            return Err(MissingNullTerminator.into());
+            return Err(MissingNullTerminator::new().into());
         }
         for i in 0..len {
             if *p.add(i) == UChar::NULL {
@@ -155,7 +155,7 @@ impl<C: UChar> UCStr<C> {
                 return Ok(Self::from_ptr_unchecked(p, i));
             }
         }
-        Err(MissingNullTerminator)
+        Err(MissingNullTerminator::new())
     }
 
     /// Constructs a [`UCStr`] from a pointer and a length without checking for any null values
@@ -204,7 +204,7 @@ impl<C: UChar> UCStr<C> {
     /// An error is also returned if the last value of the slice is not a null terminator.
     pub fn from_slice(slice: &[C]) -> Result<&Self, NullError<C>> {
         if slice.last() != Some(&UChar::NULL) {
-            return Err(MissingNullTerminator.into());
+            return Err(MissingNullTerminator::new().into());
         }
         match slice[..slice.len() - 1]
             .iter()
@@ -225,7 +225,7 @@ impl<C: UChar> UCStr<C> {
     /// If there are no null values in the slice, an error is returned.
     pub fn from_slice_truncate(slice: &[C]) -> Result<&Self, MissingNullTerminator> {
         match slice.iter().position(|x| *x == UChar::NULL) {
-            None => Err(MissingNullTerminator),
+            None => Err(MissingNullTerminator::new()),
             Some(i) => Ok(unsafe { Self::from_slice_unchecked(&slice[..i + 1]) }),
         }
     }

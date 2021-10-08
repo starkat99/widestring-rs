@@ -66,7 +66,15 @@ impl<C> From<ContainsNull<C>> for NullError<C> {
 
 /// An error returned from to indicate that a terminating null value was missing
 #[derive(Debug, Clone)]
-pub struct MissingNullTerminator;
+pub struct MissingNullTerminator {
+    _unused: (),
+}
+
+impl MissingNullTerminator {
+    pub(crate) fn new() -> Self {
+        Self { _unused: () }
+    }
+}
 
 impl core::fmt::Display for MissingNullTerminator {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
@@ -149,7 +157,15 @@ impl<C: crate::UChar> std::error::Error for ContainsNull<C> {}
 /// This error occurs when a [`u32`] value is outside the 21-bit Unicode code point range
 /// (>`U+10FFFF`) or is a UTF-16 surrogate value.
 #[derive(Debug, Clone)]
-pub struct FromUtf32Error;
+pub struct FromUtf32Error {
+    _unused: (),
+}
+
+impl FromUtf32Error {
+    pub(crate) fn new() -> Self {
+        Self { _unused: () }
+    }
+}
 
 impl core::fmt::Display for FromUtf32Error {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
