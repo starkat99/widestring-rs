@@ -1,3 +1,7 @@
+//! Owned, growable wide strings
+//!
+//! This module contains the [`UString`] strings and related types.
+
 use crate::{UChar, UStr, WideChar};
 use alloc::{
     borrow::{Cow, ToOwned},
@@ -54,7 +58,7 @@ use core::{
 /// assert_eq!(rust_str, "Test");
 /// ```
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UString<C: UChar> {
     pub(crate) inner: Vec<C>,
 }
@@ -524,6 +528,20 @@ impl UString<u32> {
     pub fn push_os_str(&mut self, s: impl AsRef<std::ffi::OsStr>) {
         self.inner
             .extend(s.as_ref().to_string_lossy().chars().map(|c| c as u32))
+    }
+}
+
+impl core::fmt::Debug for U16String {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        crate::debug_fmt_u16(self.as_slice(), f)
+    }
+}
+
+impl core::fmt::Debug for U32String {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        crate::debug_fmt_u32(self.as_slice(), f)
     }
 }
 

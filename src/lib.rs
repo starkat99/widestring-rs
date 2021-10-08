@@ -208,16 +208,18 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+use core::fmt::Write;
+
 pub mod error;
 pub mod iter;
 #[cfg(feature = "std")]
 mod platform;
-mod ucstr;
+pub mod ucstr;
 #[cfg(feature = "alloc")]
-mod ucstring;
-mod ustr;
+pub mod ucstring;
+pub mod ustr;
 #[cfg(feature = "alloc")]
-mod ustring;
+pub mod ustring;
 
 #[doc(no_inline)]
 #[allow(deprecated)]
@@ -251,6 +253,13 @@ impl UChar for u32 {
     const NULL: u32 = 0;
     #[doc(hidden)]
     const NUL: u32 = 0;
+}
+
+mod private {
+    pub trait Sealed {}
+
+    impl Sealed for u16 {}
+    impl Sealed for u32 {}
 }
 
 #[cfg(not(windows))]
@@ -364,9 +373,46 @@ where
     }
 }
 
-mod private {
-    pub trait Sealed {}
+/// Debug implementation for any U16 string
+///
+/// Properly encoded input data will output valid strings with escape sequences, however invalid
+/// encoding will purposefully output any unpaired surrogate as \<XXXX> which is not a valid escape
+/// sequence. This is intentional, as debug output is not meant to be parsed by read by humans.
+fn debug_fmt_u16(s: &[u16], fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    fmt.write_char('"')?;
+    for res in core::char::decode_utf16(s.iter().copied()) {
+        match res {
+            Ok(ch) => {
+                for c in ch.escape_debug() {
+                    fmt.write_char(c)?;
+                }
+            }
+            Err(e) => {
+                write!(fmt, "\\<{:X}>", e.unpaired_surrogate())?;
+            }
+        }
+    }
+    fmt.write_char('"')
+}
 
-    impl Sealed for u16 {}
-    impl Sealed for u32 {}
+/// Debug implementation for any U16 string
+///
+/// Properly encoded input data will output valid strings with escape sequences, however invalid
+/// encoding will purposefully output any  invalid code point as \<XXXX> which is not a valid escape
+/// sequence. This is intentional, as debug output is not meant to be parsed by read by humans.
+fn debug_fmt_u32(s: &[u32], fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    fmt.write_char('"')?;
+    for res in decode_utf32(s.iter().copied()) {
+        match res {
+            Ok(ch) => {
+                for c in ch.escape_debug() {
+                    fmt.write_char(c)?;
+                }
+            }
+            Err(e) => {
+                write!(fmt, "\\<{:X}>", e.invalid_code_point())?;
+            }
+        }
+    }
+    fmt.write_char('"')
 }

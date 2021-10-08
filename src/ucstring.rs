@@ -1,3 +1,7 @@
+//! C-style owned, growable wide strings
+//!
+//! This module contains the [`UCString`] strings and related types.
+
 use crate::{ContainsNull, UCStr, UChar, UStr, UString, WideChar};
 use alloc::{
     borrow::{Cow, ToOwned},
@@ -52,7 +56,7 @@ use core::{
 /// assert_eq!(rust_str, "Test");
 /// ```
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UCString<C: UChar> {
     pub(crate) inner: Box<[C]>,
 }
@@ -1134,6 +1138,20 @@ impl UCString<u32> {
     #[deprecated = "use `from_char_ptr_unchecked` instead"]
     pub unsafe fn from_char_ptr_with_nul_unchecked(p: *const char, len: usize) -> Self {
         Self::from_char_ptr_unchecked(p, len)
+    }
+}
+
+impl core::fmt::Debug for U16CString {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        crate::debug_fmt_u16(self.as_slice_with_null(), f)
+    }
+}
+
+impl core::fmt::Debug for U32CString {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        crate::debug_fmt_u32(self.as_slice_with_null(), f)
     }
 }
 

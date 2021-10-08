@@ -1,3 +1,7 @@
+//! C-style wide string slices
+//!
+//! This module contains the [`UCStr`] string slices and related types.
+
 use crate::{ContainsNull, MissingNullTerminator, NullError, UChar, UStr, WideChar};
 #[cfg(feature = "alloc")]
 use alloc::{
@@ -5,7 +9,7 @@ use alloc::{
     boxed::Box,
     string::{FromUtf16Error, String},
 };
-use core::slice;
+use core::{fmt::Write, slice};
 
 /// C-style wide string reference for [`UCString`][crate::UCString]
 ///
@@ -21,7 +25,7 @@ use core::slice;
 ///
 /// Please prefer using the type aliases [`U16CStr`], [`U32CStr`], or [`WideCStr`] to using
 /// [`UCStr`] directly.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UCStr<C> {
     inner: [C],
 }
@@ -389,6 +393,54 @@ impl<C: UChar> UCStr<C> {
     pub(crate) fn from_inner(slice: &[C]) -> &UCStr<C> {
         let ptr: *const [C] = slice;
         unsafe { &*(ptr as *const UCStr<C>) }
+    }
+
+    /// Returns an object that implements [`Display`][std::fmt::Display] for printing strings that
+    /// may contain non-Unicode data
+    ///
+    /// A [`UCStr`] might contain ill-formed UTF encoding. This struct implements the
+    /// [`Display`][std::fmt::Display] trait in a way that decoding the string is lossy but no heap
+    /// allocations are performed, such as by [`to_string_lossy`][UCStr::to_string_lossy].
+    ///
+    /// By default, invalid Unicode data is replaced with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). If you wish to simply
+    /// skip any invalid Uncode data and forego the replacement, you may use the
+    /// [alternate formatting][std::fmt#sign0] with `{:#}`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use widestring::U16CStr;
+    ///
+    /// // 𝄞mus<invalid>ic<invalid>
+    /// let s = U16CStr::from_slice(&[
+    ///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834, 0x0000,
+    /// ]).unwrap();
+    ///
+    /// assert_eq!(format!("{}", s.display()),
+    /// "𝄞mus�ic�"
+    /// );
+    /// ```
+    ///
+    /// Using alternate formatting style to skip invalid values entirely:
+    ///
+    /// ```
+    /// use widestring::U16CStr;
+    ///
+    /// // 𝄞mus<invalid>ic<invalid>
+    /// let s = U16CStr::from_slice(&[
+    ///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834, 0x0000,
+    /// ]).unwrap();
+    ///
+    /// assert_eq!(format!("{:#}", s.display()),
+    /// "𝄞music"
+    /// );
+    /// ```
+    #[inline]
+    pub fn display(&self) -> Display<'_, C> {
+        Display { str: self }
     }
 }
 
@@ -804,6 +856,20 @@ impl<C: UChar> Default for Box<UCStr<C>> {
     }
 }
 
+impl core::fmt::Debug for U16CStr {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        crate::debug_fmt_u16(self.as_slice_with_null(), f)
+    }
+}
+
+impl core::fmt::Debug for U32CStr {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        crate::debug_fmt_u32(self.as_slice_with_null(), f)
+    }
+}
+
 /// C-style string reference for [`U16CString`][crate::U16CString]
 ///
 /// [`U16CStr`] is aware of null values. Unless unchecked conversions are used, all [`U16CStr`]
@@ -831,3 +897,56 @@ pub type U32CStr = UCStr<u32>;
 /// Alias for [`U16CStr`] or [`U32CStr`] depending on platform. Intended to match typical C
 /// `wchar_t` size on platform.
 pub type WideCStr = UCStr<WideChar>;
+
+/// Helper struct for printing [`UCStr`] values with [`format!`] and `{}`
+///
+/// A [`UCStr`] might contain ill-formed UTF encoding. This struct implements the
+/// [`Display`][std::fmt::Display] trait in a way that decoding the string is lossy but no heap
+/// allocations are performed, such as by [`to_string_lossy`][UCStr::to_string_lossy]. It is created
+/// by the [`display`][UCStr::display] method on [`UCStr`].
+///
+/// By default, invalid Unicode data is replaced with
+/// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). If you wish to simply
+/// skip any invalid Uncode data and forego the replacement, you may use the
+/// [alternate formatting][std::fmt#sign0] with `{:#}`.
+pub struct Display<'a, C: UChar> {
+    str: &'a UCStr<C>,
+}
+
+impl<'a> core::fmt::Debug for Display<'a, u16> {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        core::fmt::Debug::fmt(&self.str, f)
+    }
+}
+
+impl<'a> core::fmt::Debug for Display<'a, u32> {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        core::fmt::Debug::fmt(&self.str, f)
+    }
+}
+
+impl<'a> core::fmt::Display for Display<'a, u16> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        for c in crate::decode_utf16_lossy(self.str.as_slice().iter().copied()) {
+            // Allow alternate {:#} format which skips replacment chars entirely
+            if c != char::REPLACEMENT_CHARACTER || !f.alternate() {
+                f.write_char(c)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<'a> core::fmt::Display for Display<'a, u32> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        for c in crate::decode_utf32_lossy(self.str.as_slice().iter().copied()) {
+            // Allow alternate {:#} format which skips replacment chars entirely
+            if c != char::REPLACEMENT_CHARACTER || !f.alternate() {
+                f.write_char(c)?;
+            }
+        }
+        Ok(())
+    }
+}

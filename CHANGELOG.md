@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - `U32CString::from_chars_with_nul` => `from_chars_truncate`
   - `U32CString::from_char_ptr_with_nul` => `from_char_ptr_truncate`
 - Improved implementations in some areas to reduce unncessary double allocations.
+- Improved `Debug` implementations. No more debugging lists of raw integer values.
 - Migrated crate to Rust 2018 edition.
 - Minimum supported Rust version is now 1.48.
 - Made crate package [REUSE compliant](https://reuse.software/).
@@ -49,6 +50,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
     - `U32CString::from_char_ptr_str`
 - Added functions `decode_utf16_lossy`, `decode_utf32`, and `decode_utf32_lossy` and associated
   iterators.
+- Added `display` method to to both `UStr` and `UCStr` to display strings in formatting without heap
+  allocations, similar to `Path::display`. Fixes [#20].
 
 ### Removed
 - Removed functions as part of simplifying to increase clarity. Old functions have been deprecated
@@ -135,6 +138,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [#2]: https://github.com/starkat99/widestring-rs/issues/2
 [#14]: https://github.com/starkat99/widestring-rs/issues/14
 [#18]: https://github.com/starkat99/widestring-rs/issues/18
+[#20]: https://github.com/starkat99/widestring-rs/issues/20
 
 [@nicbn]: https://github.com/nicbn
 [@joshwd36]: https://github.com/joshwb36
