@@ -3,19 +3,19 @@
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-/// An error returned to indicate a problem with null values occurred
+/// An error returned to indicate a problem with nul values occurred
 ///
-/// The error will either being a [`MissingNullTerminator`] or [`ContainsNull`].
+/// The error will either being a [`MissingNulTerminator`] or [`ContainsNul`].
 /// The error optionally returns the ownership of the invalid vector whenever a vector was owned.
 #[derive(Debug, Clone)]
-pub enum NullError<C> {
-    /// A terminating null value was missing
-    MissingNullTerminator(MissingNullTerminator),
-    /// An interior null value was found
-    ContainsNull(ContainsNull<C>),
+pub enum NulError<C> {
+    /// A terminating nul value was missing
+    MissingNulTerminator(MissingNulTerminator),
+    /// An interior nul value was found
+    ContainsNul(ContainsNul<C>),
 }
 
-impl<C> NullError<C> {
+impl<C> NulError<C> {
     /// Consumes this error, returning the underlying vector of values which generated the error in
     /// the first place
     #[inline]
@@ -23,75 +23,75 @@ impl<C> NullError<C> {
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn into_vec(self) -> Option<Vec<C>> {
         match self {
-            Self::MissingNullTerminator(_) => None,
-            Self::ContainsNull(e) => e.into_vec(),
+            Self::MissingNulTerminator(_) => None,
+            Self::ContainsNul(e) => e.into_vec(),
         }
     }
 }
 
-impl<C> core::fmt::Display for NullError<C> {
+impl<C> core::fmt::Display for NulError<C> {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match self {
-            Self::MissingNullTerminator(e) => e.fmt(f),
-            Self::ContainsNull(e) => e.fmt(f),
+            Self::MissingNulTerminator(e) => e.fmt(f),
+            Self::ContainsNul(e) => e.fmt(f),
         }
     }
 }
 
 #[cfg(feature = "std")]
-impl<C: crate::UChar + 'static> std::error::Error for NullError<C> {
+impl<C: crate::UChar + 'static> std::error::Error for NulError<C> {
     #[inline]
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::MissingNullTerminator(e) => Some(e),
-            Self::ContainsNull(e) => Some(e),
+            Self::MissingNulTerminator(e) => Some(e),
+            Self::ContainsNul(e) => Some(e),
         }
     }
 }
 
-impl<C> From<MissingNullTerminator> for NullError<C> {
+impl<C> From<MissingNulTerminator> for NulError<C> {
     #[inline]
-    fn from(value: MissingNullTerminator) -> Self {
-        Self::MissingNullTerminator(value)
+    fn from(value: MissingNulTerminator) -> Self {
+        Self::MissingNulTerminator(value)
     }
 }
 
-impl<C> From<ContainsNull<C>> for NullError<C> {
+impl<C> From<ContainsNul<C>> for NulError<C> {
     #[inline]
-    fn from(value: ContainsNull<C>) -> Self {
-        Self::ContainsNull(value)
+    fn from(value: ContainsNul<C>) -> Self {
+        Self::ContainsNul(value)
     }
 }
 
-/// An error returned from to indicate that a terminating null value was missing
+/// An error returned from to indicate that a terminating nul value was missing
 #[derive(Debug, Clone)]
-pub struct MissingNullTerminator {
+pub struct MissingNulTerminator {
     _unused: (),
 }
 
-impl MissingNullTerminator {
+impl MissingNulTerminator {
     pub(crate) fn new() -> Self {
         Self { _unused: () }
     }
 }
 
-impl core::fmt::Display for MissingNullTerminator {
+impl core::fmt::Display for MissingNulTerminator {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "missing terminating null value")
+        write!(f, "missing terminating nul value")
     }
 }
 
 #[cfg(feature = "std")]
-impl std::error::Error for MissingNullTerminator {}
+impl std::error::Error for MissingNulTerminator {}
 
-/// An error returned to indicate that an invalid null value was found in a string
+/// An error returned to indicate that an invalid nul value was found in a string
 ///
-/// The error indicates the position in the vector where the null value was found, as well as
+/// The error indicates the position in the vector where the nul value was found, as well as
 /// returning the ownership of the invalid vector.
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 #[derive(Debug, Clone)]
-pub struct ContainsNull<C> {
+pub struct ContainsNul<C> {
     index: usize,
     #[cfg(feature = "alloc")]
     pub(crate) inner: Option<Vec<C>>,
@@ -99,7 +99,7 @@ pub struct ContainsNull<C> {
     _p: core::marker::PhantomData<C>,
 }
 
-impl<C> ContainsNull<C> {
+impl<C> ContainsNul<C> {
     #[cfg(feature = "alloc")]
     pub(crate) fn new(index: usize, v: Vec<C>) -> Self {
         Self {
@@ -121,16 +121,10 @@ impl<C> ContainsNull<C> {
         }
     }
 
-    /// Returns the index of the invalid null value in the slice
+    /// Returns the index of the invalid nul value in the slice
     #[inline]
-    pub fn null_index(&self) -> usize {
-        self.index
-    }
-
-    #[doc(hidden)]
-    #[deprecated = "use `null_index` instead"]
     pub fn nul_position(&self) -> usize {
-        self.null_index()
+        self.index
     }
 
     /// Consumes this error, returning the underlying vector of values which generated the error in
@@ -143,14 +137,14 @@ impl<C> ContainsNull<C> {
     }
 }
 
-impl<C> core::fmt::Display for ContainsNull<C> {
+impl<C> core::fmt::Display for ContainsNul<C> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "invalid null value found at position {}", self.index)
+        write!(f, "invalid nul value found at position {}", self.index)
     }
 }
 
 #[cfg(feature = "std")]
-impl<C: crate::UChar> std::error::Error for ContainsNull<C> {}
+impl<C: crate::UChar> std::error::Error for ContainsNul<C> {}
 
 /// A possible error value when converting a [`String`] from a [`u32`] string
 ///
@@ -209,9 +203,5 @@ impl core::fmt::Display for DecodeUtf32Error {
 impl std::error::Error for DecodeUtf32Error {}
 
 #[doc(hidden)]
-#[deprecated = "use `ContainsNull` instead"]
-pub type NulError<C> = ContainsNull<C>;
-
-#[doc(hidden)]
-#[deprecated = "use `MissingNullTerminator` instead"]
-pub type MissingNulError = MissingNullTerminator;
+#[deprecated = "use `MissingNulTerminator` instead"]
+pub type MissingNulError = MissingNulTerminator;

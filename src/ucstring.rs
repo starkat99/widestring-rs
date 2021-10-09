@@ -2,7 +2,7 @@
 //!
 //! This module contains the [`UCString`] strings and related types.
 
-use crate::{ContainsNull, UCStr, UChar, UStr, UString, WideChar};
+use crate::{ContainsNul, UCStr, UChar, UStr, UString, WideChar};
 use alloc::{
     borrow::{Cow, ToOwned},
     boxed::Box,
@@ -15,12 +15,12 @@ use core::{
     ptr, slice,
 };
 
-/// An owned, mutable C-style "wide" string for FFI that is null-aware and null-terminated
+/// An owned, mutable C-style "wide" string for FFI that is nul-aware and nul-terminated
 ///
-/// [`UCString`] is aware of null values. Unless unchecked conversions are used, all [`UCString`]
-/// strings end with a null-terminator in the underlying buffer and contain no internal null values.
+/// [`UCString`] is aware of nul values. Unless unchecked conversions are used, all [`UCString`]
+/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
 /// The strings may still contain invalid or ill-formed UTF-16 or UTF-32 data. These strings are
-/// intended to be used with FFI functions such as Windows API that may require null-terminated
+/// intended to be used with FFI functions such as Windows API that may require nul-terminated
 /// strings.
 ///
 /// [`UCString`] can be converted to and from many other string types, including [`UString`],
@@ -65,13 +65,13 @@ impl<C: UChar> UCString<C> {
     /// Constructs a [`UCString`] from a container of wide character data
     ///
     /// This method will consume the provided data and use the underlying elements to construct a
-    /// new string. The data will be scanned for invalid interior null values.
+    /// new string. The data will be scanned for invalid interior nul values.
     ///
     /// # Errors
     ///
-    /// This function will return an error if the data contains a null value that is not the
-    /// terminating null.
-    /// The returned error will contain the original [`Vec`] as well as the position of the null
+    /// This function will return an error if the data contains a nul value that is not the
+    /// terminating nul.
+    /// The returned error will contain the original [`Vec`] as well as the position of the nul
     /// value.
     ///
     /// # Examples
@@ -94,7 +94,7 @@ impl<C: UChar> UCString<C> {
     /// # assert_eq!(wcstr.into_vec(), cloned);
     /// ```
     ///
-    /// The following example demonstrates errors from null values in a vector.
+    /// The following example demonstrates errors from nul values in a vector.
     ///
     /// ```rust
     /// use widestring::U16CString;
@@ -102,7 +102,7 @@ impl<C: UChar> UCString<C> {
     /// // Create a wide string from the vector
     /// let res = U16CString::from_vec(v);
     /// assert!(res.is_err());
-    /// assert_eq!(res.err().unwrap().null_index(), 1);
+    /// assert_eq!(res.err().unwrap().nul_position(), 1);
     /// ```
     ///
     /// ```rust
@@ -111,21 +111,21 @@ impl<C: UChar> UCString<C> {
     /// // Create a wide string from the vector
     /// let res = U32CString::from_vec(v);
     /// assert!(res.is_err());
-    /// assert_eq!(res.err().unwrap().null_index(), 1);
+    /// assert_eq!(res.err().unwrap().nul_position(), 1);
     /// ```
-    pub fn from_vec(v: impl Into<Vec<C>>) -> Result<Self, ContainsNull<C>> {
+    pub fn from_vec(v: impl Into<Vec<C>>) -> Result<Self, ContainsNul<C>> {
         let v = v.into();
-        // Check for null vals, ignoring null terminator
-        match v[..v.len() - 1].iter().position(|&val| val == UChar::NULL) {
+        // Check for nul vals, ignoring nul terminator
+        match v[..v.len() - 1].iter().position(|&val| val == UChar::NUL) {
             None => Ok(unsafe { Self::from_vec_unchecked(v) }),
-            Some(pos) => Err(ContainsNull::new(pos, v)),
+            Some(pos) => Err(ContainsNul::new(pos, v)),
         }
     }
 
     /// Constructs a [`UCString`] from a container of wide character data, truncating at the first
-    /// null terminator
+    /// nul terminator
     ///
-    /// The string will be truncated at the first null value in the data.
+    /// The string will be truncated at the first nul value in the data.
     ///
     /// # Examples
     ///
@@ -148,28 +148,28 @@ impl<C: UChar> UCString<C> {
     /// ```
     pub fn from_vec_truncate(v: impl Into<Vec<C>>) -> Self {
         let mut v = v.into();
-        // Check for null vals
-        if let Some(pos) = v.iter().position(|&val| val == UChar::NULL) {
+        // Check for nul vals
+        if let Some(pos) = v.iter().position(|&val| val == UChar::NUL) {
             v.truncate(pos + 1);
         }
         unsafe { Self::from_vec_unchecked(v) }
     }
 
-    /// Constructs a [`UCString`] from a vector without checking for interior null values
+    /// Constructs a [`UCString`] from a vector without checking for interior nul values
     ///
-    /// A terminating null value will be appended if the vector does not already have a terminating
-    /// null.
+    /// A terminating nul value will be appended if the vector does not already have a terminating
+    /// nul.
     ///
     /// # Safety
     ///
     /// This method is equivalent to [`from_vec`][Self::from_vec] except that no runtime assertion
-    /// is made that `v` contains no interior null values. Providing a vector with any null values
+    /// is made that `v` contains no interior nul values. Providing a vector with any nul values
     /// that are not the last value in the vector will result in an invalid [`UCString`].
     pub unsafe fn from_vec_unchecked(v: impl Into<Vec<C>>) -> Self {
         let mut v = v.into();
         match v.last() {
-            None => v.push(UChar::NULL),
-            Some(&c) if c != UChar::NULL => v.push(UChar::NULL),
+            None => v.push(UChar::NUL),
+            Some(&c) if c != UChar::NUL => v.push(UChar::NUL),
             Some(_) => (),
         }
         Self {
@@ -179,51 +179,51 @@ impl<C: UChar> UCString<C> {
 
     /// Constructs a [`UCString`] from anything that can be converted to a [`UStr`]
     ///
-    /// The string will be scanned for invalid interior null values.
+    /// The string will be scanned for invalid interior nul values.
     ///
     /// # Errors
     ///
-    /// This function will return an error if the data contains a null value that is not the
-    /// terminating null.
-    /// The returned error will contain a [`Vec`] as well as the position of the null value.
+    /// This function will return an error if the data contains a nul value that is not the
+    /// terminating nul.
+    /// The returned error will contain a [`Vec`] as well as the position of the nul value.
     #[inline]
-    pub fn from_ustr(s: impl AsRef<UStr<C>>) -> Result<Self, ContainsNull<C>> {
+    pub fn from_ustr(s: impl AsRef<UStr<C>>) -> Result<Self, ContainsNul<C>> {
         Self::from_vec(s.as_ref().as_slice())
     }
 
     /// Constructs a [`UCString`] from anything that can be converted to a [`UStr`], truncating at
-    /// the first null terminator
+    /// the first nul terminator
     ///
-    /// The string will be truncated at the first null value in the string.
+    /// The string will be truncated at the first nul value in the string.
     #[inline]
     pub fn from_ustr_truncate(s: impl AsRef<UStr<C>>) -> Self {
         Self::from_vec_truncate(s.as_ref().as_slice())
     }
 
     /// Constructs a [`UCString`] from anything that can be converted to a [`UStr`], without
-    /// scanning for invalid null values
+    /// scanning for invalid nul values
     ///
     /// # Safety
     ///
     /// This method is equivalent to [`from_ustr`][Self::from_ustr] except that no runtime assertion
-    /// is made that `v` contains no interior null values. Providing a string with any null values
+    /// is made that `v` contains no interior nul values. Providing a string with any nul values
     /// that are not the last value in the vector will result in an invalid [`UCString`].
     #[inline]
     pub unsafe fn from_ustr_unchecked(s: impl AsRef<UStr<C>>) -> Self {
         Self::from_vec_unchecked(s.as_ref().as_slice())
     }
 
-    /// Constructs a new [`UCString`] copied from a null-terminated string pointer
+    /// Constructs a new [`UCString`] copied from a nul-terminated string pointer
     ///
-    /// This will scan for null values beginning with `p`. The first null value will be used as the
-    /// null terminator for the string, similar to how libc string functions such as `strlen` work.
+    /// This will scan for nul values beginning with `p`. The first nul value will be used as the
+    /// nul terminator for the string, similar to how libc string functions such as `strlen` work.
     ///
     /// If you wish to avoid copying the string pointer, use [`UCStr::from_ptr_str`] instead.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid or has a
-    /// null terminator, and the function could scan past the underlying buffer.
+    /// nul terminator, and the function could scan past the underlying buffer.
     ///
     /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
     ///
@@ -243,20 +243,20 @@ impl<C: UChar> UCString<C> {
     }
 
     /// Constructs a [`UCString`] copied from a pointer and a length, checking for invalid interior
-    /// null values
+    /// nul values
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
-    /// **not** include the null terminator of the string. If `len` is `0`, `p` is allowed to be a
+    /// **not** include the nul terminator of the string. If `len` is `0`, `p` is allowed to be a
     /// null pointer.
     ///
-    /// The resulting string will always be null-terminated even if the pointer data is not.
+    /// The resulting string will always be nul-terminated even if the pointer data is not.
     ///
     /// # Errors
     ///
-    /// This will scan the pointer string for an interior null value and error if one is found. To
-    /// avoid scanning for interior nulls, [`from_ptr_unchecked`][Self::from_ptr_unchecked] may be
+    /// This will scan the pointer string for an interior nul value and error if one is found. To
+    /// avoid scanning for interior nuls, [`from_ptr_unchecked`][Self::from_ptr_unchecked] may be
     /// used instead.
-    /// The returned error will contain a [`Vec`] as well as the position of the null value.
+    /// The returned error will contain a [`Vec`] as well as the position of the nul value.
     ///
     /// # Safety
     ///
@@ -268,7 +268,7 @@ impl<C: UChar> UCString<C> {
     /// # Panics
     ///
     /// Panics if `len` is greater than 0 but `p` is a null pointer.
-    pub unsafe fn from_ptr(p: *const C, len: usize) -> Result<Self, ContainsNull<C>> {
+    pub unsafe fn from_ptr(p: *const C, len: usize) -> Result<Self, ContainsNul<C>> {
         if len == 0 {
             return Ok(Self::default());
         }
@@ -277,13 +277,13 @@ impl<C: UChar> UCString<C> {
         Self::from_vec(slice)
     }
 
-    /// Constructs a [`UCString`] copied from a pointer and a length, truncating at the first null
+    /// Constructs a [`UCString`] copied from a pointer and a length, truncating at the first nul
     /// terminator
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes. This will scan
-    /// for null values beginning with `p` until offset `len`. The first null value will be used as
-    /// the null terminator for the string, ignoring any remaining values left before `len`. If no
-    /// null value is found, the whole string of length `len` is used, and a new null-terminator
+    /// for nul values beginning with `p` until offset `len`. The first nul value will be used as
+    /// the nul terminator for the string, ignoring any remaining values left before `len`. If no
+    /// nul value is found, the whole string of length `len` is used, and a new nul-terminator
     /// will be added to the resulting string. If `len` is `0`, `p` is allowed to be a null pointer.
     ///
     /// # Safety
@@ -305,14 +305,14 @@ impl<C: UChar> UCString<C> {
         Self::from_vec_truncate(slice)
     }
 
-    /// Constructs a [`UCString`] copied from a pointer and a length without checking for any null
+    /// Constructs a [`UCString`] copied from a pointer and a length without checking for any nul
     /// values
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
-    /// **not** include the null terminator of the string. If `len` is `0`, `p` is allowed to be a
+    /// **not** include the nul terminator of the string. If `len` is `0`, `p` is allowed to be a
     /// null pointer.
     ///
-    /// The resulting string will always be null-terminated even if the pointer data is not.
+    /// The resulting string will always be nul-terminated even if the pointer data is not.
     ///
     /// # Safety
     ///
@@ -321,7 +321,7 @@ impl<C: UChar> UCString<C> {
     ///
     /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
     ///
-    /// The interior values of the pointer are not scanned for null. Any interior null values or
+    /// The interior values of the pointer are not scanned for nul. Any interior nul values or
     /// will result in an invalid [`UCString`].
     ///
     /// # Panics
@@ -342,10 +342,10 @@ impl<C: UChar> UCString<C> {
         self
     }
 
-    /// Converts the string into a [`Vec`] without a null terminator, consuming the string in
+    /// Converts the string into a [`Vec`] without a nul terminator, consuming the string in
     /// the process
     ///
-    /// The resulting vector will **not** contain a null-terminator, and will contain no other null
+    /// The resulting vector will **not** contain a nul-terminator, and will contain no other nul
     /// values.
     #[inline]
     pub fn into_vec(self) -> Vec<C> {
@@ -356,9 +356,9 @@ impl<C: UChar> UCString<C> {
 
     /// Converts the string into a [`Vec`], consuming the string in the process
     ///
-    /// The resulting vector will contain a null-terminator and no interior null values.
+    /// The resulting vector will contain a nul-terminator and no interior nul values.
     #[inline]
-    pub fn into_vec_with_null(self) -> Vec<C> {
+    pub fn into_vec_with_nul(self) -> Vec<C> {
         self.into_inner().into_vec()
     }
 
@@ -384,11 +384,15 @@ impl<C: UChar> UCString<C> {
     ///
     /// This should only ever be called with a pointer that was earlier obtained by calling
     /// [`into_raw`][Self::into_raw]. Additionally, the length of the string will be recalculated
-    /// from the pointer by scanning for the null-terminator.
+    /// from the pointer by scanning for the nul-terminator.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `p` is a null pointer.
     pub unsafe fn from_raw(p: *mut C) -> Self {
         assert!(!p.is_null());
         let mut i: isize = 0;
-        while *p.offset(i) != UChar::NULL {
+        while *p.offset(i) != UChar::NUL {
             i += 1;
         }
         let slice = slice::from_raw_parts_mut(p, i as usize + 1);
@@ -428,7 +432,7 @@ impl<C: UChar> UCString<C> {
     #[allow(deprecated)]
     #[doc(hidden)]
     #[deprecated = "use `from_vec` instead"]
-    pub fn new(v: impl Into<Vec<C>>) -> Result<Self, crate::NulError<C>> {
+    pub fn new(v: impl Into<Vec<C>>) -> Result<Self, ContainsNul<C>> {
         Self::from_vec(v)
     }
 
@@ -474,12 +478,6 @@ impl<C: UChar> UCString<C> {
         Self::from_ptr_unchecked(p, len)
     }
 
-    #[doc(hidden)]
-    #[deprecated = "use `into_vec_with_null` instead"]
-    pub fn into_vec_with_nul(self) -> Vec<C> {
-        self.into_vec_with_null()
-    }
-
     /// Bypass "move out of struct which implements [`Drop`] trait" restriction.
     fn into_inner(self) -> Box<[C]> {
         let result = unsafe { ptr::read(&self.inner) };
@@ -491,16 +489,16 @@ impl<C: UChar> UCString<C> {
 impl UCString<u16> {
     /// Encodes a [`U16CString`] copied from a [`str`]
     ///
-    /// The string will be scanned for null values, which are invalid anywhere except the final
+    /// The string will be scanned for nul values, which are invalid anywhere except the final
     /// character.
     ///
-    /// The resulting string will always be null-terminated even if the original string is not.
+    /// The resulting string will always be nul-terminated even if the original string is not.
     ///
     /// # Errors
     ///
-    /// This function will return an error if the data contains a null value anywhere except the
+    /// This function will return an error if the data contains a nul value anywhere except the
     /// final position.
-    /// The returned error will contain a [`Vec<u16>`] as well as the position of the null value.
+    /// The returned error will contain a [`Vec<u16>`] as well as the position of the nul value.
     ///
     /// # Examples
     ///
@@ -512,7 +510,7 @@ impl UCString<u16> {
     /// # assert_eq!(wcstr.to_string_lossy(), s);
     /// ```
     ///
-    /// The following example demonstrates errors from null values in a string.
+    /// The following example demonstrates errors from nul values in a string.
     ///
     /// ```rust
     /// use widestring::U16CString;
@@ -520,23 +518,23 @@ impl UCString<u16> {
     /// // Create a wide string from the string
     /// let res = U16CString::from_str(s);
     /// assert!(res.is_err());
-    /// assert_eq!(res.err().unwrap().null_index(), 2);
+    /// assert_eq!(res.err().unwrap().nul_position(), 2);
     /// ```
     #[allow(clippy::should_implement_trait)]
     #[inline]
-    pub fn from_str(s: impl AsRef<str>) -> Result<Self, ContainsNull<u16>> {
+    pub fn from_str(s: impl AsRef<str>) -> Result<Self, ContainsNul<u16>> {
         let v: Vec<u16> = s.as_ref().encode_utf16().collect();
         Self::from_vec(v)
     }
 
-    /// Encodes a [`U16CString`] copied from a [`str`], without checking for interior null values
+    /// Encodes a [`U16CString`] copied from a [`str`], without checking for interior nul values
     ///
-    /// The resulting string will always be null-terminated even if the original string is not.
+    /// The resulting string will always be nul-terminated even if the original string is not.
     ///
     /// # Safety
     ///
     /// This method is equivalent to [`from_str`][Self::from_str] except that no runtime assertion
-    /// is made that `s` contains no interior null values. Providing a string with null values that
+    /// is made that `s` contains no interior nul values. Providing a string with nul values that
     /// are not the last character will result in an invalid [`U16CString`].
     ///
     /// # Examples
@@ -554,10 +552,10 @@ impl UCString<u16> {
         Self::from_vec_unchecked(v)
     }
 
-    /// Encodes a [`U16CString`] copied from a [`str`], truncating at the first null terminator
+    /// Encodes a [`U16CString`] copied from a [`str`], truncating at the first nul terminator
     ///
-    /// The string will be truncated at the first null value in the string.
-    /// The resulting string will always be null-terminated even if the original string is not.
+    /// The string will be truncated at the first nul value in the string.
+    /// The resulting string will always be nul-terminated even if the original string is not.
     ///
     /// # Examples
     ///
@@ -577,9 +575,9 @@ impl UCString<u16> {
     /// Encodes a [`U16CString`] copied from anything that can be converted to an
     /// [`OsStr`][std::ffi::OsStr]
     ///
-    /// The string will be scanned for null values, which are invalid anywhere except the final
+    /// The string will be scanned for nul values, which are invalid anywhere except the final
     /// character.
-    /// The resulting string will always be null-terminated even if the original string is not.
+    /// The resulting string will always be nul-terminated even if the original string is not.
     ///
     /// Note that the encoding of [`OsStr`][std::ffi::OsStr] is platform-dependent, so on
     /// some platforms this may make an encoding conversions, while on other platforms (such as
@@ -587,7 +585,7 @@ impl UCString<u16> {
     ///
     /// # Errors
     ///
-    /// This function will return an error if the data contains a null value anywhere except the
+    /// This function will return an error if the data contains a nul value anywhere except the
     /// last character.
     /// The returned error will contain a [`Vec<u16>`] as well as the position of the nul value.
     ///
@@ -601,7 +599,7 @@ impl UCString<u16> {
     /// # assert_eq!(wcstr.to_string_lossy(), s);
     /// ```
     ///
-    /// The following example demonstrates errors from null values in the string.
+    /// The following example demonstrates errors from nul values in the string.
     ///
     /// ```rust
     /// use widestring::U16CString;
@@ -609,20 +607,20 @@ impl UCString<u16> {
     /// // Create a wide string from the string
     /// let res = U16CString::from_os_str(s);
     /// assert!(res.is_err());
-    /// assert_eq!(res.err().unwrap().null_index(), 2);
+    /// assert_eq!(res.err().unwrap().nul_position(), 2);
     /// ```
     #[inline]
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    pub fn from_os_str(s: impl AsRef<std::ffi::OsStr>) -> Result<Self, ContainsNull<u16>> {
+    pub fn from_os_str(s: impl AsRef<std::ffi::OsStr>) -> Result<Self, ContainsNul<u16>> {
         let v = crate::platform::os_to_wide(s.as_ref());
         Self::from_vec(v)
     }
 
     /// Encodes a [`U16CString`] from anything that can be converted to an
-    /// [`OsStr`][std::ffi::OsStr], without checking for null values.
+    /// [`OsStr`][std::ffi::OsStr], without checking for nul values.
     ///
-    /// The resulting string will always be null-terminated even if the original string is not.
+    /// The resulting string will always be nul-terminated even if the original string is not.
     ///
     /// Note that the encoding of [`OsStr`][std::ffi::OsStr] is platform-dependent, so on
     /// some platforms this may make an encoding conversions, while on other platforms (such as
@@ -631,7 +629,7 @@ impl UCString<u16> {
     /// # Safety
     ///
     /// This method is equivalent to [`from_os_str`][Self::from_os_str] except that no runtime
-    /// assertion is made that `s` contains no interior null values. Providing a string with null
+    /// assertion is made that `s` contains no interior nul values. Providing a string with nul
     /// values anywhere but the last character will result in an invalid [`U16CString`].
     ///
     /// # Examples
@@ -651,10 +649,10 @@ impl UCString<u16> {
     }
 
     /// Encodes a [`U16CString`] copied from anything that can be converted to an
-    /// [`OsStr`][std::ffi::OsStr], truncating at the first null terminator
+    /// [`OsStr`][std::ffi::OsStr], truncating at the first nul terminator
     ///
-    /// The string will be truncated at the first null value in the string.
-    /// The resulting string will always be null-terminated even if the original string is not.
+    /// The string will be truncated at the first nul value in the string.
+    /// The resulting string will always be nul-terminated even if the original string is not.
     ///
     /// Note that the encoding of [`OsStr`][std::ffi::OsStr] is platform-dependent, so on
     /// some platforms this may make an encoding conversions, while on other platforms (such as
@@ -709,19 +707,19 @@ impl UCString<u16> {
 }
 
 impl UCString<u32> {
-    /// Constructs a [`U32CString`] from a container of character data, checking for invalid null
+    /// Constructs a [`U32CString`] from a container of character data, checking for invalid nul
     /// values
     ///
     /// This method will consume the provided data and use the underlying elements to construct a
-    /// new string. The data will be scanned for invalid null values anywhere except the last
+    /// new string. The data will be scanned for invalid nul values anywhere except the last
     /// character.
-    /// The resulting string will always be null-terminated even if the original string is not.
+    /// The resulting string will always be nul-terminated even if the original string is not.
     ///
     /// # Errors
     ///
-    /// This function will return an error if the data contains a null value anywhere except the
+    /// This function will return an error if the data contains a nul value anywhere except the
     /// last character.
-    /// The returned error will contain the [`Vec<u32>`] as well as the position of the null value.
+    /// The returned error will contain the [`Vec<u32>`] as well as the position of the nul value.
     ///
     /// # Examples
     ///
@@ -734,7 +732,7 @@ impl UCString<u32> {
     /// # assert_eq!(wcstr.into_vec(), cloned);
     /// ```
     ///
-    /// The following example demonstrates errors from null values in a vector.
+    /// The following example demonstrates errors from nul values in a vector.
     ///
     /// ```rust
     /// use widestring::U32CString;
@@ -742,9 +740,9 @@ impl UCString<u32> {
     /// // Create a wide string from the vector
     /// let res = U32CString::from_chars(v);
     /// assert!(res.is_err());
-    /// assert_eq!(res.err().unwrap().null_index(), 1);
+    /// assert_eq!(res.err().unwrap().nul_position(), 1);
     /// ```
-    pub fn from_chars(v: impl Into<Vec<char>>) -> Result<Self, ContainsNull<u32>> {
+    pub fn from_chars(v: impl Into<Vec<char>>) -> Result<Self, ContainsNul<u32>> {
         let mut chars = v.into();
         let v: Vec<u32> = unsafe {
             let ptr = chars.as_mut_ptr() as *mut u32;
@@ -756,12 +754,12 @@ impl UCString<u32> {
         Self::from_vec(v)
     }
 
-    /// Constructs a [`U32CString`] from a container of character data, truncating at the first null
+    /// Constructs a [`U32CString`] from a container of character data, truncating at the first nul
     /// value
     ///
     /// This method will consume the provided data and use the underlying elements to construct a
-    /// new string. The string will be truncated at the first null value in the string.
-    /// The resulting string will always be null-terminated even if the original string is not.
+    /// new string. The string will be truncated at the first nul value in the string.
+    /// The resulting string will always be nul-terminated even if the original string is not.
     ///
     /// # Examples
     ///
@@ -785,15 +783,15 @@ impl UCString<u32> {
         Self::from_vec_truncate(v)
     }
 
-    /// Constructs a [`U32CString`] from character data without checking for null values
+    /// Constructs a [`U32CString`] from character data without checking for nul values
     ///
-    /// A terminating null value will be appended if the vector does not already have a terminating
-    /// null.
+    /// A terminating nul value will be appended if the vector does not already have a terminating
+    /// nul.
     ///
     /// # Safety
     ///
     /// This method is equivalent to [`from_chars`][Self::from_chars] except that no runtime
-    /// assertion is made that `v` contains no interior null values. Providing a vector with null
+    /// assertion is made that `v` contains no interior nul values. Providing a vector with nul
     /// values anywhere but the last character will result in an invalid [`U32CString`].
     pub unsafe fn from_chars_unchecked(v: impl Into<Vec<char>>) -> Self {
         let mut chars = v.into();
@@ -807,17 +805,17 @@ impl UCString<u32> {
         Self::from_vec_unchecked(v)
     }
 
-    /// Encodes a [`U32CString`] copied from a [`str`], checking for invalid interior null values
+    /// Encodes a [`U32CString`] copied from a [`str`], checking for invalid interior nul values
     ///
-    /// The string will be scanned for null values, which are invalid anywhere except the last
+    /// The string will be scanned for nul values, which are invalid anywhere except the last
     /// character.
-    /// The resulting string will always be null-terminated even if the original string is not.
+    /// The resulting string will always be nul-terminated even if the original string is not.
     ///
     /// # Errors
     ///
-    /// This function will return an error if the data contains a null value anywhere except the
+    /// This function will return an error if the data contains a nul value anywhere except the
     /// last character.
-    /// The returned error will contain a [`Vec<u32>`] as well as the position of the null value.
+    /// The returned error will contain a [`Vec<u32>`] as well as the position of the nul value.
     ///
     /// # Examples
     ///
@@ -829,7 +827,7 @@ impl UCString<u32> {
     /// # assert_eq!(wcstr.to_string_lossy(), s);
     /// ```
     ///
-    /// The following example demonstrates errors from null values in a string.
+    /// The following example demonstrates errors from nul values in a string.
     ///
     /// ```rust
     /// use widestring::U32CString;
@@ -837,23 +835,23 @@ impl UCString<u32> {
     /// // Create a wide string from the string
     /// let res = U32CString::from_str(s);
     /// assert!(res.is_err());
-    /// assert_eq!(res.err().unwrap().null_index(), 2);
+    /// assert_eq!(res.err().unwrap().nul_position(), 2);
     /// ```
     #[allow(clippy::should_implement_trait)]
     #[inline]
-    pub fn from_str(s: impl AsRef<str>) -> Result<Self, ContainsNull<u32>> {
+    pub fn from_str(s: impl AsRef<str>) -> Result<Self, ContainsNul<u32>> {
         let v: Vec<char> = s.as_ref().chars().collect();
         Self::from_chars(v)
     }
 
-    /// Encodes a [`U32CString`] copied from a [`str`], without checking for null values.
+    /// Encodes a [`U32CString`] copied from a [`str`], without checking for nul values.
     ///
-    /// The resulting string will always be null-terminated even if the original string is not.
+    /// The resulting string will always be nul-terminated even if the original string is not.
     ///
     /// # Safety
     ///
     /// This method is equivalent to [`from_str`][Self::from_str] except that no runtime assertion
-    /// is made that `s` contains invalid null values. Providing a string with null values anywhere
+    /// is made that `s` contains invalid nul values. Providing a string with nul values anywhere
     /// except the last character will result in an invalid [`U32CString`].
     ///
     /// # Examples
@@ -871,10 +869,10 @@ impl UCString<u32> {
         Self::from_chars_unchecked(v)
     }
 
-    /// Encodes a [`U32CString`] copied from a [`str`], truncating at the first null terminator
+    /// Encodes a [`U32CString`] copied from a [`str`], truncating at the first nul terminator
     ///
-    /// The string will be truncated at the first null value in the string.
-    /// The resulting string will always be null-terminated even if the original string is not.
+    /// The string will be truncated at the first nul value in the string.
+    /// The resulting string will always be nul-terminated even if the original string is not.
     ///
     /// # Examples
     ///
@@ -891,17 +889,17 @@ impl UCString<u32> {
         Self::from_chars_truncate(v)
     }
 
-    /// Constructs a new [`UCString`] copied from a null-terminated [`char`] string pointer
+    /// Constructs a new [`UCString`] copied from a nul-terminated [`char`] string pointer
     ///
-    /// This will scan for null values beginning with `p`. The first null value will be used as the
-    /// null terminator for the string, similar to how libc string functions such as `strlen` work.
+    /// This will scan for nul values beginning with `p`. The first nul value will be used as the
+    /// nul terminator for the string, similar to how libc string functions such as `strlen` work.
     ///
     /// If you wish to avoid copying the string pointer, use [`UCStr::from_char_ptr_str`] instead.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid or has a
-    /// null terminator, and the function could scan past the underlying buffer.
+    /// nul terminator, and the function could scan past the underlying buffer.
     ///
     /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
     ///
@@ -921,20 +919,20 @@ impl UCString<u32> {
     }
 
     /// Constructs a [`UCString`] copied from a [`char`] pointer and a length, checking for invalid
-    /// interior null values
+    /// interior nul values
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
-    /// **not** include the null terminator of the string. If `len` is `0`, `p` is allowed to be a
+    /// **not** include the nul terminator of the string. If `len` is `0`, `p` is allowed to be a
     /// null pointer.
     ///
-    /// The resulting string will always be null-terminated even if the pointer data is not.
+    /// The resulting string will always be nul-terminated even if the pointer data is not.
     ///
     /// # Errors
     ///
-    /// This will scan the pointer string for an interior null value and error if one is found. To
-    /// avoid scanning for interior nulls, [`from_ptr_unchecked`][Self::from_ptr_unchecked] may be
+    /// This will scan the pointer string for an interior nul value and error if one is found. To
+    /// avoid scanning for interior nuls, [`from_ptr_unchecked`][Self::from_ptr_unchecked] may be
     /// used instead.
-    /// The returned error will contain a [`Vec`] as well as the position of the null value.
+    /// The returned error will contain a [`Vec`] as well as the position of the nul value.
     ///
     /// # Safety
     ///
@@ -947,17 +945,17 @@ impl UCString<u32> {
     ///
     /// Panics if `len` is greater than 0 but `p` is a null pointer.
     #[inline]
-    pub unsafe fn from_char_ptr(p: *const char, len: usize) -> Result<Self, ContainsNull<u32>> {
+    pub unsafe fn from_char_ptr(p: *const char, len: usize) -> Result<Self, ContainsNul<u32>> {
         Self::from_ptr(p as *const u32, len)
     }
 
     /// Constructs a [`UCString`] copied from a [`char`] pointer and a length, truncating at the
-    /// first null terminator
+    /// first nul terminator
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes. This will scan
-    /// for null values beginning with `p` until offset `len`. The first null value will be used as
-    /// the null terminator for the string, ignoring any remaining values left before `len`. If no
-    /// null value is found, the whole string of length `len` is used, and a new null-terminator
+    /// for nul values beginning with `p` until offset `len`. The first nul value will be used as
+    /// the nul terminator for the string, ignoring any remaining values left before `len`. If no
+    /// nul value is found, the whole string of length `len` is used, and a new nul-terminator
     /// will be added to the resulting string. If `len` is `0`, `p` is allowed to be a null pointer.
     ///
     /// # Safety
@@ -976,13 +974,13 @@ impl UCString<u32> {
     }
 
     /// Constructs a [`UCString`] copied from a [`char`] pointer and a length without checking for
-    /// any null values
+    /// any nul values
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
-    /// **not** include the null terminator of the string. If `len` is `0`, `p` is allowed to be a
+    /// **not** include the nul terminator of the string. If `len` is `0`, `p` is allowed to be a
     /// null pointer.
     ///
-    /// The resulting string will always be null-terminated even if the pointer data is not.
+    /// The resulting string will always be nul-terminated even if the pointer data is not.
     ///
     /// # Safety
     ///
@@ -991,7 +989,7 @@ impl UCString<u32> {
     ///
     /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
     ///
-    /// The interior values of the pointer are not scanned for null. Any interior null values or
+    /// The interior values of the pointer are not scanned for nul. Any interior nul values or
     /// will result in an invalid [`UCString`].
     ///
     /// # Panics
@@ -1002,11 +1000,11 @@ impl UCString<u32> {
     }
 
     /// Encodes a [`U32CString`] copied from anything that can be converted to an
-    /// [`OsStr`][std::ffi::OsStr], checking for invalid null values
+    /// [`OsStr`][std::ffi::OsStr], checking for invalid nul values
     ///
-    /// The string will be scanned for null values, which are invlaid anywhere except the last
+    /// The string will be scanned for nul values, which are invlaid anywhere except the last
     /// character.
-    /// The resulting string will always be null-terminated even if the string is not.
+    /// The resulting string will always be nul-terminated even if the string is not.
     ///
     /// Note that the encoding of [`OsStr`][std::ffi::OsStr] is platform-dependent, so on
     /// some platforms this may make an encoding conversions, while on other platforms no changes to
@@ -1014,9 +1012,9 @@ impl UCString<u32> {
     ///
     /// # Errors
     ///
-    /// This function will return an error if the data contains a null value anywhere except the
+    /// This function will return an error if the data contains a nul value anywhere except the
     /// last character.
-    /// The returned error will contain a [`Vec<u16>`] as well as the position of the null value.
+    /// The returned error will contain a [`Vec<u16>`] as well as the position of the nul value.
     ///
     /// # Examples
     ///
@@ -1028,7 +1026,7 @@ impl UCString<u32> {
     /// # assert_eq!(wcstr.to_string_lossy(), s);
     /// ```
     ///
-    /// The following example demonstrates errors from null values in a string.
+    /// The following example demonstrates errors from nul values in a string.
     ///
     /// ```rust
     /// use widestring::U32CString;
@@ -1036,20 +1034,20 @@ impl UCString<u32> {
     /// // Create a wide string from the string
     /// let res = U32CString::from_os_str(s);
     /// assert!(res.is_err());
-    /// assert_eq!(res.err().unwrap().null_index(), 2);
+    /// assert_eq!(res.err().unwrap().nul_position(), 2);
     /// ```
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     #[inline]
-    pub fn from_os_str(s: impl AsRef<std::ffi::OsStr>) -> Result<Self, ContainsNull<u32>> {
+    pub fn from_os_str(s: impl AsRef<std::ffi::OsStr>) -> Result<Self, ContainsNul<u32>> {
         let v: Vec<char> = s.as_ref().to_string_lossy().chars().collect();
         UCString::from_chars(v)
     }
 
     /// Encodes a [`U32CString`] copied from anything that can be converted to an
-    /// [`OsStr`][std::ffi::OsStr], without checking for null values
+    /// [`OsStr`][std::ffi::OsStr], without checking for nul values
     ///
-    /// The resulting string will always be null-terminated even if the string is not.
+    /// The resulting string will always be nul-terminated even if the string is not.
     ///
     /// Note that the encoding of [`OsStr`][std::ffi::OsStr] is platform-dependent, so on
     /// some platforms this may make an encoding conversions, while on other platforms no changes to
@@ -1058,7 +1056,7 @@ impl UCString<u32> {
     /// # Safety
     ///
     /// This method is equivalent to [`from_os_str`][Self::from_os_str] except that no runtime
-    /// assertion is made that `s` contains invalid null values. Providing a string with null values
+    /// assertion is made that `s` contains invalid nul values. Providing a string with nul values
     /// anywhere except the last character will result in an invalid [`U32CString`].
     ///
     /// # Examples
@@ -1079,10 +1077,10 @@ impl UCString<u32> {
     }
 
     /// Encodes a [`U32CString`] copied from anything that can be converted to an
-    /// [`OsStr`][std::ffi::OsStr], truncating at the first null terminator
+    /// [`OsStr`][std::ffi::OsStr], truncating at the first nul terminator
     ///
-    /// The string will be truncated at the first null value in the string.
-    /// The resulting string will always be null-terminated even if the string is not.
+    /// The string will be truncated at the first nul value in the string.
+    /// The resulting string will always be nul-terminated even if the string is not.
     ///
     /// Note that the encoding of [`OsStr`][std::ffi::OsStr] is platform-dependent, so on
     /// some platforms this may make an encoding conversions, while on other platforms no changes to
@@ -1168,14 +1166,14 @@ impl UCString<u32> {
 impl core::fmt::Debug for U16CString {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        crate::debug_fmt_u16(self.as_slice_with_null(), f)
+        crate::debug_fmt_u16(self.as_slice_with_nul(), f)
     }
 }
 
 impl core::fmt::Debug for U32CString {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        crate::debug_fmt_u32(self.as_slice_with_null(), f)
+        crate::debug_fmt_u32(self.as_slice_with_nul(), f)
     }
 }
 
@@ -1266,7 +1264,7 @@ impl<C: UChar> Drop for UCString<C> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            *self.inner.get_unchecked_mut(0) = UChar::NULL;
+            *self.inner.get_unchecked_mut(0) = UChar::NUL;
         }
     }
 }

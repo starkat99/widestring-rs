@@ -2,7 +2,7 @@
 //!
 //! This module contains the [`UCStr`] string slices and related types.
 
-use crate::{ContainsNull, MissingNullTerminator, NullError, UChar, UStr, WideChar};
+use crate::{ContainsNul, MissingNulTerminator, NulError, UChar, UStr, WideChar};
 #[cfg(feature = "alloc")]
 use alloc::{
     borrow::ToOwned,
@@ -13,10 +13,10 @@ use core::{fmt::Write, slice};
 
 /// C-style wide string reference for [`UCString`][crate::UCString]
 ///
-/// [`UCStr`] is aware of null values. Unless unchecked conversions are used, all [`UCStr`]
-/// strings end with a null-terminator in the underlying buffer and contain no internal null values.
+/// [`UCStr`] is aware of nul values. Unless unchecked conversions are used, all [`UCStr`]
+/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
 /// The strings may still contain invalid or ill-formed UTF-16 or UTF-32 data. These strings are
-/// intended to be used with FFI functions such as Windows API that may require null-terminated
+/// intended to be used with FFI functions such as Windows API that may require nul-terminated
 /// strings.
 ///
 /// [`UCStr`] can be converted to and from many other string types, including
@@ -37,15 +37,15 @@ impl<C: UChar> UCStr<C> {
         s.as_ref()
     }
 
-    /// Constructs a [`UCStr`] from a null-terminated string pointer
+    /// Constructs a [`UCStr`] from a nul-terminated string pointer
     ///
-    /// This will scan for null values beginning with `p`. The first null value will be used as the
-    /// null terminator for the string, similar to how libc string functions such as `strlen` work.
+    /// This will scan for nul values beginning with `p`. The first nul value will be used as the
+    /// nul terminator for the string, similar to how libc string functions such as `strlen` work.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid or has a
-    /// null terminator, and the function could scan past the underlying buffer.
+    /// nul terminator, and the function could scan past the underlying buffer.
     ///
     /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
     /// In particular, the returned string reference *must not be mutated* for the duration of
@@ -64,21 +64,21 @@ impl<C: UChar> UCStr<C> {
     pub unsafe fn from_ptr_str<'a>(p: *const C) -> &'a Self {
         assert!(!p.is_null());
         let mut i = 0;
-        while *p.add(i) != UChar::NULL {
+        while *p.add(i) != UChar::NUL {
             i += 1;
         }
         Self::from_ptr_unchecked(p, i)
     }
 
-    /// Constructs a mutable [`UCStr`] from a mutable null-terminated string pointer
+    /// Constructs a mutable [`UCStr`] from a mutable nul-terminated string pointer
     ///
-    /// This will scan for null values beginning with `p`. The first null value will be used as the
-    /// null terminator for the string, similar to how libc string functions such as `strlen` work.
+    /// This will scan for nul values beginning with `p`. The first nul value will be used as the
+    /// nul terminator for the string, similar to how libc string functions such as `strlen` work.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid or has a
-    /// null terminator, and the function could scan past the underlying buffer.
+    /// nul terminator, and the function could scan past the underlying buffer.
     ///
     /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts_mut].
     ///
@@ -95,7 +95,7 @@ impl<C: UChar> UCStr<C> {
     pub unsafe fn from_ptr_str_mut<'a>(p: *mut C) -> &'a mut Self {
         assert!(!p.is_null());
         let mut i = 0;
-        while *p.add(i) != UChar::NULL {
+        while *p.add(i) != UChar::NUL {
             i += 1;
         }
         Self::from_ptr_unchecked_mut(p, i)
@@ -104,16 +104,16 @@ impl<C: UChar> UCStr<C> {
     /// Constructs a [`UCStr`] from a pointer and a length
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
-    /// **not** include the null terminator of the string. Thus, a `len` of 0 is valid and means
-    /// that `p` is a pointer directly to the null terminator of the string.
+    /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means
+    /// that `p` is a pointer directly to the nul terminator of the string.
     ///
     /// # Errors
     ///
-    /// This will scan the pointer string for an interior null value and error if one is found
-    /// before the null terminator at `len` offset. To avoid scanning for interior nulls,
+    /// This will scan the pointer string for an interior nul value and error if one is found
+    /// before the nul terminator at `len` offset. To avoid scanning for interior nuls,
     /// [`from_ptr_unchecked`][Self::from_ptr_unchecked] may be used instead.
     ///
-    /// An error is returned if the value at `len` offset is not a null terminator.
+    /// An error is returned if the value at `len` offset is not a nul terminator.
     ///
     /// # Safety
     ///
@@ -134,14 +134,14 @@ impl<C: UChar> UCStr<C> {
     /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
-    pub unsafe fn from_ptr<'a>(p: *const C, len: usize) -> Result<&'a Self, NullError<C>> {
+    pub unsafe fn from_ptr<'a>(p: *const C, len: usize) -> Result<&'a Self, NulError<C>> {
         assert!(!p.is_null());
-        if *p.add(len) != UChar::NULL {
-            return Err(MissingNullTerminator::new().into());
+        if *p.add(len) != UChar::NUL {
+            return Err(MissingNulTerminator::new().into());
         }
         for i in 0..len {
-            if *p.add(i) == UChar::NULL {
-                return Err(ContainsNull::empty(i).into());
+            if *p.add(i) == UChar::NUL {
+                return Err(ContainsNul::empty(i).into());
             }
         }
         Ok(Self::from_ptr_unchecked(p, len))
@@ -150,16 +150,16 @@ impl<C: UChar> UCStr<C> {
     /// Constructs a mutable [`UCStr`] from a mutable pointer and a length
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
-    /// **not** include the null terminator of the string. Thus, a `len` of 0 is valid and means
-    /// that `p` is a pointer directly to the null terminator of the string.
+    /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means
+    /// that `p` is a pointer directly to the nul terminator of the string.
     ///
     /// # Errors
     ///
-    /// This will scan the pointer string for an interior null value and error if one is found
-    /// before the null terminator at `len` offset. To avoid scanning for interior nulls,
+    /// This will scan the pointer string for an interior nul value and error if one is found
+    /// before the nul terminator at `len` offset. To avoid scanning for interior nuls,
     /// [`from_ptr_unchecked_mut`][Self::from_ptr_unchecked_mut] may be used instead.
     ///
-    /// An error is returned if the value at `len` offset is not a null terminator.
+    /// An error is returned if the value at `len` offset is not a nul terminator.
     ///
     /// # Safety
     ///
@@ -178,33 +178,33 @@ impl<C: UChar> UCStr<C> {
     /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
-    pub unsafe fn from_ptr_mut<'a>(p: *mut C, len: usize) -> Result<&'a mut Self, NullError<C>> {
+    pub unsafe fn from_ptr_mut<'a>(p: *mut C, len: usize) -> Result<&'a mut Self, NulError<C>> {
         assert!(!p.is_null());
-        if *p.add(len) != UChar::NULL {
-            return Err(MissingNullTerminator::new().into());
+        if *p.add(len) != UChar::NUL {
+            return Err(MissingNulTerminator::new().into());
         }
         for i in 0..len {
-            if *p.add(i) == UChar::NULL {
-                return Err(ContainsNull::empty(i).into());
+            if *p.add(i) == UChar::NUL {
+                return Err(ContainsNul::empty(i).into());
             }
         }
         Ok(Self::from_ptr_unchecked_mut(p, len))
     }
 
-    /// Constructs a [`UCStr`] from a pointer and a length, truncating at the first null terminator
+    /// Constructs a [`UCStr`] from a pointer and a length, truncating at the first nul terminator
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes. This will scan
-    /// for null values beginning with `p` until offset `len`. The first null value will be used as
-    /// the null terminator for the string, ignoring any remaining values left before `len`.
+    /// for nul values beginning with `p` until offset `len`. The first nul value will be used as
+    /// the nul terminator for the string, ignoring any remaining values left before `len`.
     ///
     /// # Errors
     ///
-    /// If no null terminator is found after `len` + 1 elements, an error is returned.
+    /// If no nul terminator is found after `len` + 1 elements, an error is returned.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid or has a
-    /// null terminator, and the function could scan past the underlying buffer.
+    /// nul terminator, and the function could scan past the underlying buffer.
     ///
     /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
     /// In particular, the returned string reference *must not be mutated* for the duration of
@@ -223,31 +223,31 @@ impl<C: UChar> UCStr<C> {
     pub unsafe fn from_ptr_truncate<'a>(
         p: *const C,
         len: usize,
-    ) -> Result<&'a Self, MissingNullTerminator> {
+    ) -> Result<&'a Self, MissingNulTerminator> {
         assert!(!p.is_null());
         for i in 0..=len {
-            if *p.add(i) == UChar::NULL {
+            if *p.add(i) == UChar::NUL {
                 return Ok(Self::from_ptr_unchecked(p, i));
             }
         }
-        Err(MissingNullTerminator::new())
+        Err(MissingNulTerminator::new())
     }
 
     /// Constructs a mutable [`UCStr`] from a mutable pointer and a length, truncating at the first
-    /// null terminator
+    /// nul terminator
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes. This will scan
-    /// for null values beginning with `p` until offset `len`. The first null value will be used as
-    /// the null terminator for the string, ignoring any remaining values left before `len`.
+    /// for nul values beginning with `p` until offset `len`. The first nul value will be used as
+    /// the nul terminator for the string, ignoring any remaining values left before `len`.
     ///
     /// # Errors
     ///
-    /// If no null terminator is found after `len` + 1 elements, an error is returned.
+    /// If no nul terminator is found after `len` + 1 elements, an error is returned.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid or has a
-    /// null terminator, and the function could scan past the underlying buffer.
+    /// nul terminator, and the function could scan past the underlying buffer.
     ///
     /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts_mut].
     ///
@@ -264,33 +264,33 @@ impl<C: UChar> UCStr<C> {
     pub unsafe fn from_ptr_truncate_mut<'a>(
         p: *mut C,
         len: usize,
-    ) -> Result<&'a mut Self, MissingNullTerminator> {
+    ) -> Result<&'a mut Self, MissingNulTerminator> {
         assert!(!p.is_null());
         for i in 0..=len {
-            if *p.add(i) == UChar::NULL {
+            if *p.add(i) == UChar::NUL {
                 return Ok(Self::from_ptr_unchecked_mut(p, i));
             }
         }
-        Err(MissingNullTerminator::new())
+        Err(MissingNulTerminator::new())
     }
 
-    /// Constructs a [`UCStr`] from a pointer and a length without checking for any null values
+    /// Constructs a [`UCStr`] from a pointer and a length without checking for any nul values
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
-    /// **not** include the null terminator of the string. Thus, a `len` of 0 is valid and means
-    /// that `p` is a pointer directly to the null terminator of the string.
+    /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means
+    /// that `p` is a pointer directly to the nul terminator of the string.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid for `len +
-    /// 1` elements, nor that is has a terminating null value.
+    /// 1` elements, nor that it has a terminating nul value.
     ///
     /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
     /// In particular, the returned string reference *must not be mutated* for the duration of
     /// lifetime `'a`, except inside an [`UnsafeCell`][std::cell::UnsafeCell].
     ///
-    /// The interior values of the pointer are not scanned for null. Any interior null values or
-    /// a missing null terminator at pointer offset `len` + 1 will result in an invalid [`UCStr`].
+    /// The interior values of the pointer are not scanned for nul. Any interior nul values or
+    /// a missing nul terminator at pointer offset `len` + 1 will result in an invalid [`UCStr`].
     ///
     /// # Panics
     ///
@@ -309,21 +309,21 @@ impl<C: UChar> UCStr<C> {
     }
 
     /// Constructs a mutable [`UCStr`] from a mutable pointer and a length without checking for any
-    /// null values
+    /// nul values
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
-    /// **not** include the null terminator of the string. Thus, a `len` of 0 is valid and means
-    /// that `p` is a pointer directly to the null terminator of the string.
+    /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means
+    /// that `p` is a pointer directly to the nul terminator of the string.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid for `len +
-    /// 1` elements, nor that is has a terminating null value.
+    /// 1` elements, nor that is has a terminating nul value.
     ///
     /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts_mut].
     ///
-    /// The interior values of the pointer are not scanned for null. Any interior null values or
-    /// a missing null terminator at pointer offset `len` + 1 will result in an invalid [`UCStr`].
+    /// The interior values of the pointer are not scanned for nul. Any interior nul values or
+    /// a missing nul terminator at pointer offset `len` + 1 will result in an invalid [`UCStr`].
     ///
     /// # Panics
     ///
@@ -341,90 +341,90 @@ impl<C: UChar> UCStr<C> {
         &mut *(ptr as *mut Self)
     }
 
-    /// Constructs a [`UCStr`] from a slice of values with a terminating null, checking for invalid
-    /// interior null values
+    /// Constructs a [`UCStr`] from a slice of values with a terminating nul, checking for invalid
+    /// interior nul values
     ///
-    /// The slice must have at least one item, the null terminator, even for an empty string.
+    /// The slice must have at least one item, the nul terminator, even for an empty string.
     ///
     /// # Errors
     ///
-    /// If there are null values in the slice except for the last value, an error is returned.
+    /// If there are nul values in the slice except for the last value, an error is returned.
     ///
-    /// An error is also returned if the last value of the slice is not a null terminator.
-    pub fn from_slice(slice: &[C]) -> Result<&Self, NullError<C>> {
-        if slice.last() != Some(&UChar::NULL) {
-            return Err(MissingNullTerminator::new().into());
+    /// An error is also returned if the last value of the slice is not a nul terminator.
+    pub fn from_slice(slice: &[C]) -> Result<&Self, NulError<C>> {
+        if slice.last() != Some(&UChar::NUL) {
+            return Err(MissingNulTerminator::new().into());
         }
         match slice[..slice.len() - 1]
             .iter()
-            .position(|x| *x == UChar::NULL)
+            .position(|x| *x == UChar::NUL)
         {
             None => Ok(unsafe { Self::from_slice_unchecked(slice) }),
-            Some(i) => Err(ContainsNull::empty(i).into()),
+            Some(i) => Err(ContainsNul::empty(i).into()),
         }
     }
 
-    /// Constructs a mutable [`UCStr`] from a mutable slice of values with a terminating null,
-    /// checking for invalid interior null values
+    /// Constructs a mutable [`UCStr`] from a mutable slice of values with a terminating nul,
+    /// checking for invalid interior nul values
     ///
-    /// The slice must have at least one item, the null terminator, even for an empty string.
+    /// The slice must have at least one item, the nul terminator, even for an empty string.
     ///
     /// # Errors
     ///
-    /// If there are null values in the slice except for the last value, an error is returned.
+    /// If there are nul values in the slice except for the last value, an error is returned.
     ///
-    /// An error is also returned if the last value of the slice is not a null terminator.
-    pub fn from_slice_mut(slice: &mut [C]) -> Result<&mut Self, NullError<C>> {
-        if slice.last() != Some(&UChar::NULL) {
-            return Err(MissingNullTerminator::new().into());
+    /// An error is also returned if the last value of the slice is not a nul terminator.
+    pub fn from_slice_mut(slice: &mut [C]) -> Result<&mut Self, NulError<C>> {
+        if slice.last() != Some(&UChar::NUL) {
+            return Err(MissingNulTerminator::new().into());
         }
         match slice[..slice.len() - 1]
             .iter()
-            .position(|x| *x == UChar::NULL)
+            .position(|x| *x == UChar::NUL)
         {
             None => Ok(unsafe { Self::from_slice_unchecked_mut(slice) }),
-            Some(i) => Err(ContainsNull::empty(i).into()),
+            Some(i) => Err(ContainsNul::empty(i).into()),
         }
     }
 
-    /// Constructs a [`UCStr`] from a slice of values, truncating at the first null terminator
+    /// Constructs a [`UCStr`] from a slice of values, truncating at the first nul terminator
     ///
-    /// The slice will be scanned for null values. When a null value is found, it is treated as the
-    /// terminator for the string, and the [`UCStr`] slice will be truncated to that null.
+    /// The slice will be scanned for nul values. When a nul value is found, it is treated as the
+    /// terminator for the string, and the [`UCStr`] slice will be truncated to that nul.
     ///
     /// # Errors
     ///
-    /// If there are no null values in the slice, an error is returned.
-    pub fn from_slice_truncate(slice: &[C]) -> Result<&Self, MissingNullTerminator> {
-        match slice.iter().position(|x| *x == UChar::NULL) {
-            None => Err(MissingNullTerminator::new()),
+    /// If there are no nul values in the slice, an error is returned.
+    pub fn from_slice_truncate(slice: &[C]) -> Result<&Self, MissingNulTerminator> {
+        match slice.iter().position(|x| *x == UChar::NUL) {
+            None => Err(MissingNulTerminator::new()),
             Some(i) => Ok(unsafe { Self::from_slice_unchecked(&slice[..i + 1]) }),
         }
     }
 
-    /// Constructs a mutable [`UCStr`] from a mutable slice of values, truncating at the first null
+    /// Constructs a mutable [`UCStr`] from a mutable slice of values, truncating at the first nul
     /// terminator
     ///
-    /// The slice will be scanned for null values. When a null value is found, it is treated as the
-    /// terminator for the string, and the [`UCStr`] slice will be truncated to that null.
+    /// The slice will be scanned for nul values. When a nul value is found, it is treated as the
+    /// terminator for the string, and the [`UCStr`] slice will be truncated to that nul.
     ///
     /// # Errors
     ///
-    /// If there are no null values in the slice, an error is returned.
-    pub fn from_slice_truncate_mut(slice: &mut [C]) -> Result<&mut Self, MissingNullTerminator> {
-        match slice.iter().position(|x| *x == UChar::NULL) {
-            None => Err(MissingNullTerminator::new()),
+    /// If there are no nul values in the slice, an error is returned.
+    pub fn from_slice_truncate_mut(slice: &mut [C]) -> Result<&mut Self, MissingNulTerminator> {
+        match slice.iter().position(|x| *x == UChar::NUL) {
+            None => Err(MissingNulTerminator::new()),
             Some(i) => Ok(unsafe { Self::from_slice_unchecked_mut(&mut slice[..i + 1]) }),
         }
     }
 
     /// Constructs a [`UCStr`] from a slice of values without checking for a terminating or interior
-    /// null values
+    /// nul values
     ///
     /// # Safety
     ///
     /// This function is unsafe because it can lead to invalid [`UCStr`] values when the slice
-    /// is missing a terminating null value or there are non-terminating interior null values
+    /// is missing a terminating nul value or there are non-terminating interior nul values
     /// in the slice. In particular, an empty slice will result in an invalid [`UCStr`].
     pub unsafe fn from_slice_unchecked(slice: &[C]) -> &Self {
         let ptr: *const [C] = slice;
@@ -432,12 +432,12 @@ impl<C: UChar> UCStr<C> {
     }
 
     /// Constructs a mutable [`UCStr`] from a mutable slice of values without checking for a
-    /// terminating or interior null values
+    /// terminating or interior nul values
     ///
     /// # Safety
     ///
     /// This function is unsafe because it can lead to invalid [`UCStr`] values when the slice
-    /// is missing a terminating null value or there are non-terminating interior null values
+    /// is missing a terminating nul value or there are non-terminating interior nul values
     /// in the slice. In particular, an empty slice will result in an invalid [`UCStr`].
     pub unsafe fn from_slice_unchecked_mut(slice: &mut [C]) -> &mut Self {
         let ptr: *mut [C] = slice;
@@ -454,7 +454,7 @@ impl<C: UChar> UCStr<C> {
 
     /// Copies the string reference to a new owned [`UString`][crate::UString]
     ///
-    /// The resulting [`UString`][crate::UString] will **not** have a null terminator
+    /// The resulting [`UString`][crate::UString] will **not** have a nul terminator
     ///
     /// # Examples
     ///
@@ -464,10 +464,10 @@ impl<C: UChar> UCStr<C> {
     /// // Convert U16CString to a U16String
     /// let wstr = wcstr.to_ustring();
     ///
-    /// // U16CString will have a terminating null
-    /// let wcvec = wcstr.into_vec_with_null();
+    /// // U16CString will have a terminating nul
+    /// let wcvec = wcstr.into_vec_with_nul();
     /// assert_eq!(wcvec[wcvec.len()-1], 0);
-    /// // The resulting U16String will not have the terminating null
+    /// // The resulting U16String will not have the terminating nul
     /// let wvec = wstr.into_vec();
     /// assert_ne!(wvec[wvec.len()-1], 0);
     /// ```
@@ -478,10 +478,10 @@ impl<C: UChar> UCStr<C> {
     /// // Convert U32CString to a U32String
     /// let wstr = wcstr.to_ustring();
     ///
-    /// // U32CString will have a terminating null
-    /// let wcvec = wcstr.into_vec_with_null();
+    /// // U32CString will have a terminating nul
+    /// let wcvec = wcstr.into_vec_with_nul();
     /// assert_eq!(wcvec[wcvec.len()-1], 0);
-    /// // The resulting U32String will not have the terminating null
+    /// // The resulting U32String will not have the terminating nul
     /// let wvec = wstr.into_vec();
     /// assert_ne!(wvec[wvec.len()-1], 0);
     /// ```
@@ -494,7 +494,7 @@ impl<C: UChar> UCStr<C> {
 
     /// Converts to a slice of the underlying code units
     ///
-    /// The slice will **not** include the null terminator.
+    /// The slice will **not** include the nul terminator.
     #[inline]
     pub fn as_slice(&self) -> &[C] {
         &self.inner[..self.len()]
@@ -502,21 +502,21 @@ impl<C: UChar> UCStr<C> {
 
     /// Converts to a mutable slice of the underlying code units
     ///
-    /// The slice will **not** include the null terminator.
+    /// The slice will **not** include the nul terminator.
     ///
     /// # Safety
     ///
     /// This method is unsafe because you can violate the invariants of this type when mutating the
-    /// slice (i.e. by adding interior null values).
+    /// slice (i.e. by adding interior nul values).
     #[inline]
     pub unsafe fn as_mut_slice(&mut self) -> &mut [C] {
         let len = self.len();
         &mut self.inner[..len]
     }
 
-    /// Converts to a slice of the underlying code units, including the null terminator
+    /// Converts to a slice of the underlying code units, including the nul terminator
     #[inline]
-    pub fn as_slice_with_null(&self) -> &[C] {
+    pub fn as_slice_with_nul(&self) -> &[C] {
         &self.inner
     }
 
@@ -548,20 +548,20 @@ impl<C: UChar> UCStr<C> {
     /// # Safety
     ///
     /// This method is unsafe because you can violate the invariants of this type when mutating the
-    /// memory the pointer points to (i.e. by adding interior null values).
+    /// memory the pointer points to (i.e. by adding interior nul values).
     #[inline]
     pub unsafe fn as_mut_ptr(&mut self) -> *mut C {
         self.inner.as_mut_ptr()
     }
 
     /// Returns the length of the string as number of elements (**not** number of bytes)
-    /// **not** including null terminator
+    /// **not** including nul terminator
     #[inline]
     pub fn len(&self) -> usize {
         self.inner.len() - 1
     }
 
-    /// Returns whether this string contains no data (i.e. is only the null terminator)
+    /// Returns whether this string contains no data (i.e. is only the nul terminator)
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
@@ -599,7 +599,7 @@ impl<C: UChar> UCStr<C> {
 
     /// Returns a [`UStr`] reference to this string reference
     ///
-    /// The [`UStr`] reference will not include the null-terminator.
+    /// The [`UStr`] reference will not include the nul-terminator.
     #[inline]
     pub fn as_ustr(&self) -> &UStr<C> {
         UStr::from_slice(self.as_slice())
@@ -607,12 +607,12 @@ impl<C: UChar> UCStr<C> {
 
     /// Returns a mutable [`UStr`] reference to this string reference
     ///
-    /// The [`UStr`] reference will not include the null-terminator.
+    /// The [`UStr`] reference will not include the nul-terminator.
     ///
     /// # Safety
     ///
     /// This method is unsafe because you can violate the invariants of this type when mutating the
-    /// string (i.e. by adding interior null values).
+    /// string (i.e. by adding interior nul values).
     #[inline]
     pub unsafe fn as_mut_ustr(&mut self) -> &mut UStr<C> {
         UStr::from_slice_mut(self.as_mut_slice())
@@ -635,12 +635,6 @@ impl<C: UChar> UCStr<C> {
     #[deprecated = "use `from_slice_unchecked` instead"]
     pub unsafe fn from_slice_with_nul_unchecked(slice: &[C]) -> &Self {
         Self::from_slice_unchecked(slice)
-    }
-
-    #[doc(hidden)]
-    #[deprecated = "use `from_slice_with_null` instead"]
-    pub fn as_slice_with_nul(&self) -> &[C] {
-        self.as_slice_with_null()
     }
 
     #[cfg(feature = "alloc")]
@@ -709,7 +703,7 @@ impl UCStr<u16> {
     ///
     /// This makes a string copy of the [`U16CStr`]. Since [`U16CStr`] makes no guarantees that it
     /// is valid UTF-16, there is no guarantee that the resulting [`OsString`][std::ffi::OsString]
-    /// will be valid data. The [`OsString`][std::ffi::OsString] will **not** have a null
+    /// will be valid data. The [`OsString`][std::ffi::OsString] will **not** have a nul
     /// terminator.
     ///
     /// Note that the encoding of [`OsString`][std::ffi::OsString] is platform-dependent, so on
@@ -786,15 +780,15 @@ impl UCStr<u16> {
 }
 
 impl UCStr<u32> {
-    /// Constructs a string reference from a [`char`] null-terminated string pointer
+    /// Constructs a string reference from a [`char`] nul-terminated string pointer
     ///
-    /// This will scan for null values beginning with `p`. The first null value will be used as the
-    /// null terminator for the string, similar to how libc string functions such as `strlen` work.
+    /// This will scan for nul values beginning with `p`. The first nul value will be used as the
+    /// nul terminator for the string, similar to how libc string functions such as `strlen` work.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid or has a
-    /// null terminator, and the function could scan past the underlying buffer.
+    /// nul terminator, and the function could scan past the underlying buffer.
     ///
     /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
     /// In particular, the returned string reference *must not be mutated* for the duration of
@@ -815,15 +809,15 @@ impl UCStr<u32> {
         Self::from_ptr_str(p as *const u32)
     }
 
-    /// Constructs a mutable string reference from a mutable [`char`] null-terminated string pointer
+    /// Constructs a mutable string reference from a mutable [`char`] nul-terminated string pointer
     ///
-    /// This will scan for null values beginning with `p`. The first null value will be used as the
-    /// null terminator for the string, similar to how libc string functions such as `strlen` work.
+    /// This will scan for nul values beginning with `p`. The first nul value will be used as the
+    /// nul terminator for the string, similar to how libc string functions such as `strlen` work.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid or has a
-    /// null terminator, and the function could scan past the underlying buffer.
+    /// nul terminator, and the function could scan past the underlying buffer.
     ///
     /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts_mut].
     ///
@@ -845,16 +839,16 @@ impl UCStr<u32> {
     /// Constructs a string reference from a [`char`] pointer and a length
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
-    /// **not** include the null terminator of the string. Thus, a `len` of 0 is valid and means
-    /// that `p` is a pointer directly to the null terminator of the string.
+    /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means
+    /// that `p` is a pointer directly to the nul terminator of the string.
     ///
     /// # Errors
     ///
-    /// This will scan the pointer string for an interior null value and error if one is found
-    /// before the null terminator at `len` offset. To avoid scanning for interior nulls,
+    /// This will scan the pointer string for an interior nul value and error if one is found
+    /// before the nul terminator at `len` offset. To avoid scanning for interior nuls,
     /// [`from_ptr_unchecked`][Self::from_ptr_unchecked] may be used instead.
     ///
-    /// An error is returned if the value at `len` offset is not a null terminator.
+    /// An error is returned if the value at `len` offset is not a nul terminator.
     ///
     /// # Safety
     ///
@@ -875,26 +869,23 @@ impl UCStr<u32> {
     /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
-    pub unsafe fn from_char_ptr<'a>(
-        p: *const char,
-        len: usize,
-    ) -> Result<&'a Self, NullError<u32>> {
+    pub unsafe fn from_char_ptr<'a>(p: *const char, len: usize) -> Result<&'a Self, NulError<u32>> {
         Self::from_ptr(p as *const u32, len)
     }
 
     /// Constructs a mutable string reference from a mutable [`char`] pointer and a length
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
-    /// **not** include the null terminator of the string. Thus, a `len` of 0 is valid and means
-    /// that `p` is a pointer directly to the null terminator of the string.
+    /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means
+    /// that `p` is a pointer directly to the nul terminator of the string.
     ///
     /// # Errors
     ///
-    /// This will scan the pointer string for an interior null value and error if one is found
-    /// before the null terminator at `len` offset. To avoid scanning for interior nulls,
+    /// This will scan the pointer string for an interior nul value and error if one is found
+    /// before the nul terminator at `len` offset. To avoid scanning for interior nuls,
     /// [`from_ptr_unchecked_mut`][Self::from_ptr_unchecked_mut] may be used instead.
     ///
-    /// An error is returned if the value at `len` offset is not a null terminator.
+    /// An error is returned if the value at `len` offset is not a nul terminator.
     ///
     /// # Safety
     ///
@@ -916,25 +907,25 @@ impl UCStr<u32> {
     pub unsafe fn from_char_ptr_mut<'a>(
         p: *mut char,
         len: usize,
-    ) -> Result<&'a mut Self, NullError<u32>> {
+    ) -> Result<&'a mut Self, NulError<u32>> {
         Self::from_ptr_mut(p as *mut u32, len)
     }
 
     /// Constructs a string reference from a [`char`] pointer and a length, truncating at the first
-    /// null terminator
+    /// nul terminator
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes. This will scan
-    /// for null values beginning with `p` until offset `len`. The first null value will be used as
-    /// the null terminator for the string, ignoring any remaining values left before `len`.
+    /// for nul values beginning with `p` until offset `len`. The first nul value will be used as
+    /// the nul terminator for the string, ignoring any remaining values left before `len`.
     ///
     /// # Errors
     ///
-    /// If no null terminator is found after `len` + 1 elements, an error is returned.
+    /// If no nul terminator is found after `len` + 1 elements, an error is returned.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid or has a
-    /// null terminator, and the function could scan past the underlying buffer.
+    /// nul terminator, and the function could scan past the underlying buffer.
     ///
     /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
     /// In particular, the returned string reference *must not be mutated* for the duration of
@@ -953,25 +944,25 @@ impl UCStr<u32> {
     pub unsafe fn from_char_ptr_truncate<'a>(
         p: *const char,
         len: usize,
-    ) -> Result<&'a Self, MissingNullTerminator> {
+    ) -> Result<&'a Self, MissingNulTerminator> {
         Self::from_ptr_truncate(p as *const u32, len)
     }
 
     /// Constructs a mutable string reference from a mutable [`char`] pointer and a length,
-    /// truncating at the first null terminator
+    /// truncating at the first nul terminator
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes. This will scan
-    /// for null values beginning with `p` until offset `len`. The first null value will be used as
-    /// the null terminator for the string, ignoring any remaining values left before `len`.
+    /// for nul values beginning with `p` until offset `len`. The first nul value will be used as
+    /// the nul terminator for the string, ignoring any remaining values left before `len`.
     ///
     /// # Errors
     ///
-    /// If no null terminator is found after `len` + 1 elements, an error is returned.
+    /// If no nul terminator is found after `len` + 1 elements, an error is returned.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid or has a
-    /// null terminator, and the function could scan past the underlying buffer.
+    /// nul terminator, and the function could scan past the underlying buffer.
     ///
     /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts_mut].
     ///
@@ -988,28 +979,28 @@ impl UCStr<u32> {
     pub unsafe fn from_char_ptr_truncate_mut<'a>(
         p: *mut char,
         len: usize,
-    ) -> Result<&'a mut Self, MissingNullTerminator> {
+    ) -> Result<&'a mut Self, MissingNulTerminator> {
         Self::from_ptr_truncate_mut(p as *mut u32, len)
     }
 
     /// Constructs a string reference from a [`char`] pointer and a length without checking for any
-    /// null values
+    /// nul values
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
-    /// **not** include the null terminator of the string. Thus, a `len` of 0 is valid and means
-    /// that `p` is a pointer directly to the null terminator of the string.
+    /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means
+    /// that `p` is a pointer directly to the nul terminator of the string.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid for `len +
-    /// 1` elements, nor that is has a terminating null value.
+    /// 1` elements, nor that is has a terminating nul value.
     ///
     /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
     /// In particular, the returned string reference *must not be mutated* for the duration of
     /// lifetime `'a`, except inside an [`UnsafeCell`][std::cell::UnsafeCell].
     ///
-    /// The interior values of the pointer are not scanned for null. Any interior null values or
-    /// a missing null terminator at pointer offset `len` + 1 will result in an invalid [`UCStr`].
+    /// The interior values of the pointer are not scanned for nul. Any interior nul values or
+    /// a missing nul terminator at pointer offset `len` + 1 will result in an invalid [`UCStr`].
     ///
     /// # Panics
     ///
@@ -1027,21 +1018,21 @@ impl UCStr<u32> {
     }
 
     /// Constructs a mutable string reference from a mutable [`char`] pointer and a length without
-    /// checking for any null values
+    /// checking for any nul values
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
-    /// **not** include the null terminator of the string. Thus, a `len` of 0 is valid and means
-    /// that `p` is a pointer directly to the null terminator of the string.
+    /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means
+    /// that `p` is a pointer directly to the nul terminator of the string.
     ///
     /// # Safety
     ///
     /// This function is unsafe as there is no guarantee that the given pointer is valid for `len +
-    /// 1` elements, nor that is has a terminating null value.
+    /// 1` elements, nor that is has a terminating nul value.
     ///
     /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts_mut].
     ///
-    /// The interior values of the pointer are not scanned for null. Any interior null values or
-    /// a missing null terminator at pointer offset `len` + 1 will result in an invalid [`UCStr`].
+    /// The interior values of the pointer are not scanned for nul. Any interior nul values or
+    /// a missing nul terminator at pointer offset `len` + 1 will result in an invalid [`UCStr`].
     ///
     /// # Panics
     ///
@@ -1058,75 +1049,75 @@ impl UCStr<u32> {
         Self::from_ptr_unchecked_mut(p as *mut u32, len)
     }
 
-    /// Constructs a string reference from a [`char`] slice with a terminating null, checking for
-    /// invalid interior null values
+    /// Constructs a string reference from a [`char`] slice with a terminating nul, checking for
+    /// invalid interior nul values
     ///
-    /// The slice must have at least one item, the null terminator, even for an empty string.
+    /// The slice must have at least one item, the nul terminator, even for an empty string.
     ///
     /// # Errors
     ///
-    /// If there are null values in the slice except for the last value, an error is returned.
+    /// If there are nul values in the slice except for the last value, an error is returned.
     ///
-    /// An error is also returned if the last value of the slice is not a null terminator.
-    pub fn from_char_slice(slice: &[char]) -> Result<&Self, NullError<u32>> {
+    /// An error is also returned if the last value of the slice is not a nul terminator.
+    pub fn from_char_slice(slice: &[char]) -> Result<&Self, NulError<u32>> {
         let ptr: *const [char] = slice;
         Self::from_slice(unsafe { &*(ptr as *const [u32]) })
     }
 
-    /// Constructs a mutable string reference from a mutable [`char`] slice with a terminating null,
-    /// checking for invalid interior null values
+    /// Constructs a mutable string reference from a mutable [`char`] slice with a terminating nul,
+    /// checking for invalid interior nul values
     ///
-    /// The slice must have at least one item, the null terminator, even for an empty string.
+    /// The slice must have at least one item, the nul terminator, even for an empty string.
     ///
     /// # Errors
     ///
-    /// If there are null values in the slice except for the last value, an error is returned.
+    /// If there are nul values in the slice except for the last value, an error is returned.
     ///
-    /// An error is also returned if the last value of the slice is not a null terminator.
-    pub fn from_char_slice_mut(slice: &mut [char]) -> Result<&mut Self, NullError<u32>> {
+    /// An error is also returned if the last value of the slice is not a nul terminator.
+    pub fn from_char_slice_mut(slice: &mut [char]) -> Result<&mut Self, NulError<u32>> {
         let ptr: *mut [char] = slice;
         Self::from_slice_mut(unsafe { &mut *(ptr as *mut [u32]) })
     }
 
-    /// Constructs a string reference from a slice of [`char`] values, truncating at the first null
+    /// Constructs a string reference from a slice of [`char`] values, truncating at the first nul
     /// terminator
     ///
-    /// The slice will be scanned for null values. When a null value is found, it is treated as the
-    /// terminator for the string, and the [`UCStr`] slice will be truncated to that null.
+    /// The slice will be scanned for nul values. When a nul value is found, it is treated as the
+    /// terminator for the string, and the [`UCStr`] slice will be truncated to that nul.
     ///
     /// # Errors
     ///
-    /// If there are no null values in the slice, an error is returned.
+    /// If there are no nul values in the slice, an error is returned.
     #[inline]
-    pub fn from_char_slice_truncate(slice: &[char]) -> Result<&Self, MissingNullTerminator> {
+    pub fn from_char_slice_truncate(slice: &[char]) -> Result<&Self, MissingNulTerminator> {
         let ptr: *const [char] = slice;
         Self::from_slice_truncate(unsafe { &*(ptr as *const [u32]) })
     }
 
     /// Constructs a mutable string reference from a mutable slice of [`char`] values, truncating at
-    /// the first null terminator
+    /// the first nul terminator
     ///
-    /// The slice will be scanned for null values. When a null value is found, it is treated as the
-    /// terminator for the string, and the [`UCStr`] slice will be truncated to that null.
+    /// The slice will be scanned for nul values. When a nul value is found, it is treated as the
+    /// terminator for the string, and the [`UCStr`] slice will be truncated to that nul.
     ///
     /// # Errors
     ///
-    /// If there are no null values in the slice, an error is returned.
+    /// If there are no nul values in the slice, an error is returned.
     #[inline]
     pub fn from_char_slice_truncate_mut(
         slice: &mut [char],
-    ) -> Result<&mut Self, MissingNullTerminator> {
+    ) -> Result<&mut Self, MissingNulTerminator> {
         let ptr: *mut [char] = slice;
         Self::from_slice_truncate_mut(unsafe { &mut *(ptr as *mut [u32]) })
     }
 
     /// Constructs a string reference from a [`char`] slice without checking for a terminating or
-    /// interior null values
+    /// interior nul values
     ///
     /// # Safety
     ///
     /// This function is unsafe because it can lead to invalid [`UCStr`] values when the slice
-    /// is missing a terminating null value or there are non-terminating interior null values
+    /// is missing a terminating nul value or there are non-terminating interior nul values
     /// in the slice. In particular, an empty slice will result in an invalid [`UCStr`].
     #[inline]
     pub unsafe fn from_char_slice_unchecked(slice: &[char]) -> &Self {
@@ -1135,12 +1126,12 @@ impl UCStr<u32> {
     }
 
     /// Constructs a mutable string reference from a mutable [`char`] slice without checking for a
-    /// terminating or interior null values
+    /// terminating or interior nul values
     ///
     /// # Safety
     ///
     /// This function is unsafe because it can lead to invalid [`UCStr`] values when the slice
-    /// is missing a terminating null value or there are non-terminating interior null values
+    /// is missing a terminating nul value or there are non-terminating interior nul values
     /// in the slice. In particular, an empty slice will result in an invalid [`UCStr`].
     #[inline]
     pub unsafe fn from_char_slice_unchecked_mut(slice: &mut [char]) -> &mut Self {
@@ -1152,7 +1143,7 @@ impl UCStr<u32> {
     ///
     /// This makes a string copy of this reference. Since [`UCStr<u32>`] makes no guarantees that it
     /// is valid UTF-32, there is no guarantee that the resulting [`OsString`][std::ffi::OsString]
-    /// will be valid data. The [`OsString`][std::ffi::OsString] will **not** have a null
+    /// will be valid data. The [`OsString`][std::ffi::OsString] will **not** have a nul
     /// terminator.
     ///
     /// Note that the encoding of [`OsString`][std::ffi::OsString] is platform-dependent, so on
@@ -1250,7 +1241,7 @@ impl UCStr<u32> {
 impl<'a> Default for &'a UCStr<u16> {
     #[inline]
     fn default() -> Self {
-        const SLICE: &[u16] = &[UChar::NULL];
+        const SLICE: &[u16] = &[UChar::NUL];
         unsafe { UCStr::from_slice_unchecked(SLICE) }
     }
 }
@@ -1258,7 +1249,7 @@ impl<'a> Default for &'a UCStr<u16> {
 impl<'a> Default for &'a UCStr<u32> {
     #[inline]
     fn default() -> Self {
-        const SLICE: &[u32] = &[UChar::NULL];
+        const SLICE: &[u32] = &[UChar::NUL];
         unsafe { UCStr::from_slice_unchecked(SLICE) }
     }
 }
@@ -1294,7 +1285,7 @@ impl<C: UChar> AsRef<[C]> for UCStr<C> {
 impl<'a, C: UChar> From<&'a UCStr<C>> for Box<UCStr<C>> {
     #[inline]
     fn from(s: &'a UCStr<C>) -> Box<UCStr<C>> {
-        let boxed: Box<[C]> = Box::from(s.as_slice_with_null());
+        let boxed: Box<[C]> = Box::from(s.as_slice_with_nul());
         unsafe { Box::from_raw(Box::into_raw(boxed) as *mut UCStr<C>) }
     }
 }
@@ -1303,7 +1294,7 @@ impl<'a, C: UChar> From<&'a UCStr<C>> for Box<UCStr<C>> {
 impl<C: UChar> Default for Box<UCStr<C>> {
     #[inline]
     fn default() -> Box<UCStr<C>> {
-        let boxed: Box<[C]> = Box::from([UChar::NULL]);
+        let boxed: Box<[C]> = Box::from([UChar::NUL]);
         unsafe { Box::from_raw(Box::into_raw(boxed) as *mut UCStr<C>) }
     }
 }
@@ -1311,23 +1302,23 @@ impl<C: UChar> Default for Box<UCStr<C>> {
 impl core::fmt::Debug for U16CStr {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        crate::debug_fmt_u16(self.as_slice_with_null(), f)
+        crate::debug_fmt_u16(self.as_slice_with_nul(), f)
     }
 }
 
 impl core::fmt::Debug for U32CStr {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        crate::debug_fmt_u32(self.as_slice_with_null(), f)
+        crate::debug_fmt_u32(self.as_slice_with_nul(), f)
     }
 }
 
 /// C-style string reference for [`U16CString`][crate::U16CString]
 ///
-/// [`U16CStr`] is aware of null values. Unless unchecked conversions are used, all [`U16CStr`]
-/// strings end with a null-terminator in the underlying buffer and contain no internal null values.
+/// [`U16CStr`] is aware of nul values. Unless unchecked conversions are used, all [`U16CStr`]
+/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
 /// The strings may still contain invalid or ill-formed UTF-16 data. These strings are intended to
-/// be used with FFI functions such as Windows API that may require null-terminated strings.
+/// be used with FFI functions such as Windows API that may require nul-terminated strings.
 ///
 /// [`U16CStr`] can be converted to and from many other string types, including
 /// [`U16String`][crate::U16String], [`OsString`][std::ffi::OsString], and [`String`], making proper
@@ -1336,10 +1327,10 @@ pub type U16CStr = UCStr<u16>;
 
 /// C-style string reference for [`U32CString`][crate::U32CString]
 ///
-/// [`U32CStr`] is aware of null values. Unless unchecked conversions are used, all [`U32CStr`]
-/// strings end with a null-terminator in the underlying buffer and contain no internal null values.
+/// [`U32CStr`] is aware of nul values. Unless unchecked conversions are used, all [`U32CStr`]
+/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
 /// The strings may still contain invalid or ill-formed UTF-32 data. These strings are intended to
-/// be used with FFI functions such as Windows API that may require null-terminated strings.
+/// be used with FFI functions such as Windows API that may require nul-terminated strings.
 ///
 /// [`U32CStr`] can be converted to and from many other string types, including
 /// [`U32String`][crate::U32String], [`OsString`][std::ffi::OsString], and [`String`], making proper

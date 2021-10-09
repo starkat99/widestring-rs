@@ -15,12 +15,12 @@ use core::{char, fmt::Write, slice};
 ///
 /// [`UStr`] is to [`UString`][crate::UString] as [`str`] is to [`String`].
 ///
-/// [`UStr`] is not aware of null values. Strings may or may not be null-terminated, and may
+/// [`UStr`] is not aware of nul values. Strings may or may not be nul-terminated, and may
 /// contain invalid and ill-formed UTF-16 or UTF-32 data. These strings are intended to be used
 /// with FFI functions that directly use string length, where the strings are known to have proper
-/// null-termination already, or where strings are merely being passed through without modification.
+/// nul-termination already, or where strings are merely being passed through without modification.
 ///
-/// [`UCStr`][crate::UCStr] should be used instead if null-aware strings are required.
+/// [`UCStr`][crate::UCStr] should be used instead if nul-aware strings are required.
 ///
 /// [`UStr`] can be converted to many other string types, including [`OsString`][std::ffi::OsString]
 /// and [`String`], making proper Unicode FFI safe and easy.
@@ -511,12 +511,12 @@ impl core::fmt::Debug for U32Str {
 ///
 /// [`U16Str`] is to [`U16String`][crate::U16String] as [`str`] is to [`String`].
 ///
-/// [`U16Str`] is not aware of null values. Strings may or may not be null-terminated, and may
+/// [`U16Str`] is not aware of nul values. Strings may or may not be nul-terminated, and may
 /// contain invalid and ill-formed UTF-16 data. These strings are intended to be used with
 /// FFI functions that directly use string length, where the strings are known to have proper
-/// null-termination already, or where strings are merely being passed through without modification.
+/// nul-termination already, or where strings are merely being passed through without modification.
 ///
-/// [`U16CStr`][crate::U16CStr] should be used instead of null-aware strings are required.
+/// [`U16CStr`][crate::U16CStr] should be used instead of nul-aware strings are required.
 ///
 /// [`U16Str`] can be converted to many other string types, including
 /// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
@@ -526,10 +526,10 @@ pub type U16Str = UStr<u16>;
 ///
 /// [`U32Str`] is to [`U32String`][crate::U32String] as [`str`] is to [`String`].
 ///
-/// [`U32Str`] is not aware of null values. Strings may or may not be null-terminated, and may
+/// [`U32Str`] is not aware of nul values. Strings may or may not be nul-terminated, and may
 /// contain invalid and ill-formed UTF-32 data. These strings are intended to be used with
 /// FFI functions that directly use string length, where the strings are known to have proper
-/// null-termination already, or where strings are merely being passed through without modification.
+/// nul-termination already, or where strings are merely being passed through without modification.
 ///
 /// [`U32CStr`][crate::U32CStr] should be used instead of nul-aware strings are required.
 ///

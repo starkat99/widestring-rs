@@ -16,14 +16,14 @@ use core::{
     slice,
 };
 
-/// An owned, mutable "wide" string for FFI that is **not** null-aware
+/// An owned, mutable "wide" string for FFI that is **not** nul-aware
 ///
-/// [`UString`] is not aware of null values. Strings may or may not be null-terminated, and may
+/// [`UString`] is not aware of nul values. Strings may or may not be nul-terminated, and may
 /// contain invalid and ill-formed UTF-16 or UTF-32 data. These strings are intended to be used
 /// with FFI functions that directly use string length, where the strings are known to have proper
-/// null-termination already, or where strings are merely being passed through without modification.
+/// nul-termination already, or where strings are merely being passed through without modification.
 ///
-/// [`UCString`][crate::UCString] should be used instead if null-aware strings are required.
+/// [`UCString`][crate::UCString] should be used instead if nul-aware strings are required.
 ///
 /// [`UString`] can be converted to and from many other standard Rust string types, including
 /// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
@@ -184,7 +184,7 @@ impl<C: UChar> UString<C> {
 
     /// Extends the string with the given string slice
     ///
-    /// No checks are performed on the strings. It is possible to end up null values inside the
+    /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
     ///
     /// # Examples
@@ -217,7 +217,7 @@ impl<C: UChar> UString<C> {
 
     /// Extends the string with the given slice
     ///
-    /// No checks are performed on the strings. It is possible to end up null values inside the
+    /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
     ///
     /// # Examples
@@ -360,7 +360,7 @@ impl UString<u16> {
 
     /// Extends the string with the given string slice
     ///
-    /// No checks are performed on the strings. It is possible to end up null values inside the
+    /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
     ///
     /// # Examples
@@ -381,7 +381,7 @@ impl UString<u16> {
 
     /// Extends the string with the given string slice
     ///
-    /// No checks are performed on the strings. It is possible to end up null values inside the
+    /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
     ///
     /// # Examples
@@ -501,7 +501,7 @@ impl UString<u32> {
 
     /// Extends the string with the given string slice
     ///
-    /// No checks are performed on the strings. It is possible to end up null values inside the
+    /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
     ///
     /// # Examples
@@ -522,7 +522,7 @@ impl UString<u32> {
 
     /// Extends the string with the given string slice
     ///
-    /// No checks are performed on the strings. It is possible to end up null values inside the
+    /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
     ///
     /// # Examples
@@ -843,14 +843,14 @@ impl<C: UChar> Default for Box<UStr<C>> {
     }
 }
 
-/// An owned, mutable "wide" string for FFI that is **not** null-aware.
+/// An owned, mutable "wide" string for FFI that is **not** nul-aware.
 ///
-/// [`U16String`] is not aware of null values. Strings may or may not be null-terminated, and may
+/// [`U16String`] is not aware of nul values. Strings may or may not be nul-terminated, and may
 /// contain invalid and ill-formed UTF-16 data. These strings are intended to be used with
 /// FFI functions that directly use string length, where the strings are known to have proper
-/// null-termination already, or where strings are merely being passed through without modification.
+/// nul-termination already, or where strings are merely being passed through without modification.
 ///
-/// [`U16CString`][crate::U16CString] should be used instead if null-aware strings are required.
+/// [`U16CString`][crate::U16CString] should be used instead if nul-aware strings are required.
 ///
 /// [`U16String`] can be converted to and from many other standard Rust string types, including
 /// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
@@ -871,14 +871,14 @@ impl<C: UChar> Default for Box<UStr<C>> {
 /// ```
 pub type U16String = UString<u16>;
 
-/// An owned, mutable 32-bit wide string for FFI that is **not** null-aware.
+/// An owned, mutable 32-bit wide string for FFI that is **not** nul-aware.
 ///
-/// [`U32String`] is not aware of null values. Strings may or may not be null-terminated, and may
+/// [`U32String`] is not aware of nul values. Strings may or may not be nul-terminated, and may
 /// contain invalid and ill-formed UTF-32 data. These strings are intended to be used with
 /// FFI functions that directly use string length, where the strings are known to have proper
-/// null-termination already, or where strings are merely being passed through without modification.
+/// nul-termination already, or where strings are merely being passed through without modification.
 ///
-/// [`U32CString`][crate::U32CString] should be used instead if null-aware 32-bit strings are
+/// [`U32CString`][crate::U32CString] should be used instead if nul-aware 32-bit strings are
 /// required.
 ///
 /// [`U32String`] can be converted to and from many other standard Rust string types, including
