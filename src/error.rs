@@ -156,6 +156,7 @@ pub struct FromUtf32Error {
 }
 
 impl FromUtf32Error {
+    #[allow(dead_code)]
     pub(crate) fn new() -> Self {
         Self { _unused: () }
     }
