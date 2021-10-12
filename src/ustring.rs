@@ -1462,6 +1462,7 @@ mod test {
     use super::*;
 
     #[test]
+    #[allow(clippy::write_literal)]
     fn number_to_string() {
         let mut s = U16String::new();
         write!(s, "{}", 1234).unwrap();
