@@ -3,8 +3,9 @@
 //! This module contains the [`UCStr`] string slices and related types.
 
 use crate::{
+    error::{ContainsNul, MissingNulTerminator, NulError},
     iter::{CharsLossy, Utf16CharIndices, Utf16CharIndicesLossy, Utf16Chars, Utf32Chars},
-    ContainsNul, MissingNulTerminator, NulError, UChar, UStr, WideChar,
+    UChar, UStr, WideChar,
 };
 #[cfg(feature = "alloc")]
 use alloc::{
@@ -1293,7 +1294,7 @@ impl UCStr<u32> {
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-    pub fn to_string(&self) -> Result<String, crate::FromUtf32Error> {
+    pub fn to_string(&self) -> Result<String, crate::error::FromUtf32Error> {
         self.as_ustr().to_string()
     }
 

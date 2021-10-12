@@ -11,8 +11,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   functionality, as there have been some minor tweaks (mostly relaxing/removing error conditions and
   reducing panics). Old names have been deprecated to ease transition and will be removed in a
   future release. Fixes [#18].
-  - `MissingNulError` => `MissingNulTerminator`
-  - `NulError` => `ContainsNul`
+  - `MissingNulError` => `error::MissingNulTerminator`
+  - `FromUtf32Error` => `error::FromUtf32Error`
+  - `NulError` => `error::ContainsNul`
   - `UCStr::from_ptr_with_nul` => `from_ptr_unchecked`
   - `UCStr::from_slice_with_nul` => `from_slice_truncate`
   - `UCStr::from_slice_with_nul_unchecked` => `from_slice_unchecked`
@@ -36,8 +37,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Improved documentation and used intra-doc links.
 
 ### Added
-- Added crate-level functions `decode_utf16_lossy`, `decode_utf32`, and `decode_utf32_lossy` and
-  associated iterators.
+- Added crate-level functions `decode_utf16`, `decode_utf16_lossy`, `decode_utf32`, and
+  `decode_utf32_lossy` and associated iterators. Note that `decode_utf16` is an alias of
+  `core::char::decode_utf16`, but provided for consistency.
 - Added `display` method to to both `UStr` and `UCStr` to display strings in formatting without heap
   allocations, similar to `Path::display`. Fixes [#20].
 - Added more trait implementations, including more index operations and string formatting via

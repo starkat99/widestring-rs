@@ -2,11 +2,14 @@
 
 use crate::{error::DecodeUtf32Error, U16CStr, U16Str, U32CStr, U32Str};
 use core::{
-    char::{self, DecodeUtf16, DecodeUtf16Error},
+    char::{self, DecodeUtf16Error},
     fmt::Write,
     iter::{Copied, FusedIterator},
     slice::Iter,
 };
+
+#[doc(no_inline)]
+pub use core::char::DecodeUtf16;
 
 /// An iterator that lossily decodes possibly ill-formed UTF-16 encoded code points from an iterator
 /// of `u16`s.

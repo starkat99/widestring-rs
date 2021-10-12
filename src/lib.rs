@@ -225,10 +225,16 @@ pub mod ustr;
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub mod ustring;
 
-#[doc(no_inline)]
+#[doc(hidden)]
+#[deprecated(note = "use `error::ContainsNul` instead")]
+pub use error::ContainsNul as NulError;
+#[doc(hidden)]
+#[deprecated(note = "use `error::FromUt32Error` instead")]
+pub use error::FromUtf32Error;
+#[doc(hidden)]
 #[allow(deprecated)]
-#[deprecated(note = "use error from error module instead")]
-pub use error::{ContainsNul, FromUtf32Error, MissingNulError, MissingNulTerminator, NulError};
+pub use error::MissingNulError;
+
 pub use ucstr::{U16CStr, U32CStr, UCStr, WideCStr};
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
@@ -269,6 +275,9 @@ pub type WideChar = u32;
 /// Alias for [`u16`] or [`u32`] depending on platform. Intended to match typical C `wchar_t` size
 /// on platform.
 pub type WideChar = u16;
+
+#[doc(no_inline)]
+pub use core::char::decode_utf16;
 
 /// Creates a lossy decoder iterator over the possibly ill-formed UTF-16 encoded code points in
 /// `iter`.

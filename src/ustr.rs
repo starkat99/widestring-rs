@@ -631,10 +631,10 @@ impl UStr<u32> {
     /// ```
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-    pub fn to_string(&self) -> Result<String, crate::FromUtf32Error> {
+    pub fn to_string(&self) -> Result<String, crate::error::FromUtf32Error> {
         let chars: Vec<Option<char>> = self.inner.iter().map(|c| char::from_u32(*c)).collect();
         if chars.iter().any(|c| c.is_none()) {
-            return Err(crate::FromUtf32Error::new());
+            return Err(crate::error::FromUtf32Error::new());
         }
         let size = chars.iter().filter_map(|o| o.map(|c| c.len_utf8())).sum();
         let mut vec = Vec::with_capacity(size);

@@ -2,7 +2,7 @@
 //!
 //! This module contains the [`UCString`] strings and related types.
 
-use crate::{ContainsNul, UCStr, UChar, UStr, UString, WideChar};
+use crate::{error::ContainsNul, UCStr, UChar, UStr, UString, WideChar};
 use alloc::{
     borrow::{Cow, ToOwned},
     boxed::Box,
