@@ -40,7 +40,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   associated iterators.
 - Added `display` method to to both `UStr` and `UCStr` to display strings in formatting without heap
   allocations, similar to `Path::display`. Fixes [#20].
-- Added more trait implementations, including more index operations.
+- Added more trait implementations, including more index operations and string formatting via
+  `Write` trait. Fixes [#19].
 - Added new functions:
     - `UStr::from_ptr_mut`
     - `UStr::from_slice_mut`
@@ -190,6 +191,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [#2]: https://github.com/starkat99/widestring-rs/issues/2
 [#14]: https://github.com/starkat99/widestring-rs/issues/14
 [#18]: https://github.com/starkat99/widestring-rs/issues/18
+[#19]: https://github.com/starkat99/widestring-rs/issues/19
 [#20]: https://github.com/starkat99/widestring-rs/issues/20
 
 [@nicbn]: https://github.com/nicbn

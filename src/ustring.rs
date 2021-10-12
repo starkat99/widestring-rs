@@ -1456,3 +1456,15 @@ pub type U32String = UString<u32>;
 /// Alias for [`U16String`] or [`U32String`] depending on platform. Intended to match typical C
 /// `wchar_t` size on platform.
 pub type WideString = UString<WideChar>;
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn number_to_string() {
+        let mut s = U16String::new();
+        write!(s, "{}", 1234).unwrap();
+        assert_eq!(s, U16String::from_str("1234"));
+    }
+}
