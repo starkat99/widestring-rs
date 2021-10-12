@@ -146,7 +146,7 @@ impl<'a> Iterator for Utf16Chars<'a> {
 impl<'a> FusedIterator for Utf16Chars<'a> {}
 
 impl<'a> core::fmt::Debug for Utf16Chars<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         crate::debug_fmt_utf16_iter(self.clone(), f)
     }
 }
@@ -191,7 +191,7 @@ impl<'a> Iterator for Utf32Chars<'a> {
 impl<'a> FusedIterator for Utf32Chars<'a> {}
 
 impl<'a> core::fmt::Debug for Utf32Chars<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         crate::debug_fmt_utf32_iter(self.clone(), f)
     }
 }
@@ -268,7 +268,7 @@ impl<'a> Iterator for CharsLossy<'a> {
 impl<'a> FusedIterator for CharsLossy<'a> {}
 
 impl<'a> core::fmt::Debug for CharsLossy<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_char('"')?;
         for c in self.clone() {
             f.write_char(c)?;

@@ -1384,13 +1384,13 @@ impl<C: UChar> ToOwned for UStr<C> {
 
 impl Write for U16String {
     #[inline]
-    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
         self.push_str(s);
         Ok(())
     }
 
     #[inline]
-    fn write_char(&mut self, c: char) -> std::fmt::Result {
+    fn write_char(&mut self, c: char) -> core::fmt::Result {
         self.push_char(c);
         Ok(())
     }

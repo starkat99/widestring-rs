@@ -821,7 +821,7 @@ impl<C: UChar> PartialEq<crate::UCStr<C>> for UStr<C> {
 
 impl<C: UChar> PartialOrd<crate::UCStr<C>> for UStr<C> {
     #[inline]
-    fn partial_cmp(&self, other: &crate::UCStr<C>) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &crate::UCStr<C>) -> Option<core::cmp::Ordering> {
         self.partial_cmp(other.as_ustr())
     }
 }

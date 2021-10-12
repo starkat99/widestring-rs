@@ -214,12 +214,15 @@ use core::{char::DecodeUtf16Error, fmt::Write};
 pub mod error;
 pub mod iter;
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 mod platform;
 pub mod ucstr;
 #[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub mod ucstring;
 pub mod ustr;
 #[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub mod ustring;
 
 #[doc(no_inline)]
@@ -228,9 +231,11 @@ pub mod ustring;
 pub use error::{ContainsNul, FromUtf32Error, MissingNulError, MissingNulTerminator, NulError};
 pub use ucstr::{U16CStr, U32CStr, UCStr, WideCStr};
 #[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub use ucstring::{U16CString, U32CString, UCString, WideCString};
 pub use ustr::{U16Str, U32Str, UStr, WideStr};
 #[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub use ustring::{U16String, U32String, UString, WideString};
 
 /// Marker trait for primitive types used to represent wide character data. Should not be used
@@ -434,16 +439,19 @@ fn debug_fmt_utf32_iter(
     fmt.write_char('"')
 }
 
+#[cfg(feature = "alloc")]
 #[inline(always)]
 fn is_utf16_surrogate(u: u16) -> bool {
     (0xD800..=0xDFFF).contains(&u)
 }
 
+#[cfg(feature = "alloc")]
 #[inline(always)]
 fn is_utf16_high_surrogate(u: u16) -> bool {
     (0xD800..=0xDBFF).contains(&u)
 }
 
+#[cfg(feature = "alloc")]
 #[inline(always)]
 fn is_utf16_low_surrogate(u: u16) -> bool {
     (0xDC00..=0xDFFF).contains(&u)
