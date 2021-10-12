@@ -208,7 +208,8 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-use core::fmt::Write;
+use crate::error::DecodeUtf32Error;
+use core::{char::DecodeUtf16Error, fmt::Write};
 
 pub mod error;
 pub mod iter;
@@ -223,6 +224,7 @@ pub mod ustring;
 
 #[doc(no_inline)]
 #[allow(deprecated)]
+#[deprecated(note = "use error from error module instead")]
 pub use error::{ContainsNul, FromUtf32Error, MissingNulError, MissingNulTerminator, NulError};
 pub use ucstr::{U16CStr, U32CStr, UCStr, WideCStr};
 #[cfg(feature = "alloc")]
@@ -233,7 +235,7 @@ pub use ustring::{U16String, U32String, UString, WideString};
 
 /// Marker trait for primitive types used to represent wide character data. Should not be used
 /// directly.
-pub trait UChar: core::fmt::Debug + Sized + Copy + Ord + Eq + private::Sealed {
+pub trait UChar: core::fmt::Debug + Sized + Copy + Default + Ord + Eq + private::Sealed {
     /// NUL character value
     const NUL: Self;
 }
@@ -364,14 +366,26 @@ where
     }
 }
 
-/// Debug implementation for any U16 string
+/// Debug implementation for any U16 string slice
 ///
 /// Properly encoded input data will output valid strings with escape sequences, however invalid
 /// encoding will purposefully output any unpaired surrogate as \<XXXX> which is not a valid escape
 /// sequence. This is intentional, as debug output is not meant to be parsed by read by humans.
 fn debug_fmt_u16(s: &[u16], fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    debug_fmt_utf16_iter(core::char::decode_utf16(s.iter().copied()), fmt)
+}
+
+/// Debug implementation for any U16 string iterator
+///
+/// Properly encoded input data will output valid strings with escape sequences, however invalid
+/// encoding will purposefully output any unpaired surrogate as \<XXXX> which is not a valid escape
+/// sequence. This is intentional, as debug output is not meant to be parsed by read by humans.
+fn debug_fmt_utf16_iter(
+    iter: impl Iterator<Item = Result<char, DecodeUtf16Error>>,
+    fmt: &mut core::fmt::Formatter<'_>,
+) -> core::fmt::Result {
     fmt.write_char('"')?;
-    for res in core::char::decode_utf16(s.iter().copied()) {
+    for res in iter {
         match res {
             Ok(ch) => {
                 for c in ch.escape_debug() {
@@ -386,14 +400,26 @@ fn debug_fmt_u16(s: &[u16], fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Re
     fmt.write_char('"')
 }
 
-/// Debug implementation for any U16 string
+/// Debug implementation for any U16 string slice
 ///
 /// Properly encoded input data will output valid strings with escape sequences, however invalid
 /// encoding will purposefully output any  invalid code point as \<XXXX> which is not a valid escape
 /// sequence. This is intentional, as debug output is not meant to be parsed by read by humans.
 fn debug_fmt_u32(s: &[u32], fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    debug_fmt_utf32_iter(decode_utf32(s.iter().copied()), fmt)
+}
+
+/// Debug implementation for any U16 string iterator
+///
+/// Properly encoded input data will output valid strings with escape sequences, however invalid
+/// encoding will purposefully output any  invalid code point as \<XXXX> which is not a valid escape
+/// sequence. This is intentional, as debug output is not meant to be parsed by read by humans.
+fn debug_fmt_utf32_iter(
+    iter: impl Iterator<Item = Result<char, DecodeUtf32Error>>,
+    fmt: &mut core::fmt::Formatter<'_>,
+) -> core::fmt::Result {
     fmt.write_char('"')?;
-    for res in decode_utf32(s.iter().copied()) {
+    for res in iter {
         match res {
             Ok(ch) => {
                 for c in ch.escape_debug() {
@@ -406,4 +432,19 @@ fn debug_fmt_u32(s: &[u32], fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Re
         }
     }
     fmt.write_char('"')
+}
+
+#[inline(always)]
+fn is_utf16_surrogate(u: u16) -> bool {
+    u >= 0xD800 && u <= 0xDFFF
+}
+
+#[inline(always)]
+fn is_utf16_high_surrogate(u: u16) -> bool {
+    u >= 0xD800 && u <= 0xDBFF
+}
+
+#[inline(always)]
+fn is_utf16_low_surrogate(u: u16) -> bool {
+    u >= 0xDC00 && u <= 0xDFFF
 }

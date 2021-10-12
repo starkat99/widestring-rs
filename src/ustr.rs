@@ -2,14 +2,22 @@
 //!
 //! This module contains the [`UStr`] string slices and related types.
 
-use crate::{UChar, WideChar};
+use crate::{
+    iter::{CharsLossy, Utf16CharIndices, Utf16CharIndicesLossy, Utf16Chars, Utf32Chars},
+    UChar, WideChar,
+};
 #[cfg(feature = "alloc")]
 use alloc::{
     boxed::Box,
     string::{FromUtf16Error, String},
     vec::Vec,
 };
-use core::{char, fmt::Write, slice};
+use core::{
+    char,
+    fmt::Write,
+    ops::{Index, IndexMut, Range},
+    slice::{self, SliceIndex},
+};
 
 /// String slice reference for [`UString`][crate::UString]
 ///
@@ -165,6 +173,38 @@ impl<C: UChar> UStr<C> {
         self.inner.as_mut_ptr()
     }
 
+    /// Returns the two raw pointers spanning the string slice.
+    ///
+    /// The returned range is half-open, which means that the end pointer points one past the last
+    /// element of the slice. This way, an empty slice is represented by two equal pointers, and the
+    /// difference between the two pointers represents the size of the slice.
+    ///
+    /// See [`as_ptr`][Self::as_ptr] for warnings on using these pointers. The end pointer requires
+    /// extra caution, as it does not point to a valid element in the slice.
+    ///
+    /// This function is useful for interacting with foreign interfaces which use two pointers to
+    /// refer to a range of elements in memory, as is common in C++.
+    #[inline]
+    pub fn as_ptr_range(&self) -> Range<*const C> {
+        self.inner.as_ptr_range()
+    }
+
+    /// Returns the two unsafe mutable pointers spanning the string slice.
+    ///
+    /// The returned range is half-open, which means that the end pointer points one past the last
+    /// element of the slice. This way, an empty slice is represented by two equal pointers, and the
+    /// difference between the two pointers represents the size of the slice.
+    ///
+    /// See [`as_mut_ptr`][Self::as_mut_ptr] for warnings on using these pointers. The end pointer requires
+    /// extra caution, as it does not point to a valid element in the slice.
+    ///
+    /// This function is useful for interacting with foreign interfaces which use two pointers to
+    /// refer to a range of elements in memory, as is common in C++.
+    #[inline]
+    pub fn as_mut_ptr_range(&mut self) -> Range<*mut C> {
+        self.inner.as_mut_ptr_range()
+    }
+
     /// Returns the length of the string as number of elements (**not** number of bytes)
     #[inline]
     pub fn len(&self) -> usize {
@@ -233,6 +273,98 @@ impl<C: UChar> UStr<C> {
     #[inline]
     pub fn display(&self) -> Display<'_, C> {
         Display { str: self }
+    }
+
+    /// Returns a subslice of the string.
+    ///
+    /// This is the non-panicking alternative to indexing the string. Returns [`None`] whenever
+    /// equivalent indexing operation would panic.
+    #[inline]
+    pub fn get<I>(&self, i: I) -> Option<&Self>
+    where
+        I: SliceIndex<[C], Output = [C]>,
+    {
+        self.inner.get(i).map(Self::from_slice)
+    }
+
+    /// Returns a mutable subslice of the string.
+    ///
+    /// This is the non-panicking alternative to indexing the string. Returns [`None`] whenever
+    /// equivalent indexing operation would panic.
+    #[inline]
+    pub fn get_mut<I>(&mut self, i: I) -> Option<&mut Self>
+    where
+        I: SliceIndex<[C], Output = [C]>,
+    {
+        self.inner.get_mut(i).map(Self::from_slice_mut)
+    }
+
+    /// Returns an unchecked subslice of the string.
+    ///
+    /// This is the unchecked alternative to indexing the string.
+    ///
+    /// # Safety
+    ///
+    /// Callers of this function are responsible that these preconditions are satisfied:
+    ///
+    /// - The starting index must not exceed the ending index;
+    /// - Indexes must be within bounds of the original slice.
+    ///
+    /// Failing that, the returned string slice may reference invalid memory.
+    #[inline]
+    pub unsafe fn get_unchecked<I>(&self, i: I) -> &Self
+    where
+        I: SliceIndex<[C], Output = [C]>,
+    {
+        Self::from_slice(self.inner.get_unchecked(i))
+    }
+
+    /// Returns aa mutable, unchecked subslice of the string.
+    ///
+    /// This is the unchecked alternative to indexing the string.
+    ///
+    /// # Safety
+    ///
+    /// Callers of this function are responsible that these preconditions are satisfied:
+    ///
+    /// - The starting index must not exceed the ending index;
+    /// - Indexes must be within bounds of the original slice.
+    ///
+    /// Failing that, the returned string slice may reference invalid memory.
+    #[inline]
+    pub unsafe fn get_unchecked_mut<I>(&mut self, i: I) -> &mut Self
+    where
+        I: SliceIndex<[C], Output = [C]>,
+    {
+        Self::from_slice_mut(self.inner.get_unchecked_mut(i))
+    }
+
+    /// Divide one string slice into two at an index.
+    ///
+    /// The argument, `mid`, should be an offset from the start of the string.
+    ///
+    /// The two slices returned go from the start of the string slice to `mid`, and from `mid` to
+    /// the end of the string slice.
+    ///
+    /// To get mutable string slices instead, see the [`split_at_mut`][Self::split_at_mut] method.
+    #[inline]
+    pub fn split_at(&self, mid: usize) -> (&Self, &Self) {
+        let split = self.inner.split_at(mid);
+        (Self::from_slice(split.0), Self::from_slice(split.1))
+    }
+
+    /// Divide one mutable string slice into two at an index.
+    ///
+    /// The argument, `mid`, should be an offset from the start of the string.
+    ///
+    /// The two slices returned go from the start of the string slice to `mid`, and from `mid` to
+    /// the end of the string slice.
+    ///
+    /// To get immutable string slices instead, see the [`split_at`][Self::split_at] method.
+    #[inline]
+    pub fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self) {
+        let split = self.inner.split_at_mut(mid);
+        (Self::from_slice_mut(split.0), Self::from_slice_mut(split.1))
     }
 }
 
@@ -313,6 +445,64 @@ impl UStr<u16> {
     #[inline]
     pub fn to_string_lossy(&self) -> String {
         String::from_utf16_lossy(&self.inner)
+    }
+
+    /// Returns an iterator over the [`char`][prim@char]s of a string slice.
+    ///
+    /// As this string slice may consist of invalid UTF-16, the iterator returned by this method
+    /// is an iterator over `Result<char, DecodeUtf16Error>` instead of [`char`][prim@char]s
+    /// directly. If you would like a lossy iterator over [`chars`][prim@char]s directly, instead
+    /// use [`chars_lossy`][Self::chars_lossy].
+    ///
+    /// It's important to remember that [`char`][prim@char] represents a Unicode Scalar Value, and
+    /// may not match your idea of what a 'character' is. Iteration over grapheme clusters may be
+    /// what you actually want. That functionality is not provided by by this crate.
+    #[inline]
+    pub fn chars(&self) -> Utf16Chars<'_> {
+        Utf16Chars::from_ustr(self)
+    }
+
+    /// Returns a lossy iterator over the [`char`][prim@char]s of a string slice.
+    ///
+    /// As this string slice may consist of invalid UTF-16, the iterator returned by this method
+    /// will replace unpaired surrogates with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). This is a lossy
+    /// version of [`chars`][Self::chars].
+    ///
+    /// It's important to remember that [`char`][prim@char] represents a Unicode Scalar Value, and
+    /// may not match your idea of what a 'character' is. Iteration over grapheme clusters may be
+    /// what you actually want. That functionality is not provided by by this crate.
+    #[inline]
+    pub fn chars_lossy(&self) -> CharsLossy<'_> {
+        CharsLossy::from_u16str(self)
+    }
+
+    /// Returns an iterator over the chars of a string slice, and their positions.
+    ///
+    /// As this string slice may consist of invalid UTF-16, the iterator returned by this method
+    /// is an iterator over `Result<char, DecodeUtf16Error>` as well as their positions, instead of
+    /// [`char`][prim@char]s directly. If you would like a lossy indices iterator over
+    /// [`chars`][prim@char]s directly, instead use
+    /// [`char_indices_lossy`][Self::char_indices_lossy].
+    ///
+    /// The iterator yields tuples. The position is first, the [`char`][prim@char] is second.
+    #[inline]
+    pub fn char_indices(&self) -> Utf16CharIndices<'_> {
+        Utf16CharIndices::from_ustr(self)
+    }
+
+    /// Returns a lossy iterator over the chars of a string slice, and their positions.
+    ///
+    /// As this string slice may consist of invalid UTF-16, the iterator returned by this method
+    /// will replace unpaired surrogates with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�), as well as the
+    /// positions of all characters. This is a lossy version of
+    /// [`char_indices`][Self::char_indices].
+    ///
+    /// The iterator yields tuples. The position is first, the [`char`][prim@char] is second.
+    #[inline]
+    pub fn char_indices_lossy(&self) -> Utf16CharIndicesLossy<'_> {
+        Utf16CharIndicesLossy::from_ustr(self)
     }
 }
 
@@ -491,6 +681,64 @@ impl UStr<u32> {
         }
         unsafe { String::from_utf8_unchecked(vec) }
     }
+
+    /// Returns an iterator over the [`char`][prim@char]s of a string slice.
+    ///
+    /// As this string slice may consist of invalid UTF-32, the iterator returned by this method
+    /// is an iterator over `Result<char, DecodeUtf32Error>` instead of [`char`][prim@char]s
+    /// directly. If you would like a lossy iterator over [`chars`][prim@char]s directly, instead
+    /// use [`chars_lossy`][Self::chars_lossy].
+    ///
+    /// It's important to remember that [`char`][prim@char] represents a Unicode Scalar Value, and
+    /// may not match your idea of what a 'character' is. Iteration over grapheme clusters may be
+    /// what you actually want. That functionality is not provided by by this crate.
+    #[inline]
+    pub fn chars(&self) -> Utf32Chars<'_> {
+        Utf32Chars::from_ustr(self)
+    }
+
+    /// Returns a lossy iterator over the [`char`][prim@char]s of a string slice.
+    ///
+    /// As this string slice may consist of invalid UTF-32, the iterator returned by this method
+    /// will replace surrogate values or invalid code points with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). This is a lossy
+    /// version of [`chars`][Self::chars].
+    ///
+    /// It's important to remember that [`char`][prim@char] represents a Unicode Scalar Value, and
+    /// may not match your idea of what a 'character' is. Iteration over grapheme clusters may be
+    /// what you actually want. That functionality is not provided by by this crate.
+    #[inline]
+    pub fn chars_lossy(&self) -> CharsLossy<'_> {
+        CharsLossy::from_u32str(self)
+    }
+}
+
+impl<C: UChar> AsMut<UStr<C>> for UStr<C> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut UStr<C> {
+        self
+    }
+}
+
+impl<C: UChar> AsMut<[C]> for UStr<C> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut [C] {
+        self.as_mut_slice()
+    }
+}
+
+impl<C: UChar> AsRef<UStr<C>> for UStr<C> {
+    #[inline]
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
+
+impl<C: UChar> AsRef<[C]> for UStr<C> {
+    #[inline]
+    fn as_ref(&self) -> &[C] {
+        self.as_slice()
+    }
 }
 
 impl core::fmt::Debug for U16Str {
@@ -504,6 +752,82 @@ impl core::fmt::Debug for U32Str {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         crate::debug_fmt_u32(self.as_slice(), f)
+    }
+}
+
+impl<C: UChar> Default for &UStr<C> {
+    #[inline]
+    fn default() -> Self {
+        UStr::from_slice(&[])
+    }
+}
+
+impl<C: UChar> Default for &mut UStr<C> {
+    #[inline]
+    fn default() -> Self {
+        UStr::from_slice_mut(&mut [])
+    }
+}
+
+impl<'a, C: UChar> From<&'a [C]> for &'a UStr<C> {
+    #[inline]
+    fn from(value: &'a [C]) -> Self {
+        UStr::from_slice(value)
+    }
+}
+
+impl<'a, C: UChar> From<&'a mut [C]> for &'a UStr<C> {
+    #[inline]
+    fn from(value: &'a mut [C]) -> Self {
+        UStr::from_slice(value)
+    }
+}
+
+impl<'a, C: UChar> From<&'a mut [C]> for &'a mut UStr<C> {
+    #[inline]
+    fn from(value: &'a mut [C]) -> Self {
+        UStr::from_slice_mut(value)
+    }
+}
+
+impl<C: UChar, I> Index<I> for UStr<C>
+where
+    I: SliceIndex<[C], Output = [C]>,
+{
+    type Output = Self;
+
+    #[inline]
+    fn index(&self, index: I) -> &Self::Output {
+        Self::from_slice(&self.inner[index])
+    }
+}
+
+impl<C: UChar, I> IndexMut<I> for UStr<C>
+where
+    I: SliceIndex<[C], Output = [C]>,
+{
+    #[inline]
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+        Self::from_slice_mut(&mut self.inner[index])
+    }
+}
+
+impl<C: UChar> PartialEq<crate::UCStr<C>> for UStr<C> {
+    #[inline]
+    fn eq(&self, other: &crate::UCStr<C>) -> bool {
+        self.as_slice() == other.as_slice()
+    }
+
+    #[inline]
+    fn ne(&self, other: &crate::UCStr<C>) -> bool {
+        self.as_slice() != other.as_slice()
+    }
+}
+
+impl<C: UChar> PartialOrd<crate::UCStr<C>> for UStr<C> {
+    #[inline]
+    fn partial_cmp(&self, other: &crate::UCStr<C>) -> Option<std::cmp::Ordering> {
+        self.partial_cmp(other.as_ustr())
     }
 }
 

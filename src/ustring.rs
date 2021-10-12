@@ -2,7 +2,7 @@
 //!
 //! This module contains the [`UString`] strings and related types.
 
-use crate::{UChar, UStr, WideChar};
+use crate::{UCStr, UCString, UChar, UStr, WideChar};
 use alloc::{
     borrow::{Cow, ToOwned},
     boxed::Box,
@@ -10,10 +10,15 @@ use alloc::{
     vec::Vec,
 };
 use core::{
-    borrow::Borrow,
-    char, cmp, mem,
-    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
-    slice,
+    borrow::{Borrow, BorrowMut},
+    char, cmp,
+    convert::Infallible,
+    fmt::Write,
+    iter::FromIterator,
+    mem,
+    ops::{Add, AddAssign, Deref, DerefMut, Index, IndexMut},
+    slice::{self, SliceIndex},
+    str::FromStr,
 };
 
 /// An owned, mutable "wide" string for FFI that is **not** nul-aware
@@ -173,13 +178,25 @@ impl<C: UChar> UString<C> {
     /// Converts to a [`UStr`] reference
     #[inline]
     pub fn as_ustr(&self) -> &UStr<C> {
-        self
+        UStr::from_slice(&self.inner)
     }
 
     /// Converts to a mutable [`UStr`] reference
     #[inline]
     pub fn as_mut_ustr(&mut self) -> &mut UStr<C> {
-        self
+        UStr::from_slice_mut(&mut self.inner)
+    }
+
+    /// Returns a [`Vec`] reference to the contents of this string.
+    #[inline]
+    pub fn as_vec(&self) -> &Vec<C> {
+        &self.inner
+    }
+
+    /// Returns a mutable reference to the contents of this string.
+    #[inline]
+    pub fn as_mut_vec(&mut self) -> &mut Vec<C> {
+        &mut self.inner
     }
 
     /// Extends the string with the given string slice
@@ -303,6 +320,46 @@ impl<C: UChar> UString<C> {
         let rw = Box::into_raw(self.inner.into_boxed_slice()) as *mut UStr<C>;
         unsafe { Box::from_raw(rw) }
     }
+
+    /// Shortens this string to the specified length.
+    ///
+    /// If `new_len` is greater than the string’s current length, this has no effect.
+    ///
+    /// Note that this method has no effect on the allocated capacity of the string.
+    #[inline]
+    pub fn truncate(&mut self, new_len: usize) {
+        self.inner.truncate(new_len)
+    }
+
+    /// Inserts a string slice into this string at a specified position.
+    ///
+    /// This is an _O(n)_ operation as it requires copying every element in the buffer.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `idx` is larger than the string's length.
+    pub fn insert_ustr(&mut self, idx: usize, string: &UStr<C>) {
+        assert!(idx <= self.len());
+        self.inner
+            .resize_with(self.len() + string.len(), Default::default);
+        self.inner.copy_within(idx.., idx + string.len());
+        self.inner[idx..].copy_from_slice(string.as_slice());
+    }
+
+    /// Splits the string into two at the given index.
+    ///
+    /// Returns a newly allocated string. `self` contains values `[0, at)`, and the returned string
+    /// contains values `[at, len)`.
+    ///
+    /// Note that the capacity of `self` does not change.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `at` is equal to or greater than the length of the string.
+    #[inline]
+    pub fn split_off(&mut self, at: usize) -> UString<C> {
+        Self::from_vec(self.inner.split_off(at))
+    }
 }
 
 impl UString<u16> {
@@ -400,6 +457,73 @@ impl UString<u16> {
     #[inline]
     pub fn push_os_str(&mut self, s: impl AsRef<std::ffi::OsStr>) {
         self.inner.extend(crate::platform::os_to_wide(s.as_ref()))
+    }
+
+    /// Appends the given [`char`][prim@char] to the end of this string.
+    #[inline]
+    pub fn push_char(&mut self, c: char) {
+        let mut buf = [0; 2];
+        self.inner.extend_from_slice(c.encode_utf16(&mut buf))
+    }
+
+    /// Removes the last character or unpaired surrogate from the string buffer and returns it.
+    ///
+    /// Returns `None` if this String is empty. Otherwise, returns the character cast to a
+    /// [`u32`][prim@u32] or the value of the unpaired surrogate as a [`u32`][prim@u32] value.
+    pub fn pop(&mut self) -> Option<u32> {
+        match self.inner.pop() {
+            Some(low) if crate::is_utf16_surrogate(low) => {
+                if !crate::is_utf16_low_surrogate(low) || self.inner.is_empty() {
+                    Some(low as u32)
+                } else {
+                    let high = self.inner[self.len()];
+                    if crate::is_utf16_high_surrogate(high) {
+                        self.inner.pop();
+                        let buf = [high, low];
+                        Some(char::decode_utf16(buf).next().unwrap().unwrap() as u32)
+                    } else {
+                        Some(low as u32)
+                    }
+                }
+            }
+            Some(u) => Some(u as u32),
+            None => None,
+        }
+    }
+
+    /// Removes a [`char`][prim@char] or unpaired surrogate from this string at a position and
+    /// returns it as a [`u32`][prim@u32].
+    ///
+    /// This is an _O(n)_ operation, as it requires copying every element in the buffer.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `idx` is larger than or equal to the string's length.
+    pub fn remove(&mut self, idx: usize) -> u32 {
+        let slice = &self.inner[idx..];
+        let c = char::decode_utf16(slice.iter().copied()).next().unwrap();
+        let clen = c.as_ref().map(|c| c.len_utf16()).unwrap_or(1);
+        let c = c
+            .map(|c| c as u32)
+            .unwrap_or_else(|_| self.inner[idx] as u32);
+        self.inner.drain(idx..idx + clen);
+        c
+    }
+
+    /// Inserts a character into this string at a specified position.
+    ///
+    /// This is an _O(n)_ operation as it requires copying every element in the buffer.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `idx` is larger than the string's length.
+    pub fn insert(&mut self, idx: usize, c: char) {
+        assert!(idx <= self.len());
+        let mut buf = [0; 2];
+        let slice = c.encode_utf16(&mut buf);
+        self.inner.resize(self.len() + slice.len(), 0);
+        self.inner.copy_within(idx.., idx + slice.len());
+        self.inner[idx..].copy_from_slice(slice);
     }
 }
 
@@ -543,6 +667,154 @@ impl UString<u32> {
         self.inner
             .extend(s.as_ref().to_string_lossy().chars().map(|c| c as u32))
     }
+
+    /// Appends the given [`char`][prim@char] to the end of this string.
+    #[inline]
+    pub fn push_char(&mut self, c: char) {
+        self.inner.push(c as u32);
+    }
+
+    /// Removes the last value from the string buffer and returns it.
+    ///
+    /// Returns `None` if this String is empty.
+    #[inline]
+    pub fn pop(&mut self) -> Option<u32> {
+        self.inner.pop()
+    }
+
+    /// Removes a value from this string at a position and returns it.
+    ///
+    /// This is an _O(n)_ operation, as it requires copying every element in the buffer.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `idx` is larger than or equal to the string's length.
+    #[inline]
+    pub fn remove(&mut self, idx: usize) -> u32 {
+        self.inner.remove(idx)
+    }
+
+    /// Inserts a character into this string at a specified position.
+    ///
+    /// This is an _O(n)_ operation as it requires copying every element in the buffer.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `idx` is larger than the string's length.
+    #[inline]
+    pub fn insert(&mut self, idx: usize, c: char) {
+        self.inner.insert(idx, c as u32)
+    }
+}
+
+impl<C: UChar> Add<&UStr<C>> for UString<C> {
+    type Output = UString<C>;
+
+    #[inline]
+    fn add(mut self, rhs: &UStr<C>) -> Self::Output {
+        self.push(rhs);
+        self
+    }
+}
+
+impl<C: UChar> Add<&UCStr<C>> for UString<C> {
+    type Output = UString<C>;
+
+    #[inline]
+    fn add(mut self, rhs: &UCStr<C>) -> Self::Output {
+        self.push(rhs);
+        self
+    }
+}
+
+impl Add<&str> for U16String {
+    type Output = U16String;
+
+    #[inline]
+    fn add(mut self, rhs: &str) -> Self::Output {
+        self.push_str(rhs);
+        self
+    }
+}
+
+impl Add<&str> for U32String {
+    type Output = U32String;
+
+    #[inline]
+    fn add(mut self, rhs: &str) -> Self::Output {
+        self.push_str(rhs);
+        self
+    }
+}
+
+impl<C: UChar> AddAssign<&UStr<C>> for UString<C> {
+    #[inline]
+    fn add_assign(&mut self, rhs: &UStr<C>) {
+        self.push(rhs)
+    }
+}
+
+impl<C: UChar> AddAssign<&UCStr<C>> for UString<C> {
+    #[inline]
+    fn add_assign(&mut self, rhs: &UCStr<C>) {
+        self.push(rhs)
+    }
+}
+
+impl AddAssign<&str> for U16String {
+    #[inline]
+    fn add_assign(&mut self, rhs: &str) {
+        self.push_str(rhs);
+    }
+}
+
+impl AddAssign<&str> for U32String {
+    #[inline]
+    fn add_assign(&mut self, rhs: &str) {
+        self.push_str(rhs);
+    }
+}
+
+impl<C: UChar> AsMut<UStr<C>> for UString<C> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut UStr<C> {
+        self.as_mut_ustr()
+    }
+}
+
+impl<C: UChar> AsMut<[C]> for UString<C> {
+    #[inline]
+    fn as_mut(&mut self) -> &mut [C] {
+        self.as_mut_slice()
+    }
+}
+
+impl<C: UChar> AsRef<UStr<C>> for UString<C> {
+    #[inline]
+    fn as_ref(&self) -> &UStr<C> {
+        self.as_ustr()
+    }
+}
+
+impl<C: UChar> AsRef<[C]> for UString<C> {
+    #[inline]
+    fn as_ref(&self) -> &[C] {
+        self.as_slice()
+    }
+}
+
+impl<C: UChar> Borrow<UStr<C>> for UString<C> {
+    #[inline]
+    fn borrow(&self) -> &UStr<C> {
+        self.as_ustr()
+    }
+}
+
+impl<C: UChar> BorrowMut<UStr<C>> for UString<C> {
+    #[inline]
+    fn borrow_mut(&mut self) -> &mut UStr<C> {
+        self.as_mut_ustr()
+    }
 }
 
 impl core::fmt::Debug for U16String {
@@ -556,6 +828,135 @@ impl core::fmt::Debug for U32String {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         crate::debug_fmt_u32(self.as_slice(), f)
+    }
+}
+
+impl<C: UChar> Default for Box<UStr<C>> {
+    #[inline]
+    fn default() -> Self {
+        let boxed: Box<[C]> = Box::from([]);
+        let rw = Box::into_raw(boxed) as *mut UStr<C>;
+        unsafe { Box::from_raw(rw) }
+    }
+}
+
+impl<C: UChar> Deref for UString<C> {
+    type Target = UStr<C>;
+
+    #[inline]
+    fn deref(&self) -> &UStr<C> {
+        self.as_ustr()
+    }
+}
+
+impl<C: UChar> DerefMut for UString<C> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.as_mut_ustr()
+    }
+}
+
+impl<'a, C: UChar> Extend<&'a UStr<C>> for UString<C> {
+    #[inline]
+    fn extend<T: IntoIterator<Item = &'a UStr<C>>>(&mut self, iter: T) {
+        iter.into_iter().for_each(|s| self.push(s))
+    }
+}
+
+impl<'a, C: UChar> Extend<&'a UCStr<C>> for UString<C> {
+    #[inline]
+    fn extend<T: IntoIterator<Item = &'a UCStr<C>>>(&mut self, iter: T) {
+        iter.into_iter().for_each(|s| self.push(s))
+    }
+}
+
+impl<'a> Extend<&'a str> for U16String {
+    #[inline]
+    fn extend<T: IntoIterator<Item = &'a str>>(&mut self, iter: T) {
+        iter.into_iter().for_each(|s| self.push_str(s))
+    }
+}
+
+impl<'a> Extend<&'a str> for U32String {
+    #[inline]
+    fn extend<T: IntoIterator<Item = &'a str>>(&mut self, iter: T) {
+        iter.into_iter().for_each(|s| self.push_str(s))
+    }
+}
+
+impl<C: UChar> Extend<UString<C>> for UString<C> {
+    #[inline]
+    fn extend<T: IntoIterator<Item = UString<C>>>(&mut self, iter: T) {
+        iter.into_iter().for_each(|s| self.push(s))
+    }
+}
+
+impl<C: UChar> Extend<UCString<C>> for UString<C> {
+    #[inline]
+    fn extend<T: IntoIterator<Item = UCString<C>>>(&mut self, iter: T) {
+        iter.into_iter().for_each(|s| self.push(s.as_ucstr()))
+    }
+}
+
+impl Extend<String> for U16String {
+    #[inline]
+    fn extend<T: IntoIterator<Item = String>>(&mut self, iter: T) {
+        iter.into_iter().for_each(|s| self.push_str(s))
+    }
+}
+
+impl Extend<String> for U32String {
+    #[inline]
+    fn extend<T: IntoIterator<Item = String>>(&mut self, iter: T) {
+        iter.into_iter().for_each(|s| self.push_str(s))
+    }
+}
+
+impl Extend<char> for U16String {
+    #[inline]
+    fn extend<T: IntoIterator<Item = char>>(&mut self, iter: T) {
+        let iter = iter.into_iter();
+        let (lower_bound, _) = iter.size_hint();
+        self.reserve(lower_bound);
+        iter.for_each(|c| self.push_char(c));
+    }
+}
+
+impl Extend<char> for U32String {
+    #[inline]
+    fn extend<T: IntoIterator<Item = char>>(&mut self, iter: T) {
+        let iter = iter.into_iter();
+        let (lower_bound, _) = iter.size_hint();
+        self.reserve(lower_bound);
+        iter.for_each(|c| self.push_char(c));
+    }
+}
+
+impl<'a> Extend<&'a char> for U16String {
+    #[inline]
+    fn extend<T: IntoIterator<Item = &'a char>>(&mut self, iter: T) {
+        self.extend(iter.into_iter().copied())
+    }
+}
+
+impl<'a> Extend<&'a char> for U32String {
+    #[inline]
+    fn extend<T: IntoIterator<Item = &'a char>>(&mut self, iter: T) {
+        self.extend(iter.into_iter().copied())
+    }
+}
+
+impl<C: UChar> Extend<Box<UStr<C>>> for UString<C> {
+    #[inline]
+    fn extend<T: IntoIterator<Item = Box<UStr<C>>>>(&mut self, iter: T) {
+        iter.into_iter().for_each(|s| self.push(s))
+    }
+}
+
+impl<'a, C: UChar> Extend<Cow<'a, UStr<C>>> for UString<C> {
+    #[inline]
+    fn extend<T: IntoIterator<Item = Cow<'a, UStr<C>>>>(&mut self, iter: T) {
+        iter.into_iter().for_each(|s| self.push(s))
     }
 }
 
@@ -615,6 +1016,20 @@ impl From<String> for UString<u32> {
     }
 }
 
+impl From<&str> for UString<u16> {
+    #[inline]
+    fn from(s: &str) -> Self {
+        Self::from_str(s)
+    }
+}
+
+impl From<&str> for UString<u32> {
+    #[inline]
+    fn from(s: &str) -> Self {
+        Self::from_str(s)
+    }
+}
+
 #[cfg(feature = "std")]
 impl From<std::ffi::OsString> for UString<u16> {
     #[inline]
@@ -654,94 +1069,6 @@ impl<'a, C: UChar, T: ?Sized + AsRef<UStr<C>>> From<&'a T> for UString<C> {
     }
 }
 
-impl<C: UChar> Index<RangeFull> for UString<C> {
-    type Output = UStr<C>;
-
-    #[inline]
-    fn index(&self, _index: RangeFull) -> &UStr<C> {
-        UStr::from_slice(&self.inner)
-    }
-}
-
-impl<C: UChar> IndexMut<RangeFull> for UString<C> {
-    fn index_mut(&mut self, _index: RangeFull) -> &mut Self::Output {
-        UStr::from_slice_mut(&mut self.inner)
-    }
-}
-
-impl<C: UChar> Deref for UString<C> {
-    type Target = UStr<C>;
-
-    #[inline]
-    fn deref(&self) -> &UStr<C> {
-        &self[..]
-    }
-}
-
-impl<C: UChar> DerefMut for UString<C> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self[..]
-    }
-}
-
-impl<C: UChar> PartialEq<UStr<C>> for UString<C> {
-    #[inline]
-    fn eq(&self, other: &UStr<C>) -> bool {
-        self.as_ustr() == other
-    }
-}
-
-impl<C: UChar> PartialOrd<UStr<C>> for UString<C> {
-    #[inline]
-    fn partial_cmp(&self, other: &UStr<C>) -> Option<cmp::Ordering> {
-        self.as_ustr().partial_cmp(other)
-    }
-}
-
-impl<'a, C: UChar> PartialEq<&'a UStr<C>> for UString<C> {
-    #[inline]
-    fn eq(&self, other: &&'a UStr<C>) -> bool {
-        self.as_ustr() == *other
-    }
-}
-
-impl<'a, C: UChar> PartialOrd<&'a UStr<C>> for UString<C> {
-    #[inline]
-    fn partial_cmp(&self, other: &&'a UStr<C>) -> Option<cmp::Ordering> {
-        self.as_ustr().partial_cmp(*other)
-    }
-}
-
-impl<'a, C: UChar> PartialEq<Cow<'a, UStr<C>>> for UString<C> {
-    #[inline]
-    fn eq(&self, other: &Cow<'a, UStr<C>>) -> bool {
-        self.as_ustr() == other.as_ref()
-    }
-}
-
-impl<'a, C: UChar> PartialOrd<Cow<'a, UStr<C>>> for UString<C> {
-    #[inline]
-    fn partial_cmp(&self, other: &Cow<'a, UStr<C>>) -> Option<cmp::Ordering> {
-        self.as_ustr().partial_cmp(other.as_ref())
-    }
-}
-
-impl<C: UChar> Borrow<UStr<C>> for UString<C> {
-    #[inline]
-    fn borrow(&self) -> &UStr<C> {
-        &self[..]
-    }
-}
-
-impl<C: UChar> ToOwned for UStr<C> {
-    type Owned = UString<C>;
-
-    #[inline]
-    fn to_owned(&self) -> UString<C> {
-        self.to_ustring()
-    }
-}
-
 impl<'a> From<&'a UStr<u16>> for Cow<'a, UStr<u16>> {
     #[inline]
     fn from(s: &'a UStr<u16>) -> Self {
@@ -753,62 +1080,6 @@ impl<'a> From<&'a UStr<u32>> for Cow<'a, UStr<u32>> {
     #[inline]
     fn from(s: &'a UStr<u32>) -> Self {
         Cow::Borrowed(s)
-    }
-}
-
-impl<C: UChar> AsMut<UStr<C>> for UStr<C> {
-    #[inline]
-    fn as_mut(&mut self) -> &mut UStr<C> {
-        self
-    }
-}
-
-impl<C: UChar> AsMut<UStr<C>> for UString<C> {
-    #[inline]
-    fn as_mut(&mut self) -> &mut UStr<C> {
-        self
-    }
-}
-
-impl<C: UChar> AsMut<[C]> for UStr<C> {
-    #[inline]
-    fn as_mut(&mut self) -> &mut [C] {
-        self.as_mut_slice()
-    }
-}
-
-impl<C: UChar> AsMut<[C]> for UString<C> {
-    #[inline]
-    fn as_mut(&mut self) -> &mut [C] {
-        self.as_mut_slice()
-    }
-}
-
-impl<C: UChar> AsRef<UStr<C>> for UStr<C> {
-    #[inline]
-    fn as_ref(&self) -> &Self {
-        self
-    }
-}
-
-impl<C: UChar> AsRef<UStr<C>> for UString<C> {
-    #[inline]
-    fn as_ref(&self) -> &UStr<C> {
-        self
-    }
-}
-
-impl<C: UChar> AsRef<[C]> for UStr<C> {
-    #[inline]
-    fn as_ref(&self) -> &[C] {
-        self.as_slice()
-    }
-}
-
-impl<C: UChar> AsRef<[C]> for UString<C> {
-    #[inline]
-    fn as_ref(&self) -> &[C] {
-        self.as_slice()
     }
 }
 
@@ -834,12 +1105,289 @@ impl<C: UChar> From<UString<C>> for Box<UStr<C>> {
     }
 }
 
-impl<C: UChar> Default for Box<UStr<C>> {
+impl<'a, C: UChar + 'a> FromIterator<&'a UStr<C>> for UString<C> {
     #[inline]
-    fn default() -> Self {
-        let boxed: Box<[C]> = Box::from([]);
-        let rw = Box::into_raw(boxed) as *mut UStr<C>;
-        unsafe { Box::from_raw(rw) }
+    fn from_iter<T: IntoIterator<Item = &'a UStr<C>>>(iter: T) -> Self {
+        let mut string = Self::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl<'a, C: UChar + 'a> FromIterator<&'a UCStr<C>> for UString<C> {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = &'a UCStr<C>>>(iter: T) -> Self {
+        let mut string = Self::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl<'a> FromIterator<&'a str> for U16String {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {
+        let mut string = Self::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl<'a> FromIterator<&'a str> for U32String {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {
+        let mut string = Self::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl<C: UChar> FromIterator<UString<C>> for UString<C> {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = UString<C>>>(iter: T) -> Self {
+        let mut string = Self::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl<C: UChar> FromIterator<UCString<C>> for UString<C> {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = UCString<C>>>(iter: T) -> Self {
+        let mut string = Self::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl FromIterator<String> for U16String {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
+        let mut string = Self::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl FromIterator<String> for U32String {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
+        let mut string = Self::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl FromIterator<char> for U16String {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {
+        let mut string = Self::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl FromIterator<char> for U32String {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {
+        let mut string = Self::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl<'a> FromIterator<&'a char> for U16String {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = &'a char>>(iter: T) -> Self {
+        let mut string = Self::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl<'a> FromIterator<&'a char> for U32String {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = &'a char>>(iter: T) -> Self {
+        let mut string = Self::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl<C: UChar> FromIterator<Box<UStr<C>>> for UString<C> {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = Box<UStr<C>>>>(iter: T) -> Self {
+        let mut string = Self::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl<'a, C: UChar + 'a> FromIterator<Cow<'a, UStr<C>>> for UString<C> {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = Cow<'a, UStr<C>>>>(iter: T) -> Self {
+        let mut string = Self::new();
+        string.extend(iter);
+        string
+    }
+}
+
+impl FromStr for U16String {
+    type Err = Infallible;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from_str(s))
+    }
+}
+
+impl FromStr for U32String {
+    type Err = Infallible;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from_str(s))
+    }
+}
+
+impl<C: UChar, I> Index<I> for UString<C>
+where
+    I: SliceIndex<[C], Output = [C]>,
+{
+    type Output = UStr<C>;
+
+    #[inline]
+    fn index(&self, index: I) -> &UStr<C> {
+        &self.as_ustr()[index]
+    }
+}
+
+impl<C: UChar, I> IndexMut<I> for UString<C>
+where
+    I: SliceIndex<[C], Output = [C]>,
+{
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+        &mut self.as_mut_ustr()[index]
+    }
+}
+
+impl<C: UChar> PartialEq<UStr<C>> for UString<C> {
+    #[inline]
+    fn eq(&self, other: &UStr<C>) -> bool {
+        self.as_ustr() == other
+    }
+}
+
+impl<C: UChar> PartialEq<UCStr<C>> for UString<C> {
+    #[inline]
+    fn eq(&self, other: &UCStr<C>) -> bool {
+        self.as_ustr() == other
+    }
+}
+
+impl<C: UChar> PartialEq<UCString<C>> for UString<C> {
+    #[inline]
+    fn eq(&self, other: &UCString<C>) -> bool {
+        self.as_ustr() == other.as_ucstr()
+    }
+}
+
+impl<'a, C: UChar> PartialEq<&'a UStr<C>> for UString<C> {
+    #[inline]
+    fn eq(&self, other: &&'a UStr<C>) -> bool {
+        self.as_ustr() == *other
+    }
+}
+
+impl<'a, C: UChar> PartialEq<&'a UCStr<C>> for UString<C> {
+    #[inline]
+    fn eq(&self, other: &&'a UCStr<C>) -> bool {
+        self.as_ustr() == *other
+    }
+}
+
+impl<'a, C: UChar> PartialEq<Cow<'a, UStr<C>>> for UString<C> {
+    #[inline]
+    fn eq(&self, other: &Cow<'a, UStr<C>>) -> bool {
+        self.as_ustr() == other.as_ref()
+    }
+}
+
+impl<'a, C: UChar> PartialEq<Cow<'a, UCStr<C>>> for UString<C> {
+    #[inline]
+    fn eq(&self, other: &Cow<'a, UCStr<C>>) -> bool {
+        self.as_ustr() == other.as_ref()
+    }
+}
+
+impl<C: UChar> PartialOrd<UStr<C>> for UString<C> {
+    #[inline]
+    fn partial_cmp(&self, other: &UStr<C>) -> Option<cmp::Ordering> {
+        self.as_ustr().partial_cmp(other)
+    }
+}
+
+impl<C: UChar> PartialOrd<UCStr<C>> for UString<C> {
+    #[inline]
+    fn partial_cmp(&self, other: &UCStr<C>) -> Option<cmp::Ordering> {
+        self.as_ustr().partial_cmp(other)
+    }
+}
+
+impl<'a, C: UChar> PartialOrd<&'a UStr<C>> for UString<C> {
+    #[inline]
+    fn partial_cmp(&self, other: &&'a UStr<C>) -> Option<cmp::Ordering> {
+        self.as_ustr().partial_cmp(*other)
+    }
+}
+
+impl<'a, C: UChar> PartialOrd<&'a UCStr<C>> for UString<C> {
+    #[inline]
+    fn partial_cmp(&self, other: &&'a UCStr<C>) -> Option<cmp::Ordering> {
+        self.as_ustr().partial_cmp(*other)
+    }
+}
+
+impl<'a, C: UChar> PartialOrd<Cow<'a, UStr<C>>> for UString<C> {
+    #[inline]
+    fn partial_cmp(&self, other: &Cow<'a, UStr<C>>) -> Option<cmp::Ordering> {
+        self.as_ustr().partial_cmp(other.as_ref())
+    }
+}
+
+impl<'a, C: UChar> PartialOrd<Cow<'a, UCStr<C>>> for UString<C> {
+    #[inline]
+    fn partial_cmp(&self, other: &Cow<'a, UCStr<C>>) -> Option<cmp::Ordering> {
+        self.as_ustr().partial_cmp(other.as_ref())
+    }
+}
+
+impl<C: UChar> PartialOrd<UCString<C>> for UString<C> {
+    #[inline]
+    fn partial_cmp(&self, other: &UCString<C>) -> Option<cmp::Ordering> {
+        self.as_ustr().partial_cmp(other.as_ucstr())
+    }
+}
+
+impl<C: UChar> ToOwned for UStr<C> {
+    type Owned = UString<C>;
+
+    #[inline]
+    fn to_owned(&self) -> UString<C> {
+        self.to_ustring()
+    }
+}
+
+impl Write for U16String {
+    #[inline]
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        self.push_str(s);
+        Ok(())
+    }
+
+    #[inline]
+    fn write_char(&mut self, c: char) -> std::fmt::Result {
+        self.push_char(c);
+        Ok(())
     }
 }
 

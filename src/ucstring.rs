@@ -9,8 +9,8 @@ use alloc::{
     vec::Vec,
 };
 use core::{
-    borrow::Borrow,
-    mem,
+    borrow::{Borrow, BorrowMut},
+    cmp, mem,
     ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
     ptr, slice,
 };
@@ -339,7 +339,30 @@ impl<C: UChar> UCString<C> {
     /// Converts to a [`UCStr`] reference.
     #[inline]
     pub fn as_ucstr(&self) -> &UCStr<C> {
-        self
+        UCStr::from_inner(&self.inner)
+    }
+
+    /// Converts to a mutable [`UCStr`] reference.
+    #[inline]
+    pub fn as_mut_ucstr(&mut self) -> &mut UCStr<C> {
+        UCStr::from_inner_mut(&mut self.inner)
+    }
+
+    /// Converts this string into a [`UString`] without a nul terminator.
+    ///
+    /// The resulting string will **not** contain a nul-terminator, and will contain no other nul
+    /// values.
+    #[inline]
+    pub fn into_ustring(self) -> UString<C> {
+        UString::from_vec(self.into_vec())
+    }
+
+    /// Converts this string into a [`UString`] with a nul terminator.
+    ///
+    /// The resulting vector will contain a nul-terminator and no interior nul values.
+    #[inline]
+    pub fn into_ustring_with_nul(self) -> UString<C> {
+        UString::from_vec(self.into_vec_with_nul())
     }
 
     /// Converts the string into a [`Vec`] without a nul terminator, consuming the string in
@@ -1163,6 +1186,47 @@ impl UCString<u32> {
     }
 }
 
+impl<C: UChar> AsMut<UCStr<C>> for UCString<C> {
+    fn as_mut(&mut self) -> &mut UCStr<C> {
+        self.as_mut_ucstr()
+    }
+}
+
+impl<C: UChar> AsRef<UCStr<C>> for UCString<C> {
+    #[inline]
+    fn as_ref(&self) -> &UCStr<C> {
+        self.as_ucstr()
+    }
+}
+
+impl<C: UChar> AsRef<[C]> for UCString<C> {
+    #[inline]
+    fn as_ref(&self) -> &[C] {
+        self.as_slice()
+    }
+}
+
+impl<C: UChar> AsRef<UStr<C>> for UCString<C> {
+    #[inline]
+    fn as_ref(&self) -> &UStr<C> {
+        self.as_ustr()
+    }
+}
+
+impl<C: UChar> Borrow<UCStr<C>> for UCString<C> {
+    #[inline]
+    fn borrow(&self) -> &UCStr<C> {
+        self.as_ucstr()
+    }
+}
+
+impl<C: UChar> BorrowMut<UCStr<C>> for UCString<C> {
+    #[inline]
+    fn borrow_mut(&mut self) -> &mut UCStr<C> {
+        self.as_mut_ucstr()
+    }
+}
+
 impl core::fmt::Debug for U16CString {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -1174,6 +1238,41 @@ impl core::fmt::Debug for U32CString {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         crate::debug_fmt_u32(self.as_slice_with_nul(), f)
+    }
+}
+
+impl<C: UChar> Default for UCString<C> {
+    #[inline]
+    fn default() -> Self {
+        unsafe { Self::from_vec_unchecked(Vec::new()) }
+    }
+}
+
+impl<C: UChar> Deref for UCString<C> {
+    type Target = UCStr<C>;
+
+    #[inline]
+    fn deref(&self) -> &UCStr<C> {
+        self.as_ucstr()
+    }
+}
+
+impl<C: UChar> DerefMut for UCString<C> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.as_mut_ucstr()
+    }
+}
+
+// Turns this `UCString` into an empty string to prevent
+// memory unsafe code from working by accident. Inline
+// to prevent LLVM from optimizing it away in debug builds.
+impl<C: UChar> Drop for UCString<C> {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            *self.inner.get_unchecked_mut(0) = UChar::NUL;
+        }
     }
 }
 
@@ -1221,70 +1320,6 @@ impl<'a, C: UChar, T: ?Sized + AsRef<UCStr<C>>> From<&'a T> for UCString<C> {
     }
 }
 
-impl<C: UChar> Index<RangeFull> for UCString<C> {
-    type Output = UCStr<C>;
-
-    #[inline]
-    fn index(&self, _index: RangeFull) -> &UCStr<C> {
-        UCStr::from_inner(&self.inner)
-    }
-}
-
-impl<C: UChar> IndexMut<RangeFull> for UCString<C> {
-    fn index_mut(&mut self, _index: RangeFull) -> &mut Self::Output {
-        UCStr::from_inner_mut(&mut self.inner)
-    }
-}
-
-impl<C: UChar> Deref for UCString<C> {
-    type Target = UCStr<C>;
-
-    #[inline]
-    fn deref(&self) -> &UCStr<C> {
-        &self[..]
-    }
-}
-
-impl<C: UChar> DerefMut for UCString<C> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self[..]
-    }
-}
-
-impl<C: UChar> Default for UCString<C> {
-    fn default() -> Self {
-        unsafe { Self::from_vec_unchecked(Vec::new()) }
-    }
-}
-
-// Turns this `UCString` into an empty string to prevent
-// memory unsafe code from working by accident. Inline
-// to prevent LLVM from optimizing it away in debug builds.
-impl<C: UChar> Drop for UCString<C> {
-    #[inline]
-    fn drop(&mut self) {
-        unsafe {
-            *self.inner.get_unchecked_mut(0) = UChar::NUL;
-        }
-    }
-}
-
-impl<C: UChar> Borrow<UCStr<C>> for UCString<C> {
-    #[inline]
-    fn borrow(&self) -> &UCStr<C> {
-        &self[..]
-    }
-}
-
-impl<C: UChar> ToOwned for UCStr<C> {
-    type Owned = UCString<C>;
-
-    #[inline]
-    fn to_owned(&self) -> UCString<C> {
-        self.to_ucstring()
-    }
-}
-
 impl<'a> From<&'a UCStr<u16>> for Cow<'a, UCStr<u16>> {
     #[inline]
     fn from(s: &'a UCStr<u16>) -> Cow<'a, UCStr<u16>> {
@@ -1299,26 +1334,6 @@ impl<'a> From<&'a UCStr<u32>> for Cow<'a, UCStr<u32>> {
     }
 }
 
-impl<C: UChar> AsMut<UCStr<C>> for UCString<C> {
-    fn as_mut(&mut self) -> &mut UCStr<C> {
-        self
-    }
-}
-
-impl<C: UChar> AsRef<UCStr<C>> for UCString<C> {
-    #[inline]
-    fn as_ref(&self) -> &UCStr<C> {
-        self
-    }
-}
-
-impl<C: UChar> AsRef<[C]> for UCString<C> {
-    #[inline]
-    fn as_ref(&self) -> &[C] {
-        self.as_slice()
-    }
-}
-
 impl<C: UChar> From<Box<UCStr<C>>> for UCString<C> {
     #[inline]
     fn from(s: Box<UCStr<C>>) -> Self {
@@ -1330,6 +1345,129 @@ impl<C: UChar> From<UCString<C>> for Box<UCStr<C>> {
     #[inline]
     fn from(s: UCString<C>) -> Box<UCStr<C>> {
         s.into_boxed_ucstr()
+    }
+}
+
+impl<C: UChar> Index<RangeFull> for UCString<C> {
+    type Output = UCStr<C>;
+
+    #[inline]
+    fn index(&self, _index: RangeFull) -> &UCStr<C> {
+        self.as_ucstr()
+    }
+}
+
+impl<C: UChar> IndexMut<RangeFull> for UCString<C> {
+    #[inline]
+    fn index_mut(&mut self, _index: RangeFull) -> &mut Self::Output {
+        self.as_mut_ucstr()
+    }
+}
+
+impl<C: UChar> PartialEq<UStr<C>> for UCString<C> {
+    #[inline]
+    fn eq(&self, other: &UStr<C>) -> bool {
+        self.as_ucstr() == other
+    }
+}
+
+impl<C: UChar> PartialEq<UCStr<C>> for UCString<C> {
+    #[inline]
+    fn eq(&self, other: &UCStr<C>) -> bool {
+        self.as_ucstr() == other
+    }
+}
+
+impl<'a, C: UChar> PartialEq<&'a UStr<C>> for UCString<C> {
+    #[inline]
+    fn eq(&self, other: &&'a UStr<C>) -> bool {
+        self.as_ucstr() == *other
+    }
+}
+
+impl<'a, C: UChar> PartialEq<&'a UCStr<C>> for UCString<C> {
+    #[inline]
+    fn eq(&self, other: &&'a UCStr<C>) -> bool {
+        self.as_ucstr() == *other
+    }
+}
+
+impl<'a, C: UChar> PartialEq<Cow<'a, UStr<C>>> for UCString<C> {
+    #[inline]
+    fn eq(&self, other: &Cow<'a, UStr<C>>) -> bool {
+        self.as_ucstr() == other.as_ref()
+    }
+}
+
+impl<'a, C: UChar> PartialEq<Cow<'a, UCStr<C>>> for UCString<C> {
+    #[inline]
+    fn eq(&self, other: &Cow<'a, UCStr<C>>) -> bool {
+        self.as_ucstr() == other.as_ref()
+    }
+}
+
+impl<C: UChar> PartialEq<UString<C>> for UCString<C> {
+    #[inline]
+    fn eq(&self, other: &UString<C>) -> bool {
+        self.as_ustr() == other.as_ustr()
+    }
+}
+
+impl<C: UChar> PartialOrd<UStr<C>> for UCString<C> {
+    #[inline]
+    fn partial_cmp(&self, other: &UStr<C>) -> Option<cmp::Ordering> {
+        self.as_ucstr().partial_cmp(other)
+    }
+}
+
+impl<C: UChar> PartialOrd<UCStr<C>> for UCString<C> {
+    #[inline]
+    fn partial_cmp(&self, other: &UCStr<C>) -> Option<cmp::Ordering> {
+        self.as_ucstr().partial_cmp(other)
+    }
+}
+
+impl<'a, C: UChar> PartialOrd<&'a UStr<C>> for UCString<C> {
+    #[inline]
+    fn partial_cmp(&self, other: &&'a UStr<C>) -> Option<cmp::Ordering> {
+        self.as_ucstr().partial_cmp(*other)
+    }
+}
+
+impl<'a, C: UChar> PartialOrd<&'a UCStr<C>> for UCString<C> {
+    #[inline]
+    fn partial_cmp(&self, other: &&'a UCStr<C>) -> Option<cmp::Ordering> {
+        self.as_ucstr().partial_cmp(*other)
+    }
+}
+
+impl<'a, C: UChar> PartialOrd<Cow<'a, UStr<C>>> for UCString<C> {
+    #[inline]
+    fn partial_cmp(&self, other: &Cow<'a, UStr<C>>) -> Option<cmp::Ordering> {
+        self.as_ucstr().partial_cmp(other.as_ref())
+    }
+}
+
+impl<'a, C: UChar> PartialOrd<Cow<'a, UCStr<C>>> for UCString<C> {
+    #[inline]
+    fn partial_cmp(&self, other: &Cow<'a, UCStr<C>>) -> Option<cmp::Ordering> {
+        self.as_ucstr().partial_cmp(other.as_ref())
+    }
+}
+
+impl<C: UChar> PartialOrd<UString<C>> for UCString<C> {
+    #[inline]
+    fn partial_cmp(&self, other: &UString<C>) -> Option<cmp::Ordering> {
+        self.as_ustr().partial_cmp(other.as_ustr())
+    }
+}
+
+impl<C: UChar> ToOwned for UCStr<C> {
+    type Owned = UCString<C>;
+
+    #[inline]
+    fn to_owned(&self) -> UCString<C> {
+        self.to_ucstring()
     }
 }
 

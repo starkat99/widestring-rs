@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - `UCString::from_os_str_with_nul` => `from_os_str_truncate`
   - `U32CString::from_chars_with_nul` => `from_chars_truncate`
   - `U32CString::from_char_ptr_with_nul` => `from_char_ptr_truncate`
+- Deprecated error types in the crate root. Use the errors directly from `error` module instead.
 - Improved implementations in some areas to reduce unncessary double allocations.
 - Improved `Debug` implementations. No more debugging lists of raw integer values.
 - Migrated crate to Rust 2018 edition.
@@ -35,27 +36,34 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Improved documentation and used intra-doc links.
 
 ### Added
-- Added new functions as part of increasing consistency:
-    - `UCStr::from_ptr`
-    - `UCStr::from_ptr_truncate`
-    - `UCStr::from_slice`
-    - `U32CStr::from_char_ptr`
-    - `U32CStr::from_char_ptr_truncate`
-    - `U32CStr::from_char_slice`
-    - `UCStr::as_ustr`
-    - `U32CString::from_char_ptr_str`
-- Added functions `decode_utf16_lossy`, `decode_utf32`, and `decode_utf32_lossy` and associated
-  iterators.
+- Added crate-level functions `decode_utf16_lossy`, `decode_utf32`, and `decode_utf32_lossy` and
+  associated iterators.
 - Added `display` method to to both `UStr` and `UCStr` to display strings in formatting without heap
   allocations, similar to `Path::display`. Fixes [#20].
-- Added more trait implementations.
-- Added new mutable functions to strings:
+- Added more trait implementations, including more index operations.
+- Added new functions:
     - `UStr::from_ptr_mut`
     - `UStr::from_slice_mut`
     - `UStr::as_mut_slice`
     - `UStr::as_mut_ptr`
+    - `UStr::as_ptr_range`
+    - `UStr::as_mut_ptr_range`
+    - `UStr::get`
+    - `UStr::get_mut`
+    - `UStr::get_unchecked`
+    - `UStr::get_unchecked_mut`
+    - `UStr::split_at`
+    - `UStr::split_at_mut`
+    - `UStr::chars`
+    - `UStr::chars_lossy`
+    - `U16Str::char_indices`
+    - `U16Str::char_indices_lossy`
     - `U32Str::from_char_ptr_mut`
     - `U32Str::from_char_slice_mut`
+    - `UCStr::from_ptr`
+    - `UCStr::from_ptr_truncate`
+    - `UCStr::from_slice`
+    - `UCStr::as_ustr`
     - `UCStr::from_ptr_str_mut`
     - `UCStr::from_ptr_mut`
     - `UCStr::from_ptr_truncate_mut`
@@ -65,7 +73,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
     - `UCStr::from_slice_unchecked_mut`
     - `UCStr::as_mut_slice`
     - `UCStr::as_mut_ptr`
+    - `UCStr::as_ustr_with_nul`
     - `UCStr::as_mut_ustr`
+    - `UCStr::as_ptr_range`
+    - `UCStr::as_mut_ptr_range`
+    - `UCStr::chars`
+    - `UCStr::chars_lossy`
+    - `U16CStr::char_indices`
+    - `U16CStr::char_indices_lossy`
     - `U32CStr::from_char_ptr_str_mut`
     - `U32CStr::from_char_ptr_mut`
     - `U32CStr::from_char_ptr_truncate_mut`
@@ -73,6 +88,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
     - `U32CStr::from_char_slice_mut`
     - `U32CStr::from_char_slice_truncate_mut`
     - `U32CStr::from_char_slice_unchecked_mut`
+    - `U32CStr::from_char_ptr`
+    - `U32CStr::from_char_ptr_truncate`
+    - `U32CStr::from_char_slice`
+    - `UString::as_vec`
+    - `UString::as_mut_vec`
+    - `UString::push_char`
+    - `UString::truncate`
+    - `UString::pop`
+    - `UString::remove`
+    - `UString::insert`
+    - `UString::insert_ustr`
+    - `UString::split_off`
+    - `UCString::as_mut_ucstr`
+    - `UCString::into_ustring`
+    - `UCString::into_ustring_with_nul`
+    - `U32CString::from_char_ptr_str`
 
 ### Deprecated
 - Deprecated functions as part of simplifying to increase clarity. These will be removed entirely
