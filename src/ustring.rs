@@ -480,7 +480,12 @@ impl UString<u16> {
                     if crate::is_utf16_high_surrogate(high) {
                         self.inner.pop();
                         let buf = [high, low];
-                        Some(char::decode_utf16(buf).next().unwrap().unwrap() as u32)
+                        Some(
+                            char::decode_utf16(buf.iter().copied())
+                                .next()
+                                .unwrap()
+                                .unwrap() as u32,
+                        )
                     } else {
                         Some(low as u32)
                     }
