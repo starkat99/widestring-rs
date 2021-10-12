@@ -1,4 +1,4 @@
-//! Owned, growable wide strings
+//! Owned, growable wide strings.
 //!
 //! This module contains the [`UString`] strings and related types.
 
@@ -21,7 +21,7 @@ use core::{
     str::FromStr,
 };
 
-/// An owned, mutable "wide" string for FFI that is **not** nul-aware
+/// An owned, mutable "wide" string for FFI that is **not** nul-aware.
 ///
 /// [`UString`] is not aware of nul values. Strings may or may not be nul-terminated, and may
 /// contain invalid and ill-formed UTF-16 or UTF-32 data. These strings are intended to be used
@@ -69,13 +69,13 @@ pub struct UString<C: UChar> {
 }
 
 impl<C: UChar> UString<C> {
-    /// Constructs a new empty [`UString`]
+    /// Constructs a new empty [`UString`].
     #[inline]
     pub fn new() -> Self {
         Self { inner: Vec::new() }
     }
 
-    /// Constructs a [`UString`] from a vector
+    /// Constructs a [`UString`] from a vector.
     ///
     /// No checks are made on the contents of the vector. It may or may not be valid character data.
     ///
@@ -103,7 +103,7 @@ impl<C: UChar> UString<C> {
         Self { inner: raw.into() }
     }
 
-    /// Constructs a [`UString`] copy from a pointer and a length
+    /// Constructs a [`UString`] copy from a pointer and a length.
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes.
     ///
@@ -126,7 +126,7 @@ impl<C: UChar> UString<C> {
         Self::from_vec(slice)
     }
 
-    /// Constructs a [`UString`] with the given capacity
+    /// Constructs a [`UString`] with the given capacity.
     ///
     /// The string will be able to hold exactly `capacity` elements without reallocating.
     /// If `capacity` is set to 0, the string will not initially allocate.
@@ -137,20 +137,20 @@ impl<C: UChar> UString<C> {
         }
     }
 
-    /// Returns the capacity this [`UString`] can hold without reallocating
+    /// Returns the capacity this [`UString`] can hold without reallocating.
     #[inline]
     pub fn capacity(&self) -> usize {
         self.inner.capacity()
     }
 
-    /// Truncates the [`UString`] to zero length
+    /// Truncates the [`UString`] to zero length.
     #[inline]
     pub fn clear(&mut self) {
         self.inner.clear()
     }
 
     /// Reserves the capacity for at least `additional` more capacity to be inserted in the given
-    /// [`UString`]
+    /// [`UString`].
     ///
     /// More space may be reserved to avoid frequent allocations.
     #[inline]
@@ -169,19 +169,19 @@ impl<C: UChar> UString<C> {
         self.inner.reserve_exact(additional)
     }
 
-    /// Converts the string into a [`Vec`], consuming the string in the process
+    /// Converts the string into a [`Vec`], consuming the string in the process.
     #[inline]
     pub fn into_vec(self) -> Vec<C> {
         self.inner
     }
 
-    /// Converts to a [`UStr`] reference
+    /// Converts to a [`UStr`] reference.
     #[inline]
     pub fn as_ustr(&self) -> &UStr<C> {
         UStr::from_slice(&self.inner)
     }
 
-    /// Converts to a mutable [`UStr`] reference
+    /// Converts to a mutable [`UStr`] reference.
     #[inline]
     pub fn as_mut_ustr(&mut self) -> &mut UStr<C> {
         UStr::from_slice_mut(&mut self.inner)
@@ -199,7 +199,7 @@ impl<C: UChar> UString<C> {
         &mut self.inner
     }
 
-    /// Extends the string with the given string slice
+    /// Extends the string with the given string slice.
     ///
     /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
@@ -232,7 +232,7 @@ impl<C: UChar> UString<C> {
         self.inner.extend_from_slice(&s.as_ref().inner)
     }
 
-    /// Extends the string with the given slice
+    /// Extends the string with the given slice.
     ///
     /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
@@ -265,7 +265,7 @@ impl<C: UChar> UString<C> {
         self.inner.extend_from_slice(s.as_ref())
     }
 
-    /// Shrinks the capacity of the [`UString`] to match its length
+    /// Shrinks the capacity of the [`UString`] to match its length.
     ///
     /// # Examples
     ///
@@ -297,7 +297,7 @@ impl<C: UChar> UString<C> {
         self.inner.shrink_to_fit();
     }
 
-    /// Converts this [`UString`] into a boxed [`UStr`]
+    /// Converts this [`UString`] into a boxed [`UStr`].
     ///
     /// # Examples
     ///
@@ -363,7 +363,7 @@ impl<C: UChar> UString<C> {
 }
 
 impl UString<u16> {
-    /// Encodes a [`U16String`] copy from a [`str`]
+    /// Encodes a [`U16String`] copy from a [`str`].
     ///
     /// This makes a string copy of the [`str`]. Since [`str`] will always be valid UTF-8, the
     /// resulting [`U16String`] will also be valid UTF-16.
@@ -386,7 +386,7 @@ impl UString<u16> {
         }
     }
 
-    /// Encodes a [`U16String`] copy from an [`OsStr`][std::ffi::OsStr]
+    /// Encodes a [`U16String`] copy from an [`OsStr`][std::ffi::OsStr].
     ///
     /// This makes a string copy of the [`OsStr`][std::ffi::OsStr]. Since [`OsStr`][std::ffi::OsStr]
     /// makes no  guarantees that it is valid data, there is no guarantee that the resulting
@@ -415,7 +415,7 @@ impl UString<u16> {
         }
     }
 
-    /// Extends the string with the given string slice
+    /// Extends the string with the given string slice.
     ///
     /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
@@ -436,7 +436,7 @@ impl UString<u16> {
         self.inner.extend(s.as_ref().encode_utf16())
     }
 
-    /// Extends the string with the given string slice
+    /// Extends the string with the given string slice.
     ///
     /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
@@ -533,7 +533,7 @@ impl UString<u16> {
 }
 
 impl UString<u32> {
-    /// Constructs a [`U32String`] from a [`char`][prim@char] vector
+    /// Constructs a [`U32String`] from a [`char`][prim@char] vector.
     ///
     /// No checks are made on the contents of the vector.
     ///
@@ -560,7 +560,7 @@ impl UString<u32> {
         }
     }
 
-    /// Encodes a [`U32String`] copy from a [`str`]
+    /// Encodes a [`U32String`] copy from a [`str`].
     ///
     /// This makes a string copy of the [`str`]. Since [`str`] will always be valid UTF-8, the
     /// resulting [`U32String`] will also be valid UTF-32.
@@ -582,7 +582,7 @@ impl UString<u32> {
         Self::from_chars(v)
     }
 
-    /// Encodes a [`U32String`] copy from an [`OsStr`][std::ffi::OsStr]
+    /// Encodes a [`U32String`] copy from an [`OsStr`][std::ffi::OsStr].
     ///
     /// This makes a string copy of the [`OsStr`][std::ffi::OsStr]. Since [`OsStr`][std::ffi::OsStr]
     /// makes no guarantees that it is valid data, there is no guarantee that the resulting
@@ -609,7 +609,7 @@ impl UString<u32> {
         Self::from_chars(v)
     }
 
-    /// Constructs a [`U32String`] from a [`char`][prim@char] pointer and a length
+    /// Constructs a [`U32String`] from a [`char`][prim@char] pointer and a length.
     ///
     /// The `len` argument is the number of `char` elements, **not** the number of bytes.
     ///
@@ -628,7 +628,7 @@ impl UString<u32> {
         Self::from_ptr(p as *const u32, len)
     }
 
-    /// Extends the string with the given string slice
+    /// Extends the string with the given string slice.
     ///
     /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
@@ -649,7 +649,7 @@ impl UString<u32> {
         self.inner.extend(s.as_ref().chars().map(|c| c as u32))
     }
 
-    /// Extends the string with the given string slice
+    /// Extends the string with the given string slice.
     ///
     /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.

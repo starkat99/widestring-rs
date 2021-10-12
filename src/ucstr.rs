@@ -1,4 +1,4 @@
-//! C-style wide string slices
+//! C-style wide string slices.
 //!
 //! This module contains the [`UCStr`] string slices and related types.
 
@@ -14,7 +14,7 @@ use alloc::{
 };
 use core::{fmt::Write, ops::Range, slice};
 
-/// C-style wide string reference for [`UCString`][crate::UCString]
+/// C-style wide string reference for [`UCString`][crate::UCString].
 ///
 /// [`UCStr`] is aware of nul values. Unless unchecked conversions are used, all [`UCStr`]
 /// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
@@ -34,13 +34,13 @@ pub struct UCStr<C> {
 }
 
 impl<C: UChar> UCStr<C> {
-    /// Coerces a value into a [`UCStr`]
+    /// Coerces a value into a [`UCStr`].
     #[inline]
     pub fn new<S: AsRef<UCStr<C>> + ?Sized>(s: &S) -> &Self {
         s.as_ref()
     }
 
-    /// Constructs a [`UCStr`] from a nul-terminated string pointer
+    /// Constructs a [`UCStr`] from a nul-terminated string pointer.
     ///
     /// This will scan for nul values beginning with `p`. The first nul value will be used as the
     /// nul terminator for the string, similar to how libc string functions such as `strlen` work.
@@ -73,7 +73,7 @@ impl<C: UChar> UCStr<C> {
         Self::from_ptr_unchecked(p, i)
     }
 
-    /// Constructs a mutable [`UCStr`] from a mutable nul-terminated string pointer
+    /// Constructs a mutable [`UCStr`] from a mutable nul-terminated string pointer.
     ///
     /// This will scan for nul values beginning with `p`. The first nul value will be used as the
     /// nul terminator for the string, similar to how libc string functions such as `strlen` work.
@@ -104,7 +104,7 @@ impl<C: UChar> UCStr<C> {
         Self::from_ptr_unchecked_mut(p, i)
     }
 
-    /// Constructs a [`UCStr`] from a pointer and a length
+    /// Constructs a [`UCStr`] from a pointer and a length.
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
     /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means
@@ -150,7 +150,7 @@ impl<C: UChar> UCStr<C> {
         Ok(Self::from_ptr_unchecked(p, len))
     }
 
-    /// Constructs a mutable [`UCStr`] from a mutable pointer and a length
+    /// Constructs a mutable [`UCStr`] from a mutable pointer and a length.
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
     /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means
@@ -194,7 +194,7 @@ impl<C: UChar> UCStr<C> {
         Ok(Self::from_ptr_unchecked_mut(p, len))
     }
 
-    /// Constructs a [`UCStr`] from a pointer and a length, truncating at the first nul terminator
+    /// Constructs a [`UCStr`] from a pointer and a length, truncating at the first nul terminator.
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes. This will scan
     /// for nul values beginning with `p` until offset `len`. The first nul value will be used as
@@ -237,7 +237,7 @@ impl<C: UChar> UCStr<C> {
     }
 
     /// Constructs a mutable [`UCStr`] from a mutable pointer and a length, truncating at the first
-    /// nul terminator
+    /// nul terminator.
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes. This will scan
     /// for nul values beginning with `p` until offset `len`. The first nul value will be used as
@@ -277,7 +277,7 @@ impl<C: UChar> UCStr<C> {
         Err(MissingNulTerminator::new())
     }
 
-    /// Constructs a [`UCStr`] from a pointer and a length without checking for any nul values
+    /// Constructs a [`UCStr`] from a pointer and a length without checking for any nul values.
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
     /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means
@@ -312,7 +312,7 @@ impl<C: UChar> UCStr<C> {
     }
 
     /// Constructs a mutable [`UCStr`] from a mutable pointer and a length without checking for any
-    /// nul values
+    /// nul values.
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
     /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means
@@ -345,7 +345,7 @@ impl<C: UChar> UCStr<C> {
     }
 
     /// Constructs a [`UCStr`] from a slice of values with a terminating nul, checking for invalid
-    /// interior nul values
+    /// interior nul values.
     ///
     /// The slice must have at least one item, the nul terminator, even for an empty string.
     ///
@@ -368,7 +368,7 @@ impl<C: UChar> UCStr<C> {
     }
 
     /// Constructs a mutable [`UCStr`] from a mutable slice of values with a terminating nul,
-    /// checking for invalid interior nul values
+    /// checking for invalid interior nul values.
     ///
     /// The slice must have at least one item, the nul terminator, even for an empty string.
     ///
@@ -390,7 +390,7 @@ impl<C: UChar> UCStr<C> {
         }
     }
 
-    /// Constructs a [`UCStr`] from a slice of values, truncating at the first nul terminator
+    /// Constructs a [`UCStr`] from a slice of values, truncating at the first nul terminator.
     ///
     /// The slice will be scanned for nul values. When a nul value is found, it is treated as the
     /// terminator for the string, and the [`UCStr`] slice will be truncated to that nul.
@@ -406,7 +406,7 @@ impl<C: UChar> UCStr<C> {
     }
 
     /// Constructs a mutable [`UCStr`] from a mutable slice of values, truncating at the first nul
-    /// terminator
+    /// terminator.
     ///
     /// The slice will be scanned for nul values. When a nul value is found, it is treated as the
     /// terminator for the string, and the [`UCStr`] slice will be truncated to that nul.
@@ -422,7 +422,7 @@ impl<C: UChar> UCStr<C> {
     }
 
     /// Constructs a [`UCStr`] from a slice of values without checking for a terminating or interior
-    /// nul values
+    /// nul values.
     ///
     /// # Safety
     ///
@@ -435,7 +435,7 @@ impl<C: UChar> UCStr<C> {
     }
 
     /// Constructs a mutable [`UCStr`] from a mutable slice of values without checking for a
-    /// terminating or interior nul values
+    /// terminating or interior nul values.
     ///
     /// # Safety
     ///
@@ -447,7 +447,7 @@ impl<C: UChar> UCStr<C> {
         &mut *(ptr as *mut Self)
     }
 
-    /// Copies the string reference to a new owned [`UCString`][crate::UCString]
+    /// Copies the string reference to a new owned [`UCString`][crate::UCString].
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
@@ -455,7 +455,7 @@ impl<C: UChar> UCStr<C> {
         unsafe { crate::UCString::from_vec_unchecked(self.inner.to_owned()) }
     }
 
-    /// Copies the string reference to a new owned [`UString`][crate::UString]
+    /// Copies the string reference to a new owned [`UString`][crate::UString].
     ///
     /// The resulting [`UString`][crate::UString] will **not** have a nul terminator
     ///
@@ -495,7 +495,7 @@ impl<C: UChar> UCStr<C> {
         crate::UString::from_vec(self.as_slice())
     }
 
-    /// Converts to a slice of the underlying code units
+    /// Converts to a slice of the underlying code units.
     ///
     /// The slice will **not** include the nul terminator.
     #[inline]
@@ -503,7 +503,7 @@ impl<C: UChar> UCStr<C> {
         &self.inner[..self.len()]
     }
 
-    /// Converts to a mutable slice of the underlying code units
+    /// Converts to a mutable slice of the underlying code units.
     ///
     /// The slice will **not** include the nul terminator.
     ///
@@ -517,13 +517,13 @@ impl<C: UChar> UCStr<C> {
         &mut self.inner[..len]
     }
 
-    /// Converts to a slice of the underlying code units, including the nul terminator
+    /// Converts to a slice of the underlying code units, including the nul terminator.
     #[inline]
     pub fn as_slice_with_nul(&self) -> &[C] {
         &self.inner
     }
 
-    /// Returns a raw pointer to the string
+    /// Returns a raw pointer to the string.
     ///
     /// The caller must ensure that the string outlives the pointer this function returns, or else
     /// it will end up pointing to garbage.
@@ -540,7 +540,7 @@ impl<C: UChar> UCStr<C> {
         self.inner.as_ptr()
     }
 
-    /// Returns a mutable raw pointer to the string
+    /// Returns a mutable raw pointer to the string.
     ///
     /// The caller must ensure that the string outlives the pointer this function returns, or else
     /// it will end up pointing to garbage.
@@ -590,19 +590,20 @@ impl<C: UChar> UCStr<C> {
     }
 
     /// Returns the length of the string as number of elements (**not** number of bytes)
-    /// **not** including nul terminator
+    /// **not** including nul terminator.
     #[inline]
     pub fn len(&self) -> usize {
         self.inner.len() - 1
     }
 
-    /// Returns whether this string contains no data (i.e. is only the nul terminator)
+    /// Returns whether this string contains no data (i.e. is only the nul terminator).
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    /// Converts a [`Box<UCStr>`] into a [`UCString`][crate::UCString] without copying or allocating
+    /// Converts a [`Box<UCStr>`] into a [`UCString`][crate::UCString] without copying or
+    /// allocating.
     ///
     /// # Examples
     ///
@@ -632,7 +633,7 @@ impl<C: UChar> UCStr<C> {
         }
     }
 
-    /// Returns a [`UStr`] reference to this string reference
+    /// Returns a [`UStr`] reference to this string reference.
     ///
     /// The [`UStr`] reference will not include the nul-terminator.
     #[inline]
@@ -640,7 +641,7 @@ impl<C: UChar> UCStr<C> {
         UStr::from_slice(self.as_slice())
     }
 
-    /// Returns a [`UStr`] reference to this string reference
+    /// Returns a [`UStr`] reference to this string reference.
     ///
     /// The [`UStr`] reference will include the nul-terminator.
     #[inline]
@@ -648,7 +649,7 @@ impl<C: UChar> UCStr<C> {
         UStr::from_slice(self.as_slice())
     }
 
-    /// Returns a mutable [`UStr`] reference to this string reference
+    /// Returns a mutable [`UStr`] reference to this string reference.
     ///
     /// The [`UStr`] reference will not include the nul-terminator.
     ///
@@ -693,7 +694,7 @@ impl<C: UChar> UCStr<C> {
     }
 
     /// Returns an object that implements [`Display`][std::fmt::Display] for printing strings that
-    /// may contain non-Unicode data
+    /// may contain non-Unicode data.
     ///
     /// A [`UCStr`] might contain ill-formed UTF encoding. This struct implements the
     /// [`Display`][std::fmt::Display] trait in a way that decoding the string is lossy but no heap
@@ -742,7 +743,7 @@ impl<C: UChar> UCStr<C> {
 }
 
 impl UCStr<u16> {
-    /// Decodes a string reference to an owned [`OsString`][std::ffi::OsString]
+    /// Decodes a string reference to an owned [`OsString`][std::ffi::OsString].
     ///
     /// This makes a string copy of the [`U16CStr`]. Since [`U16CStr`] makes no guarantees that it
     /// is valid UTF-16, there is no guarantee that the resulting [`OsString`][std::ffi::OsString]
@@ -773,7 +774,7 @@ impl UCStr<u16> {
         crate::platform::os_from_wide(self.as_slice())
     }
 
-    /// Decodes the string reference to a [`String`] if it contains valid UTF-16 data
+    /// Decodes the string reference to a [`String`] if it contains valid UTF-16 data.
     ///
     /// # Errors
     ///
@@ -798,7 +799,7 @@ impl UCStr<u16> {
         String::from_utf16(self.as_slice())
     }
 
-    /// Decodes the string reference to a [`String`] even if it is invalid UTF-16 data
+    /// Decodes the string reference to a [`String`] even if it is invalid UTF-16 data.
     ///
     /// Any non-Unicode sequences are replaced with `U+FFFD REPLACEMENT CHARACTER`.
     ///
@@ -881,7 +882,7 @@ impl UCStr<u16> {
 }
 
 impl UCStr<u32> {
-    /// Constructs a string reference from a [`char`] nul-terminated string pointer
+    /// Constructs a string reference from a [`char`] nul-terminated string pointer.
     ///
     /// This will scan for nul values beginning with `p`. The first nul value will be used as the
     /// nul terminator for the string, similar to how libc string functions such as `strlen` work.
@@ -910,7 +911,7 @@ impl UCStr<u32> {
         Self::from_ptr_str(p as *const u32)
     }
 
-    /// Constructs a mutable string reference from a mutable [`char`] nul-terminated string pointer
+    /// Constructs a mutable string reference from a mutable [`char`] nul-terminated string pointer.
     ///
     /// This will scan for nul values beginning with `p`. The first nul value will be used as the
     /// nul terminator for the string, similar to how libc string functions such as `strlen` work.
@@ -937,7 +938,7 @@ impl UCStr<u32> {
         Self::from_ptr_str_mut(p as *mut u32)
     }
 
-    /// Constructs a string reference from a [`char`] pointer and a length
+    /// Constructs a string reference from a [`char`] pointer and a length.
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
     /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means
@@ -974,7 +975,7 @@ impl UCStr<u32> {
         Self::from_ptr(p as *const u32, len)
     }
 
-    /// Constructs a mutable string reference from a mutable [`char`] pointer and a length
+    /// Constructs a mutable string reference from a mutable [`char`] pointer and a length.
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
     /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means
@@ -1013,7 +1014,7 @@ impl UCStr<u32> {
     }
 
     /// Constructs a string reference from a [`char`] pointer and a length, truncating at the first
-    /// nul terminator
+    /// nul terminator.
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes. This will scan
     /// for nul values beginning with `p` until offset `len`. The first nul value will be used as
@@ -1050,7 +1051,7 @@ impl UCStr<u32> {
     }
 
     /// Constructs a mutable string reference from a mutable [`char`] pointer and a length,
-    /// truncating at the first nul terminator
+    /// truncating at the first nul terminator.
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes. This will scan
     /// for nul values beginning with `p` until offset `len`. The first nul value will be used as
@@ -1085,7 +1086,7 @@ impl UCStr<u32> {
     }
 
     /// Constructs a string reference from a [`char`] pointer and a length without checking for any
-    /// nul values
+    /// nul values.
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
     /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means
@@ -1119,7 +1120,7 @@ impl UCStr<u32> {
     }
 
     /// Constructs a mutable string reference from a mutable [`char`] pointer and a length without
-    /// checking for any nul values
+    /// checking for any nul values.
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes, and does
     /// **not** include the nul terminator of the string. Thus, a `len` of 0 is valid and means
@@ -1151,7 +1152,7 @@ impl UCStr<u32> {
     }
 
     /// Constructs a string reference from a [`char`] slice with a terminating nul, checking for
-    /// invalid interior nul values
+    /// invalid interior nul values.
     ///
     /// The slice must have at least one item, the nul terminator, even for an empty string.
     ///
@@ -1166,7 +1167,7 @@ impl UCStr<u32> {
     }
 
     /// Constructs a mutable string reference from a mutable [`char`] slice with a terminating nul,
-    /// checking for invalid interior nul values
+    /// checking for invalid interior nul values.
     ///
     /// The slice must have at least one item, the nul terminator, even for an empty string.
     ///
@@ -1181,7 +1182,7 @@ impl UCStr<u32> {
     }
 
     /// Constructs a string reference from a slice of [`char`] values, truncating at the first nul
-    /// terminator
+    /// terminator.
     ///
     /// The slice will be scanned for nul values. When a nul value is found, it is treated as the
     /// terminator for the string, and the [`UCStr`] slice will be truncated to that nul.
@@ -1196,7 +1197,7 @@ impl UCStr<u32> {
     }
 
     /// Constructs a mutable string reference from a mutable slice of [`char`] values, truncating at
-    /// the first nul terminator
+    /// the first nul terminator.
     ///
     /// The slice will be scanned for nul values. When a nul value is found, it is treated as the
     /// terminator for the string, and the [`UCStr`] slice will be truncated to that nul.
@@ -1213,7 +1214,7 @@ impl UCStr<u32> {
     }
 
     /// Constructs a string reference from a [`char`] slice without checking for a terminating or
-    /// interior nul values
+    /// interior nul values.
     ///
     /// # Safety
     ///
@@ -1227,7 +1228,7 @@ impl UCStr<u32> {
     }
 
     /// Constructs a mutable string reference from a mutable [`char`] slice without checking for a
-    /// terminating or interior nul values
+    /// terminating or interior nul values.
     ///
     /// # Safety
     ///
@@ -1240,7 +1241,7 @@ impl UCStr<u32> {
         Self::from_slice_unchecked_mut(&mut *(ptr as *mut [u32]))
     }
 
-    /// Decodes a string reference to an owned [`OsString`][std::ffi::OsString]
+    /// Decodes a string reference to an owned [`OsString`][std::ffi::OsString].
     ///
     /// This makes a string copy of this reference. Since [`UCStr<u32>`] makes no guarantees that it
     /// is valid UTF-32, there is no guarantee that the resulting [`OsString`][std::ffi::OsString]
@@ -1271,7 +1272,7 @@ impl UCStr<u32> {
         self.as_ustr().to_os_string()
     }
 
-    /// Decodes the string reference to a [`String`] if it contains valid UTF-32 data
+    /// Decodes the string reference to a [`String`] if it contains valid UTF-32 data.
     ///
     /// # Errors
     ///
@@ -1296,7 +1297,7 @@ impl UCStr<u32> {
         self.as_ustr().to_string()
     }
 
-    /// Decodes the string reference to a [`String`] even if it is invalid UTF-32 data
+    /// Decodes the string reference to a [`String`] even if it is invalid UTF-32 data.
     ///
     /// Any non-Unicode sequences are replaced with `U+FFFD REPLACEMENT CHARACTER`.
     ///
@@ -1459,7 +1460,7 @@ impl<C: UChar> PartialOrd<crate::UStr<C>> for UCStr<C> {
     }
 }
 
-/// C-style string reference for [`U16CString`][crate::U16CString]
+/// C-style string reference for [`U16CString`][crate::U16CString].
 ///
 /// [`U16CStr`] is aware of nul values. Unless unchecked conversions are used, all [`U16CStr`]
 /// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
@@ -1471,7 +1472,7 @@ impl<C: UChar> PartialOrd<crate::UStr<C>> for UCStr<C> {
 /// Unicode FFI safe and easy.
 pub type U16CStr = UCStr<u16>;
 
-/// C-style string reference for [`U32CString`][crate::U32CString]
+/// C-style string reference for [`U32CString`][crate::U32CString].
 ///
 /// [`U32CStr`] is aware of nul values. Unless unchecked conversions are used, all [`U32CStr`]
 /// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
@@ -1487,7 +1488,7 @@ pub type U32CStr = UCStr<u32>;
 /// `wchar_t` size on platform.
 pub type WideCStr = UCStr<WideChar>;
 
-/// Helper struct for printing [`UCStr`] values with [`format!`] and `{}`
+/// Helper struct for printing [`UCStr`] values with [`format!`] and `{}`.
 ///
 /// A [`UCStr`] might contain ill-formed UTF encoding. This struct implements the
 /// [`Display`][std::fmt::Display] trait in a way that decoding the string is lossy but no heap

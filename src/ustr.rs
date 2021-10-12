@@ -1,4 +1,4 @@
-//! Wide string slices
+//! Wide string slices.
 //!
 //! This module contains the [`UStr`] string slices and related types.
 
@@ -19,7 +19,7 @@ use core::{
     slice::{self, SliceIndex},
 };
 
-/// String slice reference for [`UString`][crate::UString]
+/// String slice reference for [`UString`][crate::UString].
 ///
 /// [`UStr`] is to [`UString`][crate::UString] as [`str`] is to [`String`].
 ///
@@ -41,13 +41,13 @@ pub struct UStr<C: UChar> {
 }
 
 impl<C: UChar> UStr<C> {
-    /// Coerces a value into a [`UStr`]
+    /// Coerces a value into a [`UStr`].
     #[inline]
     pub fn new<S: AsRef<Self> + ?Sized>(s: &S) -> &Self {
         s.as_ref()
     }
 
-    /// Constructs a [`UStr`] from a pointer and a length
+    /// Constructs a [`UStr`] from a pointer and a length.
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes. No copying or
     /// allocation is performed, the resulting value is a direct reference to the pointer bytes.
@@ -78,7 +78,7 @@ impl<C: UChar> UStr<C> {
         &*(slice as *const UStr<C>)
     }
 
-    /// Constructs a mutable [`UStr`] from a mutable pointer and a length
+    /// Constructs a mutable [`UStr`] from a mutable pointer and a length.
     ///
     /// The `len` argument is the number of elements, **not** the number of bytes. No copying or
     /// allocation is performed, the resulting value is a direct reference to the pointer bytes.
@@ -107,7 +107,7 @@ impl<C: UChar> UStr<C> {
         &mut *(slice as *mut UStr<C>)
     }
 
-    /// Constructs a [`UStr`] from a slice of character data
+    /// Constructs a [`UStr`] from a slice of character data.
     ///
     /// No checks are performed on the slice. It may or may not be valid for its encoding.
     #[inline]
@@ -116,7 +116,7 @@ impl<C: UChar> UStr<C> {
         unsafe { &*(ptr as *const UStr<C>) }
     }
 
-    /// Constructs a mutable [`UStr`] from a mutable slice of character data
+    /// Constructs a mutable [`UStr`] from a mutable slice of character data.
     ///
     /// No checks are performed on the slice. It may or may not be valid for its encoding.
     #[inline]
@@ -125,7 +125,7 @@ impl<C: UChar> UStr<C> {
         unsafe { &mut *(ptr as *mut UStr<C>) }
     }
 
-    /// Copies the string reference to a new owned [`UString`][crate::UString]
+    /// Copies the string reference to a new owned [`UString`][crate::UString].
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     #[inline]
@@ -133,18 +133,18 @@ impl<C: UChar> UStr<C> {
         crate::UString::from_vec(&self.inner)
     }
 
-    /// Converts to a slice of the string
+    /// Converts to a slice of the string.
     #[inline]
     pub fn as_slice(&self) -> &[C] {
         &self.inner
     }
 
-    /// Converts to a mutable slice of the string
+    /// Converts to a mutable slice of the string.
     pub fn as_mut_slice(&mut self) -> &mut [C] {
         &mut self.inner
     }
 
-    /// Returns a raw pointer to the string
+    /// Returns a raw pointer to the string.
     ///
     /// The caller must ensure that the string outlives the pointer this function returns, or else
     /// it will end up pointing to garbage.
@@ -161,7 +161,7 @@ impl<C: UChar> UStr<C> {
         self.inner.as_ptr()
     }
 
-    /// Returns an unsafe mutable raw pointer to the string
+    /// Returns an unsafe mutable raw pointer to the string.
     ///
     /// The caller must ensure that the string outlives the pointer this function returns, or else
     /// it will end up pointing to garbage.
@@ -205,19 +205,19 @@ impl<C: UChar> UStr<C> {
         self.inner.as_mut_ptr_range()
     }
 
-    /// Returns the length of the string as number of elements (**not** number of bytes)
+    /// Returns the length of the string as number of elements (**not** number of bytes).
     #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
-    /// Returns whether this string contains no data
+    /// Returns whether this string contains no data.
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
     }
 
-    /// Converts a [`Box<UStr>`] into a [`UString`][crate::UString] without copying or allocating
+    /// Converts a [`Box<UStr>`] into a [`UString`][crate::UString] without copying or allocating.
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn into_ustring(self: Box<Self>) -> crate::UString<C> {
@@ -228,7 +228,7 @@ impl<C: UChar> UStr<C> {
     }
 
     /// Returns an object that implements [`Display`][std::fmt::Display] for printing strings that
-    /// may contain non-Unicode data
+    /// may contain non-Unicode data.
     ///
     /// A [`UStr`] might contain ill-formed UTF encoding. This struct implements the
     /// [`Display`][std::fmt::Display] trait in a way that decoding the string is lossy but no heap
@@ -369,7 +369,7 @@ impl<C: UChar> UStr<C> {
 }
 
 impl UStr<u16> {
-    /// Decodes a string reference to an owned [`OsString`][std::ffi::OsString]
+    /// Decodes a string reference to an owned [`OsString`][std::ffi::OsString].
     ///
     /// This makes a string copy of the [`U16Str`]. Since [`U16Str`] makes no guarantees that it is
     /// valid UTF-16, there is no guarantee that the resulting [`OsString`][std::ffi::OsString] will
@@ -424,7 +424,7 @@ impl UStr<u16> {
         String::from_utf16(&self.inner)
     }
 
-    /// Decodes the string reference to a [`String`] even if it is invalid UTF-16 data
+    /// Decodes the string reference to a [`String`] even if it is invalid UTF-16 data.
     ///
     /// Any non-Unicode sequences are replaced with `U+FFFD REPLACEMENT CHARACTER`.
     ///
@@ -507,7 +507,7 @@ impl UStr<u16> {
 }
 
 impl UStr<u32> {
-    /// Constructs a [`U32Str`] from a [`char`][prim@char] pointer and a length
+    /// Constructs a [`U32Str`] from a [`char`][prim@char] pointer and a length.
     ///
     /// The `len` argument is the number of `char` elements, **not** the number of bytes. No copying
     /// or allocation is performed, the resulting value is a direct reference to the pointer bytes.
@@ -536,7 +536,7 @@ impl UStr<u32> {
         Self::from_ptr(p as *const u32, len)
     }
 
-    /// Constructs a mutable [`U32Str`] from a mutable [`char`][prim@char] pointer and a length
+    /// Constructs a mutable [`U32Str`] from a mutable [`char`][prim@char] pointer and a length.
     ///
     /// The `len` argument is the number of `char` elements, **not** the number of bytes. No copying
     /// or allocation is performed, the resulting value is a direct reference to the pointer bytes.
@@ -563,7 +563,7 @@ impl UStr<u32> {
         Self::from_ptr_mut(p as *mut u32, len)
     }
 
-    /// Constructs a [`U32Str`] from a [`char`][prim@char] slice
+    /// Constructs a [`U32Str`] from a [`char`][prim@char] slice.
     ///
     /// No checks are performed on the slice.
     #[inline]
@@ -572,7 +572,7 @@ impl UStr<u32> {
         unsafe { &*(ptr as *const Self) }
     }
 
-    /// Constructs a mutable [`U32Str`] from a mutable [`char`][prim@char] slice
+    /// Constructs a mutable [`U32Str`] from a mutable [`char`][prim@char] slice.
     ///
     /// No checks are performed on the slice.
     #[inline]
@@ -581,7 +581,7 @@ impl UStr<u32> {
         unsafe { &mut *(ptr as *mut Self) }
     }
 
-    /// Decodes a string to an owned [`OsString`][std::ffi::OsString]
+    /// Decodes a string to an owned [`OsString`][std::ffi::OsString].
     ///
     /// This makes a string copy of the [`U32Str`]. Since [`U32Str`] makes no guarantees that it is
     /// valid UTF-32, there is no guarantee that the resulting [`OsString`][std::ffi::OsString] will
@@ -647,7 +647,7 @@ impl UStr<u32> {
         Ok(unsafe { String::from_utf8_unchecked(vec) })
     }
 
-    /// Decodes the string reference to a [`String`] even if it is invalid UTF-32 data
+    /// Decodes the string reference to a [`String`] even if it is invalid UTF-32 data.
     ///
     /// Any non-Unicode sequences are replaced with `U+FFFD REPLACEMENT CHARACTER`.
     ///
@@ -826,7 +826,7 @@ impl<C: UChar> PartialOrd<crate::UCStr<C>> for UStr<C> {
     }
 }
 
-/// String slice reference for [`U16String`][crate::U16String]
+/// String slice reference for [`U16String`][crate::U16String].
 ///
 /// [`U16Str`] is to [`U16String`][crate::U16String] as [`str`] is to [`String`].
 ///
@@ -841,7 +841,7 @@ impl<C: UChar> PartialOrd<crate::UCStr<C>> for UStr<C> {
 /// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
 pub type U16Str = UStr<u16>;
 
-/// String slice reference for [`U32String`][crate::U32String]
+/// String slice reference for [`U32String`][crate::U32String].
 ///
 /// [`U32Str`] is to [`U32String`][crate::U32String] as [`str`] is to [`String`].
 ///
@@ -860,7 +860,7 @@ pub type U32Str = UStr<u32>;
 /// size on platform.
 pub type WideStr = UStr<WideChar>;
 
-/// Helper struct for printing [`UStr`] values with [`format!`] and `{}`
+/// Helper struct for printing [`UStr`] values with [`format!`] and `{}`.
 ///
 /// A [`UStr`] might contain ill-formed UTF encoding. This struct implements the
 /// [`Display`][std::fmt::Display] trait in a way that decoding the string is lossy but no heap

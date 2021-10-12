@@ -241,7 +241,7 @@ pub use ustring::{U16String, U32String, UString, WideString};
 /// Marker trait for primitive types used to represent wide character data. Should not be used
 /// directly.
 pub trait UChar: core::fmt::Debug + Sized + Copy + Default + Ord + Eq + private::Sealed {
-    /// NUL character value
+    /// NUL character value.
     const NUL: Self;
 }
 
@@ -271,7 +271,7 @@ pub type WideChar = u32;
 pub type WideChar = u16;
 
 /// Creates a lossy decoder iterator over the possibly ill-formed UTF-16 encoded code points in
-/// `iter`
+/// `iter`.
 ///
 /// This is equivalent to [`char::decode_utf16`][core::char::decode_utf16] except that any unpaired
 /// UTF-16 surrogate values are replaced by
@@ -304,7 +304,7 @@ where
 }
 
 /// Creates a decoder iterator over UTF-32 encoded code points in `iter`, returning invalid values
-/// as `Err`s
+/// as `Err`s.
 ///
 /// # Examples
 ///
@@ -340,7 +340,7 @@ where
 }
 
 /// Creates a lossy decoder iterator over the possibly ill-formed UTF-32 encoded code points in
-/// `iter`
+/// `iter`.
 ///
 /// This is equivalent to [`decode_utf32`] except that any invalid UTF-32 values are replaced by
 /// [`U+FFFD REPLACEMENT_CHARACTER`][core::char::REPLACEMENT_CHARACTER] (�) instead of returning
@@ -371,7 +371,7 @@ where
     }
 }
 
-/// Debug implementation for any U16 string slice
+/// Debug implementation for any U16 string slice.
 ///
 /// Properly encoded input data will output valid strings with escape sequences, however invalid
 /// encoding will purposefully output any unpaired surrogate as \<XXXX> which is not a valid escape
@@ -380,7 +380,7 @@ fn debug_fmt_u16(s: &[u16], fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Re
     debug_fmt_utf16_iter(core::char::decode_utf16(s.iter().copied()), fmt)
 }
 
-/// Debug implementation for any U16 string iterator
+/// Debug implementation for any U16 string iterator.
 ///
 /// Properly encoded input data will output valid strings with escape sequences, however invalid
 /// encoding will purposefully output any unpaired surrogate as \<XXXX> which is not a valid escape
@@ -405,7 +405,7 @@ fn debug_fmt_utf16_iter(
     fmt.write_char('"')
 }
 
-/// Debug implementation for any U16 string slice
+/// Debug implementation for any U16 string slice.
 ///
 /// Properly encoded input data will output valid strings with escape sequences, however invalid
 /// encoding will purposefully output any  invalid code point as \<XXXX> which is not a valid escape
@@ -414,7 +414,7 @@ fn debug_fmt_u32(s: &[u32], fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Re
     debug_fmt_utf32_iter(decode_utf32(s.iter().copied()), fmt)
 }
 
-/// Debug implementation for any U16 string iterator
+/// Debug implementation for any U16 string iterator.
 ///
 /// Properly encoded input data will output valid strings with escape sequences, however invalid
 /// encoding will purposefully output any  invalid code point as \<XXXX> which is not a valid escape

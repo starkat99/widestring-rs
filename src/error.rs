@@ -1,23 +1,23 @@
-//! Errors returned by functions in this crate
+//! Errors returned by functions in this crate.
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-/// An error returned to indicate a problem with nul values occurred
+/// An error returned to indicate a problem with nul values occurred.
 ///
 /// The error will either being a [`MissingNulTerminator`] or [`ContainsNul`].
 /// The error optionally returns the ownership of the invalid vector whenever a vector was owned.
 #[derive(Debug, Clone)]
 pub enum NulError<C> {
-    /// A terminating nul value was missing
+    /// A terminating nul value was missing.
     MissingNulTerminator(MissingNulTerminator),
-    /// An interior nul value was found
+    /// An interior nul value was found.
     ContainsNul(ContainsNul<C>),
 }
 
 impl<C> NulError<C> {
     /// Consumes this error, returning the underlying vector of values which generated the error in
-    /// the first place
+    /// the first place.
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
@@ -64,7 +64,7 @@ impl<C> From<ContainsNul<C>> for NulError<C> {
     }
 }
 
-/// An error returned from to indicate that a terminating nul value was missing
+/// An error returned from to indicate that a terminating nul value was missing.
 #[derive(Debug, Clone)]
 pub struct MissingNulTerminator {
     _unused: (),
@@ -85,7 +85,7 @@ impl core::fmt::Display for MissingNulTerminator {
 #[cfg(feature = "std")]
 impl std::error::Error for MissingNulTerminator {}
 
-/// An error returned to indicate that an invalid nul value was found in a string
+/// An error returned to indicate that an invalid nul value was found in a string.
 ///
 /// The error indicates the position in the vector where the nul value was found, as well as
 /// returning the ownership of the invalid vector.
@@ -121,14 +121,14 @@ impl<C> ContainsNul<C> {
         }
     }
 
-    /// Returns the index of the invalid nul value in the slice
+    /// Returns the index of the invalid nul value in the slice.
     #[inline]
     pub fn nul_position(&self) -> usize {
         self.index
     }
 
     /// Consumes this error, returning the underlying vector of values which generated the error in
-    /// the first place
+    /// the first place.
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
@@ -146,7 +146,7 @@ impl<C> core::fmt::Display for ContainsNul<C> {
 #[cfg(feature = "std")]
 impl<C: crate::UChar> std::error::Error for ContainsNul<C> {}
 
-/// A possible error value when converting a [`String`] from a [`u32`] string
+/// A possible error value when converting a [`String`] from a [`u32`] string.
 ///
 /// This error occurs when a [`u32`] value is outside the 21-bit Unicode code point range
 /// (>`U+10FFFF`) or is a UTF-16 surrogate value.
@@ -174,7 +174,7 @@ impl core::fmt::Display for FromUtf32Error {
 #[cfg(feature = "std")]
 impl std::error::Error for FromUtf32Error {}
 
-/// An error that can be returned when decoding UTF-32 code points
+/// An error that can be returned when decoding UTF-32 code points.
 ///
 /// This error occurs when a [`u32`] value is outside the 21-bit Unicode code point range
 /// (>`U+10FFFF`) or is a UTF-16 surrogate value.
@@ -188,7 +188,7 @@ impl DecodeUtf32Error {
         Self { code }
     }
 
-    /// Returns the invalid code point value which caused the error
+    /// Returns the invalid code point value which caused the error.
     pub fn invalid_code_point(&self) -> u32 {
         self.code
     }
