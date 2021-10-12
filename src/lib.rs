@@ -201,7 +201,7 @@
     future_incompatible
 )]
 #![cfg_attr(not(feature = "std"), no_std)]
-#![doc(html_root_url = "https://docs.rs/widestring/")]
+#![doc(html_root_url = "https://docs.rs/widestring/0.5.0/")]
 #![doc(test(attr(deny(warnings), allow(unused))))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 

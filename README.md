@@ -1,8 +1,9 @@
 # widestring
 [![Crates.io](https://img.shields.io/crates/v/widestring.svg)](https://crates.io/crates/widestring/) [![Documentation](https://docs.rs/widestring/badge.svg)](https://docs.rs/widestring/) ![Crates.io](https://img.shields.io/crates/l/widestring) [![Build status](https://github.com/starkat99/widestring-rs/actions/workflows/rust.yml/badge.svg?branch=master)](https://github.com/starkat99/widestring-rs/actions/workflows/rust.yml)
 
-A wide string Rust FFI library for converting to and from wide strings, such as
-those often used in Windows API or other FFI libaries. Both UTF-16 and UTF-32 types are provided, including support for malformed encoding.
+A wide string Rust library for converting to and from wide strings, such as
+those often used in Windows API or other FFI libaries. Both `u16` and `u32` string types are
+provided, including support for UTF-16 and UTF-32, malformed encoding, C-style strings, etc.
 
 ## Documentation
 
@@ -14,7 +15,7 @@ those often used in Windows API or other FFI libaries. Both UTF-16 and UTF-32 ty
 - **`alloc`** - Enabled by default. Enable use of the [`alloc`](https://doc.rust-lang.org/alloc/)
   crate when not using the `std` library.
 
-  This enables the `U16String`, `U32String`, `U16CString`, `U32CString` types and alises.
+  This enables the `U16String`, `U32String`, `U16CString`, `U32CString` types and aliases.
 
 - **`std`** - Enabled by default. Enable features that depend on the Rust `std` library, including
   everything in the `alloc` feature.
