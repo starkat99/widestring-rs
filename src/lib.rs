@@ -436,15 +436,15 @@ fn debug_fmt_utf32_iter(
 
 #[inline(always)]
 fn is_utf16_surrogate(u: u16) -> bool {
-    u >= 0xD800 && u <= 0xDFFF
+    (0xD800..=0xDFFF).contains(&u)
 }
 
 #[inline(always)]
 fn is_utf16_high_surrogate(u: u16) -> bool {
-    u >= 0xD800 && u <= 0xDBFF
+    (0xD800..=0xDBFF).contains(&u)
 }
 
 #[inline(always)]
 fn is_utf16_low_surrogate(u: u16) -> bool {
-    u >= 0xDC00 && u <= 0xDFFF
+    (0xDC00..=0xDFFF).contains(&u)
 }

@@ -817,11 +817,6 @@ impl<C: UChar> PartialEq<crate::UCStr<C>> for UStr<C> {
     fn eq(&self, other: &crate::UCStr<C>) -> bool {
         self.as_slice() == other.as_slice()
     }
-
-    #[inline]
-    fn ne(&self, other: &crate::UCStr<C>) -> bool {
-        self.as_slice() != other.as_slice()
-    }
 }
 
 impl<C: UChar> PartialOrd<crate::UCStr<C>> for UStr<C> {
