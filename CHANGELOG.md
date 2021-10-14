@@ -5,7 +5,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.5.0] - 2020-10-12 <a name="0.5.0"></a>
+## [0.5.0] - 2021-10-12 <a name="0.5.0"></a>
 ### Changed
 - **Breaking Change** Renamed a number of types and functions to increase consistency and clarity.
   This also meant renaming errors to more clearly convey error and trying to be more consistent with
