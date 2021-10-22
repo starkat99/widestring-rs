@@ -4,9 +4,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- **Breaking Change** Minimum supported Rust version is now 1.56.
+- Migrated crate to Rust 2021 edition.
 
 ## [0.5.0] - 2021-10-12 <a name="0.5.0"></a>
 ### Changed
+- **Breaking Change** Minimum supported Rust version is now 1.48.
 - **Breaking Change** Renamed a number of types and functions to increase consistency and clarity.
   This also meant renaming errors to more clearly convey error and trying to be more consistent with
   name conventions and functionality across types. Check renamed function docs for any changes in
@@ -33,7 +37,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Improved implementations in some areas to reduce unncessary double allocations.
 - Improved `Debug` implementations. No more debugging lists of raw integer values.
 - Migrated crate to Rust 2018 edition.
-- Minimum supported Rust version is now 1.48.
 - Made crate package [REUSE compliant](https://reuse.software/).
 - Improved documentation and used intra-doc links.
 
