@@ -30,7 +30,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - `UCString::from_os_str_with_nul` => `from_os_str_truncate`
   - `U32CString::from_chars_with_nul` => `from_chars_truncate`
   - `U32CString::from_char_ptr_with_nul` => `from_char_ptr_truncate`
-- Deprecated error types in the crate root. Use the errors directly from `error` module instead.
 - Improved implementations in some areas to reduce unncessary double allocations.
 - Improved `Debug` implementations. No more debugging lists of raw integer values.
 - Migrated crate to Rust 2018 edition.
@@ -113,13 +112,31 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Deprecated
 - Deprecated functions as part of simplifying to increase clarity. These will be removed entirely
   in a future release.
+    - `MissingNulError`. Use `error::MissingNulTerminator` instead.
+    - `FromUtf32Error`. Use `error::FromUtf32Error` instead.
+    - `NulError`. Use `error::ContainsNul` instead.
+    - `UCStr::from_ptr_with_nul`. Use `from_ptr_unchecked` instead.
+    - `UCStr::from_slice_with_nul`. Use `from_slice_truncate` instead.
+    - `UCStr::from_slice_with_nul_unchecked`. Use `from_slice_unchecked` instead.
+    - `U32CStr::from_char_ptr_with_nul`. Use `from_char_ptr_unchecked` instead.
+    - `U32CStr::from_char_slice_with_nul`. Use `from_char_slice_truncate` instead.
+    - `U32CStr::from_char_slice_with_nul_unchecked`. Use `from_char_slice_unchecked` instead.
+    - `UCString::new`. Use `from_vec` instead.
     - `UCString::from_vec_with_nul_unchecked`. Use `from_vec_unchecked` instead.
     - `UCString::from_ustr_with_nul_unchecked`. Use `from_ustr_unchecked` instead.
     - `UCString::from_ptr_with_nul_unchecked`. Use `from_ptr_unchecked` instead.
     - `UCString::from_str_with_nul_unchecked`. Use `from_str_unchecked` instead.
     - `UCString::from_os_str_with_nul_unchecked`. Use `from_os_str_unchecked` instead.
+    - `UCString::from_vec_with_nul`. Use `from_vec_truncate` instead.
+    - `UCString::from_ustr_with_nul`. Use `from_ustr_truncate` instead.
+    - `UCString::from_ptr_with_nul`. Use `from_ptr_truncate` instead.
+    - `UCString::from_str_with_nul`. Use `from_str_truncate` instead.
+    - `UCString::from_os_str_with_nul`. Use `from_os_str_truncate` instead.
     - `U32CString::from_chars_with_nul_unchecked`. Use `from_chars_unchecked` instead.
     - `U32CString::from_char_ptr_with_nul_unchecked`. Use `from_char_ptr_unchecked` instead.
+    - `U32CString::from_chars_with_nul`. Use `from_chars_truncate` instead.
+    - `U32CString::from_char_ptr_with_nul`. Use `from_char_ptr_truncate` instead.
+- Deprecated error types in the crate root. Use the errors directly from `error` module instead.
 
 ## [0.4.3] - 2020-10-05 <a name="0.4.3"></a>
 ### Fixed
