@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Fixed a regression in 0.5.0 where zero-length vectors and strings were incorrectly causing panics
   in `UCString::from_vec` and `UCString::from_str`. Fixes [#22].
+- Modified an implentation detail in `ustr::to_string` & `ustr::to_string_lossy` to remove possibly
+  unsafe behaviour.
 
 ## [0.5.0] - 2021-10-12 <a name="0.5.0"></a>
 ### Changed

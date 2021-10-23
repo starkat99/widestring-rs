@@ -637,8 +637,7 @@ impl UStr<u32> {
             return Err(crate::error::FromUtf32Error::new());
         }
         let size = chars.iter().filter_map(|o| o.map(|c| c.len_utf8())).sum();
-        let mut vec = Vec::with_capacity(size);
-        unsafe { vec.set_len(size) };
+        let mut vec = vec![0; size];
         let mut i = 0;
         for c in chars.iter().filter_map(|&o| o) {
             c.encode_utf8(&mut vec[i..]);
@@ -672,8 +671,7 @@ impl UStr<u32> {
             .map(|&c| char::from_u32(c).unwrap_or(char::REPLACEMENT_CHARACTER))
             .collect();
         let size = chars.iter().map(|c| c.len_utf8()).sum();
-        let mut vec = Vec::with_capacity(size);
-        unsafe { vec.set_len(size) };
+        let mut vec = vec![0; size];
         let mut i = 0;
         for c in chars {
             c.encode_utf8(&mut vec[i..]);
