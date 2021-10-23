@@ -5,7 +5,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.5.0] - 2020-10-12 <a name="0.5.0"></a>
+## [0.5.1] - 2021-10-23 <a name="0.5.1"></a>
+### Fixed
+- Fixed a regression in 0.5.0 where zero-length vectors and strings were incorrectly causing panics
+  in `UCString::from_vec` and `UCString::from_str`. Fixes [#22].
+
+## [0.5.0] - 2021-10-12 <a name="0.5.0"></a>
 ### Changed
 - **Breaking Change** Renamed a number of types and functions to increase consistency and clarity.
   This also meant renaming errors to more clearly convey error and trying to be more consistent with
@@ -197,11 +202,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [#18]: https://github.com/starkat99/widestring-rs/issues/18
 [#19]: https://github.com/starkat99/widestring-rs/issues/19
 [#20]: https://github.com/starkat99/widestring-rs/issues/20
+[#22]: https://github.com/starkat99/widestring-rs/issues/22
 
 [@nicbn]: https://github.com/nicbn
 [@joshwd36]: https://github.com/joshwb36
 
-[Unreleased]: https://github.com/starkat99/widestring-rs/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/starkat99/widestring-rs/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/starkat99/widestring-rs/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/starkat99/widestring-rs/compare/v0.4.3...v0.5.0
 [0.4.3]: https://github.com/starkat99/widestring-rs/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/starkat99/widestring-rs/compare/v0.4.1...v0.4.2
