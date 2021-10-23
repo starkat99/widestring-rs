@@ -94,6 +94,20 @@ impl<C: UChar> UCString<C> {
     /// # assert_eq!(wcstr.into_vec(), cloned);
     /// ```
     ///
+    /// Empty vectors are valid and will return an empty string with a nul terminator:
+    ///
+    /// ```
+    /// use widestring::U16CString;
+    /// let wcstr = U16CString::from_vec(vec![]).unwrap();
+    /// assert_eq!(wcstr, U16CString::default());
+    /// ```
+    ///
+    /// ```
+    /// use widestring::U32CString;
+    /// let wcstr = U32CString::from_vec(vec![]).unwrap();
+    /// assert_eq!(wcstr, U32CString::default());
+    /// ```
+    ///
     /// The following example demonstrates errors from nul values in a vector.
     ///
     /// ```rust
@@ -116,8 +130,9 @@ impl<C: UChar> UCString<C> {
     pub fn from_vec(v: impl Into<Vec<C>>) -> Result<Self, ContainsNul<C>> {
         let v = v.into();
         // Check for nul vals, ignoring nul terminator
-        match v[..v.len() - 1].iter().position(|&val| val == UChar::NUL) {
+        match v.iter().position(|&val| val == UChar::NUL) {
             None => Ok(unsafe { Self::from_vec_unchecked(v) }),
+            Some(pos) if pos == v.len() - 1 => Ok(unsafe { Self::from_vec_unchecked(v) }),
             Some(pos) => Err(ContainsNul::new(pos, v)),
         }
     }
