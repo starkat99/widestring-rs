@@ -131,9 +131,8 @@ macro_rules! ustr_common_impl {
             ///
             /// No checks are performed on the slice. It may or may not be valid for its encoding.
             #[inline]
-            pub fn from_slice(slice: &[$uchar]) -> &Self {
-                let ptr: *const [$uchar] = slice;
-                unsafe { &*(ptr as *const $ustr) }
+            pub const fn from_slice(slice: &[$uchar]) -> &Self {
+                unsafe { core::mem::transmute(slice) }
             }
 
             /// Constructs a mutable wide string slice from a mutable slice of character data.
@@ -155,7 +154,7 @@ macro_rules! ustr_common_impl {
 
             /// Converts to a slice of the string.
             #[inline]
-            pub fn as_slice(&self) -> &[$uchar] {
+            pub const fn as_slice(&self) -> &[$uchar] {
                 &self.inner
             }
 
@@ -177,7 +176,7 @@ macro_rules! ustr_common_impl {
             /// Modifying the container referenced by this string may cause its buffer to be
             /// reallocated, which would also make any pointers to it invalid.
             #[inline]
-            pub fn as_ptr(&self) -> *const $uchar {
+            pub const fn as_ptr(&self) -> *const $uchar {
                 self.inner.as_ptr()
             }
 
@@ -230,13 +229,13 @@ macro_rules! ustr_common_impl {
 
             /// Returns the length of the string as number of elements (**not** number of bytes).
             #[inline]
-            pub fn len(&self) -> usize {
+            pub const fn len(&self) -> usize {
                 self.inner.len()
             }
 
             /// Returns whether this string contains no data.
             #[inline]
-            pub fn is_empty(&self) -> bool {
+            pub const fn is_empty(&self) -> bool {
                 self.inner.is_empty()
             }
 

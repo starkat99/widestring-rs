@@ -7,8 +7,29 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - **Breaking Change** Minimum supported Rust version is now 1.56.
 - Migrated crate to Rust 2021 edition.
+- The following methods on `U16Str` and `U32Str` are now `const`:
+  - `from_slice`
+  - `as_slice`
+  - `as_ptr`
+  - `len`
+  - `is_empty`
+- The following methods on `U16CStr` and `U32CStr` are now `const`:
+  - `from_slice_unchecked`
+  - `as_slice_with_nul`
+  - `as_ptr`
+  - `len`
+  - `is_empty`
+- The following methods on `U16String` and `U32String` are now `const`:
+  - `new`
 
 ## Added
+- Added macros to convert string literals into `const` wide string slices:
+  - `u16str!`
+  - `u16cstr!`
+  - `u32str!`
+  - `u32cstr!`
+  - `widestr!`
+  - `widecstr!`
 - Added `NUL_TERMINATOR` associated constant to `U16CStr`, `U32CStr`, `U16CString`, and 
   `U32CString`.
 

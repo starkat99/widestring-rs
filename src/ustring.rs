@@ -90,7 +90,7 @@ macro_rules! ustring_common_impl {
         impl $ustring {
             /// Constructs a new empty wide string.
             #[inline]
-            pub fn new() -> Self {
+            pub const fn new() -> Self {
                 Self { inner: Vec::new() }
             }
 
@@ -827,6 +827,20 @@ macro_rules! ustring_common_impl {
             #[inline]
             fn eq(&self, other: &Cow<'a, $ucstr>) -> bool {
                 self.as_ustr() == other.as_ref()
+            }
+        }
+
+        impl PartialEq<$ustring> for $ustr {
+            #[inline]
+            fn eq(&self, other: &$ustring) -> bool {
+                self == other.as_ustr()
+            }
+        }
+
+        impl PartialEq<$ustring> for $ucstr {
+            #[inline]
+            fn eq(&self, other: &$ustring) -> bool {
+                self.as_ustr() == other.as_ustr()
             }
         }
 

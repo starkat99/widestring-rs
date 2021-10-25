@@ -708,6 +708,20 @@ macro_rules! ucstring_common_impl {
             }
         }
 
+        impl PartialEq<$ucstring> for $ustr {
+            #[inline]
+            fn eq(&self, other: &$ucstring) -> bool {
+                self == other.as_ustr()
+            }
+        }
+
+        impl PartialEq<$ucstring> for $ucstr {
+            #[inline]
+            fn eq(&self, other: &$ucstring) -> bool {
+                self == other.as_ucstr()
+            }
+        }
+
         impl PartialOrd<$ustr> for $ucstring {
             #[inline]
             fn partial_cmp(&self, other: &$ustr) -> Option<cmp::Ordering> {

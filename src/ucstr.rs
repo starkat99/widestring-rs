@@ -479,9 +479,8 @@ macro_rules! ucstr_common_impl {
             /// slice is missing a terminating nul value or there are non-terminating interior nul
             /// values in the slice. In particular, an empty slice will result in an invalid
             /// string slice.
-            pub unsafe fn from_slice_unchecked(slice: &[$uchar]) -> &Self {
-                let ptr: *const [$uchar] = slice;
-                &*(ptr as *const Self)
+            pub const unsafe fn from_slice_unchecked(slice: &[$uchar]) -> &Self {
+                core::mem::transmute(slice)
             }
 
             /// Constructs a mutable wide C string slice from a mutable slice of values without
@@ -570,7 +569,7 @@ macro_rules! ucstr_common_impl {
 
             /// Converts to a slice of the underlying code units, including the nul terminator.
             #[inline]
-            pub fn as_slice_with_nul(&self) -> &[$uchar] {
+            pub const fn as_slice_with_nul(&self) -> &[$uchar] {
                 &self.inner
             }
 
@@ -587,7 +586,7 @@ macro_rules! ucstr_common_impl {
             /// Modifying the container referenced by this string may cause its buffer to be
             /// reallocated, which would also make any pointers to it invalid.
             #[inline]
-            pub fn as_ptr(&self) -> *const $uchar {
+            pub const fn as_ptr(&self) -> *const $uchar {
                 self.inner.as_ptr()
             }
 
@@ -646,13 +645,13 @@ macro_rules! ucstr_common_impl {
             /// Returns the length of the string as number of elements (**not** number of bytes)
             /// **not** including nul terminator.
             #[inline]
-            pub fn len(&self) -> usize {
+            pub const fn len(&self) -> usize {
                 self.inner.len() - 1
             }
 
             /// Returns whether this string contains no data (i.e. is only the nul terminator).
             #[inline]
-            pub fn is_empty(&self) -> bool {
+            pub const fn is_empty(&self) -> bool {
                 self.len() == 0
             }
 
@@ -700,7 +699,7 @@ macro_rules! ucstr_common_impl {
             /// The wide string slice will include the nul-terminator.
             #[inline]
             pub fn as_ustr_with_nul(&self) -> &$ustr {
-                $ustr::from_slice(self.as_slice())
+                $ustr::from_slice(self.as_slice_with_nul())
             }
 
             /// Returns a mutable wide string slice to this wide C string slice.

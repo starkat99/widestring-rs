@@ -212,6 +212,7 @@ use core::{char::DecodeUtf16Error, fmt::Write};
 
 pub mod error;
 pub mod iter;
+mod macros;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 mod platform;
@@ -224,6 +225,8 @@ pub mod ustr;
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub mod ustring;
 
+#[doc(hidden)]
+pub use macros::internals;
 pub use ucstr::{U16CStr, U32CStr, WideCStr};
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
