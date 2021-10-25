@@ -35,7 +35,7 @@ macro_rules! implement_utf16_macro {
 }
 
 implement_utf16_macro! {
-    /// Converts string literal into a `const` UTF-16 string slice of type
+    /// Converts a string literal into a `const` UTF-16 string slice of type
     /// [`U16Str`][crate::U16Str].
     ///
     /// The resulting `const` string slice will always be valid UTF-16.
@@ -54,7 +54,7 @@ implement_utf16_macro! {
 }
 
 implement_utf16_macro! {
-    /// Converts string literal into a `const` UTF-16 string slice of type
+    /// Converts a string literal into a `const` UTF-16 string slice of type
     /// [`U16CStr`][crate::U16CStr].
     ///
     /// The resulting `const` string slice will always be valid UTF-16 and include a nul terminator.
@@ -101,7 +101,7 @@ macro_rules! implement_utf32_macro {
 }
 
 implement_utf32_macro! {
-    /// Converts string literal into a `const` UTF-32 string slice of type
+    /// Converts a string literal into a `const` UTF-32 string slice of type
     /// [`U32Str`][crate::U32Str].
     ///
     /// The resulting `const` string slice will always be valid UTF-32.
@@ -120,7 +120,7 @@ implement_utf32_macro! {
 }
 
 implement_utf32_macro! {
-    /// Converts string literal into a `const` UTF-32 string slice of type
+    /// Converts a string literal into a `const` UTF-32 string slice of type
     /// [`U32CStr`][crate::U32CStr].
     ///
     /// The resulting `const` string slice will always be valid UTF-32 and include a nul terminator.
