@@ -43,10 +43,12 @@ implement_utf16_macro! {
     /// # Examples
     ///
     /// ```
+    /// # #[cfg(feature = "alloc")] {
     /// use widestring::{u16str, U16Str, U16String};
     ///
     /// const STRING: &U16Str = u16str!("My string");
     /// assert_eq!(U16String::from_str("My string"), STRING);
+    /// # }
     /// ```
     u16str 0 U16Str from_slice
 }
@@ -60,10 +62,12 @@ implement_utf16_macro! {
     /// # Examples
     ///
     /// ```
+    /// # #[cfg(feature = "alloc")] {
     /// use widestring::{u16cstr, U16CStr, U16CString};
     ///
     /// const STRING: &U16CStr = u16cstr!("My string");
     /// assert_eq!(U16CString::from_str("My string").unwrap(), STRING);
+    /// # }
     /// ```
     u16cstr 1 U16CStr from_slice_unchecked
 }
@@ -105,10 +109,12 @@ implement_utf32_macro! {
     /// # Examples
     ///
     /// ```
+    /// # #[cfg(feature = "alloc")] {
     /// use widestring::{u32str, U32Str, U32String};
     ///
     /// const STRING: &U32Str = u32str!("My string");
     /// assert_eq!(U32String::from_str("My string"), STRING);
+    /// # }
     /// ```
     u32str 0 U32Str from_slice
 }
@@ -122,10 +128,12 @@ implement_utf32_macro! {
     /// # Examples
     ///
     /// ```
+    /// # #[cfg(feature = "alloc")] {
     /// use widestring::{u32cstr, U32CStr, U32CString};
     ///
     /// const STRING: &U32CStr = u32cstr!("My string");
     /// assert_eq!(U32CString::from_str("My string").unwrap(), STRING);
+    /// # }
     /// ```
     u32cstr 1 U32CStr from_slice_unchecked
 }
