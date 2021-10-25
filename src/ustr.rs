@@ -1,11 +1,10 @@
 //! Wide string slices.
 //!
-//! This module contains the [`UStr`] string slices and related types.
+//! This module contains wide string slices and related types.
 
-use crate::{
-    iter::{CharsLossy, Utf16CharIndices, Utf16CharIndicesLossy, Utf16Chars, Utf32Chars},
-    UChar, WideChar,
-};
+use crate::iter::{CharsLossy, Utf16CharIndices, Utf16CharIndicesLossy, Utf16Chars, Utf32Chars};
+#[cfg(feature = "alloc")]
+use crate::{U16String, U32String};
 #[cfg(feature = "alloc")]
 use alloc::{
     boxed::Box,
@@ -19,356 +18,487 @@ use core::{
     slice::{self, SliceIndex},
 };
 
-/// String slice reference for [`UString`][crate::UString].
+/// 16-bit wide string slice for [`U16String`][crate::U16String].
 ///
-/// [`UStr`] is to [`UString`][crate::UString] as [`str`] is to [`String`].
+/// [`U16Str`] is to [`U16String`][crate::U16String] as [`str`] is to [`String`].
 ///
-/// [`UStr`] is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-16 or UTF-32 data. These strings are intended to be used
+/// [`U16Str`] is not aware of nul values. Strings may or may not be nul-terminated, and may
+/// contain invalid and ill-formed UTF-16 data. These strings are intended to be used
 /// with FFI functions that directly use string length, where the strings are known to have proper
 /// nul-termination already, or where strings are merely being passed through without modification.
 ///
-/// [`UCStr`][crate::UCStr] should be used instead if nul-aware strings are required.
+/// [`U16CStr`][crate::U16CStr] should be used instead if nul-aware strings are required.
 ///
-/// [`UStr`] can be converted to many other string types, including [`OsString`][std::ffi::OsString]
-/// and [`String`], making proper Unicode FFI safe and easy.
-///
-/// Please prefer using the type aliases [`U16Str`], [`U32Str`] or [`WideStr`] to using this type
-/// directly.
+/// [`U16Str`] can be converted to many other string types, including
+/// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct UStr<C: UChar> {
-    pub(crate) inner: [C],
+pub struct U16Str {
+    pub(crate) inner: [u16],
 }
 
-impl<C: UChar> UStr<C> {
-    /// Coerces a value into a [`UStr`].
-    #[inline]
-    pub fn new<S: AsRef<Self> + ?Sized>(s: &S) -> &Self {
-        s.as_ref()
-    }
+/// 32-bit wide string slice for [`U32String`][crate::U32String].
+///
+/// [`U32Str`] is to [`U32String`][crate::U32String] as [`str`] is to [`String`].
+///
+/// [`U32Str`] is not aware of nul values. Strings may or may not be nul-terminated, and may
+/// contain invalid and ill-formed UTF-32 data. These strings are intended to be used
+/// with FFI functions that directly use string length, where the strings are known to have proper
+/// nul-termination already, or where strings are merely being passed through without modification.
+///
+/// [`U32CStr`][crate::U32CStr] should be used instead if nul-aware strings are required.
+///
+/// [`U32Str`] can be converted to many other string types, including
+/// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct U32Str {
+    pub(crate) inner: [u32],
+}
 
-    /// Constructs a [`UStr`] from a pointer and a length.
-    ///
-    /// The `len` argument is the number of elements, **not** the number of bytes. No copying or
-    /// allocation is performed, the resulting value is a direct reference to the pointer bytes.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len`
-    /// elements.
-    ///
-    /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
-    /// In particular, the returned string reference *must not be mutated* for the duration of
-    /// lifetime `'a`, except inside an [`UnsafeCell`][std::cell::UnsafeCell].
-    ///
-    /// # Panics
-    ///
-    /// This function panics if `p` is null.
-    ///
-    /// # Caveat
-    ///
-    /// The lifetime for the returned string is inferred from its usage. To prevent accidental
-    /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
-    /// context, such as by providing a helper function taking the lifetime of a host value for the
-    /// string, or by explicit annotation.
-    #[inline]
-    pub unsafe fn from_ptr<'a>(p: *const C, len: usize) -> &'a Self {
-        assert!(!p.is_null());
-        let slice: *const [C] = slice::from_raw_parts(p, len);
-        &*(slice as *const UStr<C>)
-    }
+macro_rules! ustr_common_impl {
+    ($ustr:ident $uchar:ty => $ustring:ident $ucstr:ident) => {
+        impl $ustr {
+            /// Coerces a value into a wide string slice.
+            #[inline]
+            pub fn new<S: AsRef<Self> + ?Sized>(s: &S) -> &Self {
+                s.as_ref()
+            }
 
-    /// Constructs a mutable [`UStr`] from a mutable pointer and a length.
-    ///
-    /// The `len` argument is the number of elements, **not** the number of bytes. No copying or
-    /// allocation is performed, the resulting value is a direct reference to the pointer bytes.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len`
-    /// elements.
-    ///
-    /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts_mut].
-    ///
-    /// # Panics
-    ///
-    /// This function panics if `p` is null.
-    ///
-    /// # Caveat
-    ///
-    /// The lifetime for the returned string is inferred from its usage. To prevent accidental
-    /// misuse, it's suggested to tie the lifetime to whichever source lifetime is safe in the
-    /// context, such as by providing a helper function taking the lifetime of a host value for the
-    /// string, or by explicit annotation.
-    #[inline]
-    pub unsafe fn from_ptr_mut<'a>(p: *mut C, len: usize) -> &'a mut Self {
-        assert!(!p.is_null());
-        let slice: *mut [C] = slice::from_raw_parts_mut(p, len);
-        &mut *(slice as *mut UStr<C>)
-    }
+            /// Constructs a wide string slice from a pointer and a length.
+            ///
+            /// The `len` argument is the number of elements, **not** the number of bytes. No
+            /// copying or allocation is performed, the resulting value is a direct reference to the
+            /// pointer bytes.
+            ///
+            /// # Safety
+            ///
+            /// This function is unsafe as there is no guarantee that the given pointer is valid for \
+            /// `len` elements.
+            ///
+            /// In addition, the data must meet the safety conditions of
+            /// [std::slice::from_raw_parts]. In particular, the returned string reference *must not
+            /// be mutated* for the duration of lifetime `'a`, except inside an
+            /// [`UnsafeCell`][std::cell::UnsafeCell].
+            ///
+            /// # Panics
+            ///
+            /// This function panics if `p` is null.
+            ///
+            /// # Caveat
+            ///
+            /// The lifetime for the returned string is inferred from its usage. To prevent
+            /// accidental misuse, it's suggested to tie the lifetime to whichever source lifetime
+            /// is safe in the context, such as by providing a helper function taking the lifetime
+            /// of a host value for the string, or by explicit annotation.
+            #[inline]
+            pub unsafe fn from_ptr<'a>(p: *const $uchar, len: usize) -> &'a Self {
+                assert!(!p.is_null());
+                let slice: *const [$uchar] = slice::from_raw_parts(p, len);
+                &*(slice as *const $ustr)
+            }
 
-    /// Constructs a [`UStr`] from a slice of character data.
-    ///
-    /// No checks are performed on the slice. It may or may not be valid for its encoding.
-    #[inline]
-    pub fn from_slice(slice: &[C]) -> &Self {
-        let ptr: *const [C] = slice;
-        unsafe { &*(ptr as *const UStr<C>) }
-    }
+            /// Constructs a mutable wide string slice from a mutable pointer and a length.
+            ///
+            /// The `len` argument is the number of elements, **not** the number of bytes. No
+            /// copying or allocation is performed, the resulting value is a direct reference to the
+            /// pointer bytes.
+            ///
+            /// # Safety
+            ///
+            /// This function is unsafe as there is no guarantee that the given pointer is valid for
+            /// `len` elements.
+            ///
+            /// In addition, the data must meet the safety conditions of
+            /// [std::slice::from_raw_parts_mut].
+            ///
+            /// # Panics
+            ///
+            /// This function panics if `p` is null.
+            ///
+            /// # Caveat
+            ///
+            /// The lifetime for the returned string is inferred from its usage. To prevent
+            /// accidental misuse, it's suggested to tie the lifetime to whichever source lifetime
+            /// is safe in the context, such as by providing a helper function taking the lifetime
+            /// of a host value for the string, or by explicit annotation.
+            #[inline]
+            pub unsafe fn from_ptr_mut<'a>(p: *mut $uchar, len: usize) -> &'a mut Self {
+                assert!(!p.is_null());
+                let slice: *mut [$uchar] = slice::from_raw_parts_mut(p, len);
+                &mut *(slice as *mut $ustr)
+            }
 
-    /// Constructs a mutable [`UStr`] from a mutable slice of character data.
-    ///
-    /// No checks are performed on the slice. It may or may not be valid for its encoding.
-    #[inline]
-    pub fn from_slice_mut(slice: &mut [C]) -> &mut Self {
-        let ptr: *mut [C] = slice;
-        unsafe { &mut *(ptr as *mut UStr<C>) }
-    }
+            /// Constructs a wide string slice from a slice of character data.
+            ///
+            /// No checks are performed on the slice. It may or may not be valid for its encoding.
+            #[inline]
+            pub fn from_slice(slice: &[$uchar]) -> &Self {
+                let ptr: *const [$uchar] = slice;
+                unsafe { &*(ptr as *const $ustr) }
+            }
 
-    /// Copies the string reference to a new owned [`UString`][crate::UString].
-    #[cfg(feature = "alloc")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-    #[inline]
-    pub fn to_ustring(&self) -> crate::UString<C> {
-        crate::UString::from_vec(&self.inner)
-    }
+            /// Constructs a mutable wide string slice from a mutable slice of character data.
+            ///
+            /// No checks are performed on the slice. It may or may not be valid for its encoding.
+            #[inline]
+            pub fn from_slice_mut(slice: &mut [$uchar]) -> &mut Self {
+                let ptr: *mut [$uchar] = slice;
+                unsafe { &mut *(ptr as *mut $ustr) }
+            }
 
-    /// Converts to a slice of the string.
-    #[inline]
-    pub fn as_slice(&self) -> &[C] {
-        &self.inner
-    }
+            /// Copies the string reference to a new owned wide string.
+            #[cfg(feature = "alloc")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+            #[inline]
+            pub fn to_ustring(&self) -> $ustring {
+                $ustring::from_vec(&self.inner)
+            }
 
-    /// Converts to a mutable slice of the string.
-    pub fn as_mut_slice(&mut self) -> &mut [C] {
-        &mut self.inner
-    }
+            /// Converts to a slice of the string.
+            #[inline]
+            pub fn as_slice(&self) -> &[$uchar] {
+                &self.inner
+            }
 
-    /// Returns a raw pointer to the string.
-    ///
-    /// The caller must ensure that the string outlives the pointer this function returns, or else
-    /// it will end up pointing to garbage.
-    ///
-    /// The caller must also ensure that the memory the pointer (non-transitively) points to is
-    /// never written to (except inside an `UnsafeCell`) using this pointer or any pointer derived
-    /// from it. If you need to mutate the contents of the string, use
-    /// [`as_mut_ptr`][Self::as_mut_ptr].
-    ///
-    /// Modifying the container referenced by this string may cause its buffer to be reallocated,
-    /// which would also make any pointers to it invalid.
-    #[inline]
-    pub fn as_ptr(&self) -> *const C {
-        self.inner.as_ptr()
-    }
+            /// Converts to a mutable slice of the string.
+            pub fn as_mut_slice(&mut self) -> &mut [$uchar] {
+                &mut self.inner
+            }
 
-    /// Returns an unsafe mutable raw pointer to the string.
-    ///
-    /// The caller must ensure that the string outlives the pointer this function returns, or else
-    /// it will end up pointing to garbage.
-    ///
-    /// Modifying the container referenced by this string may cause its buffer to be reallocated,
-    /// which would also make any pointers to it invalid.
-    #[inline]
-    pub fn as_mut_ptr(&mut self) -> *mut C {
-        self.inner.as_mut_ptr()
-    }
+            /// Returns a raw pointer to the string.
+            ///
+            /// The caller must ensure that the string outlives the pointer this function returns,
+            /// or else it will end up pointing to garbage.
+            ///
+            /// The caller must also ensure that the memory the pointer (non-transitively) points to
+            /// is never written to (except inside an `UnsafeCell`) using this pointer or any
+            /// pointer derived from it. If you need to mutate the contents of the string, use
+            /// [`as_mut_ptr`][Self::as_mut_ptr].
+            ///
+            /// Modifying the container referenced by this string may cause its buffer to be
+            /// reallocated, which would also make any pointers to it invalid.
+            #[inline]
+            pub fn as_ptr(&self) -> *const $uchar {
+                self.inner.as_ptr()
+            }
 
-    /// Returns the two raw pointers spanning the string slice.
-    ///
-    /// The returned range is half-open, which means that the end pointer points one past the last
-    /// element of the slice. This way, an empty slice is represented by two equal pointers, and the
-    /// difference between the two pointers represents the size of the slice.
-    ///
-    /// See [`as_ptr`][Self::as_ptr] for warnings on using these pointers. The end pointer requires
-    /// extra caution, as it does not point to a valid element in the slice.
-    ///
-    /// This function is useful for interacting with foreign interfaces which use two pointers to
-    /// refer to a range of elements in memory, as is common in C++.
-    #[inline]
-    pub fn as_ptr_range(&self) -> Range<*const C> {
-        self.inner.as_ptr_range()
-    }
+            /// Returns an unsafe mutable raw pointer to the string.
+            ///
+            /// The caller must ensure that the string outlives the pointer this function returns,
+            /// or else it will end up pointing to garbage.
+            ///
+            /// Modifying the container referenced by this string may cause its buffer to be
+            /// reallocated, which would also make any pointers to it invalid.
+            #[inline]
+            pub fn as_mut_ptr(&mut self) -> *mut $uchar {
+                self.inner.as_mut_ptr()
+            }
 
-    /// Returns the two unsafe mutable pointers spanning the string slice.
-    ///
-    /// The returned range is half-open, which means that the end pointer points one past the last
-    /// element of the slice. This way, an empty slice is represented by two equal pointers, and the
-    /// difference between the two pointers represents the size of the slice.
-    ///
-    /// See [`as_mut_ptr`][Self::as_mut_ptr] for warnings on using these pointers. The end pointer requires
-    /// extra caution, as it does not point to a valid element in the slice.
-    ///
-    /// This function is useful for interacting with foreign interfaces which use two pointers to
-    /// refer to a range of elements in memory, as is common in C++.
-    #[inline]
-    pub fn as_mut_ptr_range(&mut self) -> Range<*mut C> {
-        self.inner.as_mut_ptr_range()
-    }
+            /// Returns the two raw pointers spanning the string slice.
+            ///
+            /// The returned range is half-open, which means that the end pointer points one past
+            /// the last element of the slice. This way, an empty slice is represented by two equal
+            /// pointers, and the difference between the two pointers represents the size of the
+            /// slice.
+            ///
+            /// See [`as_ptr`][Self::as_ptr] for warnings on using these pointers. The end pointer
+            /// requires extra caution, as it does not point to a valid element in the slice.
+            ///
+            /// This function is useful for interacting with foreign interfaces which use two
+            /// pointers to refer to a range of elements in memory, as is common in C++.
+            #[inline]
+            pub fn as_ptr_range(&self) -> Range<*const $uchar> {
+                self.inner.as_ptr_range()
+            }
 
-    /// Returns the length of the string as number of elements (**not** number of bytes).
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.inner.len()
-    }
+            /// Returns the two unsafe mutable pointers spanning the string slice.
+            ///
+            /// The returned range is half-open, which means that the end pointer points one past
+            /// the last element of the slice. This way, an empty slice is represented by two equal
+            /// pointers, and the difference between the two pointers represents the size of the
+            /// slice.
+            ///
+            /// See [`as_mut_ptr`][Self::as_mut_ptr] for warnings on using these pointers. The end
+            /// pointer requires extra caution, as it does not point to a valid element in the
+            /// slice.
+            ///
+            /// This function is useful for interacting with foreign interfaces which use two
+            /// pointers to refer to a range of elements in memory, as is common in C++.
+            #[inline]
+            pub fn as_mut_ptr_range(&mut self) -> Range<*mut $uchar> {
+                self.inner.as_mut_ptr_range()
+            }
 
-    /// Returns whether this string contains no data.
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.inner.is_empty()
-    }
+            /// Returns the length of the string as number of elements (**not** number of bytes).
+            #[inline]
+            pub fn len(&self) -> usize {
+                self.inner.len()
+            }
 
-    /// Converts a [`Box<UStr>`] into a [`UString`][crate::UString] without copying or allocating.
-    #[cfg(feature = "alloc")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-    pub fn into_ustring(self: Box<Self>) -> crate::UString<C> {
-        let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut [C]) };
-        crate::UString {
-            inner: boxed.into_vec(),
+            /// Returns whether this string contains no data.
+            #[inline]
+            pub fn is_empty(&self) -> bool {
+                self.inner.is_empty()
+            }
+
+            /// Converts a boxed wide string slice into an owned wide string without copying or
+            /// allocating.
+            #[cfg(feature = "alloc")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+            pub fn into_ustring(self: Box<Self>) -> $ustring {
+                let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut [$uchar]) };
+                $ustring {
+                    inner: boxed.into_vec(),
+                }
+            }
+
+            /// Returns an object that implements [`Display`][std::fmt::Display] for printing
+            /// strings that may contain non-Unicode data.
+            ///
+            /// A wide string slice might contain ill-formed UTF encoding. This struct implements
+            /// the [`Display`][std::fmt::Display] trait in a way that decoding the string is lossy
+            /// but no heap allocations are performed, such as by
+            /// [`to_string_lossy`][Self::to_string_lossy].
+            ///
+            /// By default, invalid Unicode data is replaced with
+            /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). If you wish
+            /// to simply skip any invalid Uncode data and forego the replacement, you may use the
+            /// [alternate formatting][std::fmt#sign0] with `{:#}`.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// use widestring::U16Str;
+            ///
+            /// // 𝄞mus<invalid>ic<invalid>
+            /// let s = U16Str::from_slice(&[
+            ///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
+            /// ]);
+            ///
+            /// assert_eq!(format!("{}", s.display()),
+            /// "𝄞mus�ic�"
+            /// );
+            /// ```
+            ///
+            /// Using alternate formatting style to skip invalid values entirely:
+            ///
+            /// ```
+            /// use widestring::U16Str;
+            ///
+            /// // 𝄞mus<invalid>ic<invalid>
+            /// let s = U16Str::from_slice(&[
+            ///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
+            /// ]);
+            ///
+            /// assert_eq!(format!("{:#}", s.display()),
+            /// "𝄞music"
+            /// );
+            /// ```
+            #[inline]
+            pub fn display(&self) -> Display<'_, $ustr> {
+                Display { str: self }
+            }
+
+            /// Returns a subslice of the string.
+            ///
+            /// This is the non-panicking alternative to indexing the string. Returns [`None`]
+            /// whenever equivalent indexing operation would panic.
+            #[inline]
+            pub fn get<I>(&self, i: I) -> Option<&Self>
+            where
+                I: SliceIndex<[$uchar], Output = [$uchar]>,
+            {
+                self.inner.get(i).map(Self::from_slice)
+            }
+
+            /// Returns a mutable subslice of the string.
+            ///
+            /// This is the non-panicking alternative to indexing the string. Returns [`None`]
+            /// whenever equivalent indexing operation would panic.
+            #[inline]
+            pub fn get_mut<I>(&mut self, i: I) -> Option<&mut Self>
+            where
+                I: SliceIndex<[$uchar], Output = [$uchar]>,
+            {
+                self.inner.get_mut(i).map(Self::from_slice_mut)
+            }
+
+            /// Returns an unchecked subslice of the string.
+            ///
+            /// This is the unchecked alternative to indexing the string.
+            ///
+            /// # Safety
+            ///
+            /// Callers of this function are responsible that these preconditions are satisfied:
+            ///
+            /// - The starting index must not exceed the ending index;
+            /// - Indexes must be within bounds of the original slice.
+            ///
+            /// Failing that, the returned string slice may reference invalid memory.
+            #[inline]
+            pub unsafe fn get_unchecked<I>(&self, i: I) -> &Self
+            where
+                I: SliceIndex<[$uchar], Output = [$uchar]>,
+            {
+                Self::from_slice(self.inner.get_unchecked(i))
+            }
+
+            /// Returns aa mutable, unchecked subslice of the string.
+            ///
+            /// This is the unchecked alternative to indexing the string.
+            ///
+            /// # Safety
+            ///
+            /// Callers of this function are responsible that these preconditions are satisfied:
+            ///
+            /// - The starting index must not exceed the ending index;
+            /// - Indexes must be within bounds of the original slice.
+            ///
+            /// Failing that, the returned string slice may reference invalid memory.
+            #[inline]
+            pub unsafe fn get_unchecked_mut<I>(&mut self, i: I) -> &mut Self
+            where
+                I: SliceIndex<[$uchar], Output = [$uchar]>,
+            {
+                Self::from_slice_mut(self.inner.get_unchecked_mut(i))
+            }
+
+            /// Divide one string slice into two at an index.
+            ///
+            /// The argument, `mid`, should be an offset from the start of the string.
+            ///
+            /// The two slices returned go from the start of the string slice to `mid`, and from
+            /// `mid` to the end of the string slice.
+            ///
+            /// To get mutable string slices instead, see the [`split_at_mut`][Self::split_at_mut]
+            /// method.
+            #[inline]
+            pub fn split_at(&self, mid: usize) -> (&Self, &Self) {
+                let split = self.inner.split_at(mid);
+                (Self::from_slice(split.0), Self::from_slice(split.1))
+            }
+
+            /// Divide one mutable string slice into two at an index.
+            ///
+            /// The argument, `mid`, should be an offset from the start of the string.
+            ///
+            /// The two slices returned go from the start of the string slice to `mid`, and from
+            /// `mid` to the end of the string slice.
+            ///
+            /// To get immutable string slices instead, see the [`split_at`][Self::split_at] method.
+            #[inline]
+            pub fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self) {
+                let split = self.inner.split_at_mut(mid);
+                (Self::from_slice_mut(split.0), Self::from_slice_mut(split.1))
+            }
         }
-    }
 
-    /// Returns an object that implements [`Display`][std::fmt::Display] for printing strings that
-    /// may contain non-Unicode data.
-    ///
-    /// A [`UStr`] might contain ill-formed UTF encoding. This struct implements the
-    /// [`Display`][std::fmt::Display] trait in a way that decoding the string is lossy but no heap
-    /// allocations are performed, such as by [`to_string_lossy`][UStr::to_string_lossy].
-    ///
-    /// By default, invalid Unicode data is replaced with
-    /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). If you wish to simply
-    /// skip any invalid Uncode data and forego the replacement, you may use the
-    /// [alternate formatting][std::fmt#sign0] with `{:#}`.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// use widestring::U16Str;
-    ///
-    /// // 𝄞mus<invalid>ic<invalid>
-    /// let s = U16Str::from_slice(&[
-    ///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
-    /// ]);
-    ///
-    /// assert_eq!(format!("{}", s.display()),
-    /// "𝄞mus�ic�"
-    /// );
-    /// ```
-    ///
-    /// Using alternate formatting style to skip invalid values entirely:
-    ///
-    /// ```
-    /// use widestring::U16Str;
-    ///
-    /// // 𝄞mus<invalid>ic<invalid>
-    /// let s = U16Str::from_slice(&[
-    ///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
-    /// ]);
-    ///
-    /// assert_eq!(format!("{:#}", s.display()),
-    /// "𝄞music"
-    /// );
-    /// ```
-    #[inline]
-    pub fn display(&self) -> Display<'_, C> {
-        Display { str: self }
-    }
+        impl AsMut<$ustr> for $ustr {
+            #[inline]
+            fn as_mut(&mut self) -> &mut $ustr {
+                self
+            }
+        }
 
-    /// Returns a subslice of the string.
-    ///
-    /// This is the non-panicking alternative to indexing the string. Returns [`None`] whenever
-    /// equivalent indexing operation would panic.
-    #[inline]
-    pub fn get<I>(&self, i: I) -> Option<&Self>
-    where
-        I: SliceIndex<[C], Output = [C]>,
-    {
-        self.inner.get(i).map(Self::from_slice)
-    }
+        impl AsMut<[$uchar]> for $ustr {
+            #[inline]
+            fn as_mut(&mut self) -> &mut [$uchar] {
+                self.as_mut_slice()
+            }
+        }
 
-    /// Returns a mutable subslice of the string.
-    ///
-    /// This is the non-panicking alternative to indexing the string. Returns [`None`] whenever
-    /// equivalent indexing operation would panic.
-    #[inline]
-    pub fn get_mut<I>(&mut self, i: I) -> Option<&mut Self>
-    where
-        I: SliceIndex<[C], Output = [C]>,
-    {
-        self.inner.get_mut(i).map(Self::from_slice_mut)
-    }
+        impl AsRef<$ustr> for $ustr {
+            #[inline]
+            fn as_ref(&self) -> &Self {
+                self
+            }
+        }
 
-    /// Returns an unchecked subslice of the string.
-    ///
-    /// This is the unchecked alternative to indexing the string.
-    ///
-    /// # Safety
-    ///
-    /// Callers of this function are responsible that these preconditions are satisfied:
-    ///
-    /// - The starting index must not exceed the ending index;
-    /// - Indexes must be within bounds of the original slice.
-    ///
-    /// Failing that, the returned string slice may reference invalid memory.
-    #[inline]
-    pub unsafe fn get_unchecked<I>(&self, i: I) -> &Self
-    where
-        I: SliceIndex<[C], Output = [C]>,
-    {
-        Self::from_slice(self.inner.get_unchecked(i))
-    }
+        impl AsRef<[$uchar]> for $ustr {
+            #[inline]
+            fn as_ref(&self) -> &[$uchar] {
+                self.as_slice()
+            }
+        }
 
-    /// Returns aa mutable, unchecked subslice of the string.
-    ///
-    /// This is the unchecked alternative to indexing the string.
-    ///
-    /// # Safety
-    ///
-    /// Callers of this function are responsible that these preconditions are satisfied:
-    ///
-    /// - The starting index must not exceed the ending index;
-    /// - Indexes must be within bounds of the original slice.
-    ///
-    /// Failing that, the returned string slice may reference invalid memory.
-    #[inline]
-    pub unsafe fn get_unchecked_mut<I>(&mut self, i: I) -> &mut Self
-    where
-        I: SliceIndex<[C], Output = [C]>,
-    {
-        Self::from_slice_mut(self.inner.get_unchecked_mut(i))
-    }
+        impl Default for &$ustr {
+            #[inline]
+            fn default() -> Self {
+                $ustr::from_slice(&[])
+            }
+        }
 
-    /// Divide one string slice into two at an index.
-    ///
-    /// The argument, `mid`, should be an offset from the start of the string.
-    ///
-    /// The two slices returned go from the start of the string slice to `mid`, and from `mid` to
-    /// the end of the string slice.
-    ///
-    /// To get mutable string slices instead, see the [`split_at_mut`][Self::split_at_mut] method.
-    #[inline]
-    pub fn split_at(&self, mid: usize) -> (&Self, &Self) {
-        let split = self.inner.split_at(mid);
-        (Self::from_slice(split.0), Self::from_slice(split.1))
-    }
+        impl Default for &mut $ustr {
+            #[inline]
+            fn default() -> Self {
+                $ustr::from_slice_mut(&mut [])
+            }
+        }
 
-    /// Divide one mutable string slice into two at an index.
-    ///
-    /// The argument, `mid`, should be an offset from the start of the string.
-    ///
-    /// The two slices returned go from the start of the string slice to `mid`, and from `mid` to
-    /// the end of the string slice.
-    ///
-    /// To get immutable string slices instead, see the [`split_at`][Self::split_at] method.
-    #[inline]
-    pub fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self) {
-        let split = self.inner.split_at_mut(mid);
-        (Self::from_slice_mut(split.0), Self::from_slice_mut(split.1))
-    }
+        impl<'a> From<&'a [$uchar]> for &'a $ustr {
+            #[inline]
+            fn from(value: &'a [$uchar]) -> Self {
+                $ustr::from_slice(value)
+            }
+        }
+
+        impl<'a> From<&'a mut [$uchar]> for &'a $ustr {
+            #[inline]
+            fn from(value: &'a mut [$uchar]) -> Self {
+                $ustr::from_slice(value)
+            }
+        }
+
+        impl<'a> From<&'a mut [$uchar]> for &'a mut $ustr {
+            #[inline]
+            fn from(value: &'a mut [$uchar]) -> Self {
+                $ustr::from_slice_mut(value)
+            }
+        }
+
+        impl<I> Index<I> for $ustr
+        where
+            I: SliceIndex<[$uchar], Output = [$uchar]>,
+        {
+            type Output = Self;
+
+            #[inline]
+            fn index(&self, index: I) -> &Self::Output {
+                Self::from_slice(&self.inner[index])
+            }
+        }
+
+        impl<I> IndexMut<I> for $ustr
+        where
+            I: SliceIndex<[$uchar], Output = [$uchar]>,
+        {
+            #[inline]
+            fn index_mut(&mut self, index: I) -> &mut Self::Output {
+                Self::from_slice_mut(&mut self.inner[index])
+            }
+        }
+
+        impl PartialEq<crate::$ucstr> for $ustr {
+            #[inline]
+            fn eq(&self, other: &crate::$ucstr) -> bool {
+                self.as_slice() == other.as_slice()
+            }
+        }
+
+        impl PartialOrd<crate::$ucstr> for $ustr {
+            #[inline]
+            fn partial_cmp(&self, other: &crate::$ucstr) -> Option<core::cmp::Ordering> {
+                self.partial_cmp(other.as_ustr())
+            }
+        }
+    };
 }
 
-impl UStr<u16> {
+ustr_common_impl!(U16Str u16 => U16String U16CStr);
+ustr_common_impl!(U32Str u32 => U32String U32CStr);
+
+impl U16Str {
     /// Decodes a string reference to an owned [`OsString`][std::ffi::OsString].
     ///
     /// This makes a string copy of the [`U16Str`]. Since [`U16Str`] makes no guarantees that it is
@@ -506,7 +636,7 @@ impl UStr<u16> {
     }
 }
 
-impl UStr<u32> {
+impl U32Str {
     /// Constructs a [`U32Str`] from a [`char`][prim@char] pointer and a length.
     ///
     /// The `len` argument is the number of `char` elements, **not** the number of bytes. No copying
@@ -711,34 +841,6 @@ impl UStr<u32> {
     }
 }
 
-impl<C: UChar> AsMut<UStr<C>> for UStr<C> {
-    #[inline]
-    fn as_mut(&mut self) -> &mut UStr<C> {
-        self
-    }
-}
-
-impl<C: UChar> AsMut<[C]> for UStr<C> {
-    #[inline]
-    fn as_mut(&mut self) -> &mut [C] {
-        self.as_mut_slice()
-    }
-}
-
-impl<C: UChar> AsRef<UStr<C>> for UStr<C> {
-    #[inline]
-    fn as_ref(&self) -> &Self {
-        self
-    }
-}
-
-impl<C: UChar> AsRef<[C]> for UStr<C> {
-    #[inline]
-    fn as_ref(&self) -> &[C] {
-        self.as_slice()
-    }
-}
-
 impl core::fmt::Debug for U16Str {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -753,141 +855,46 @@ impl core::fmt::Debug for U32Str {
     }
 }
 
-impl<C: UChar> Default for &UStr<C> {
-    #[inline]
-    fn default() -> Self {
-        UStr::from_slice(&[])
-    }
-}
-
-impl<C: UChar> Default for &mut UStr<C> {
-    #[inline]
-    fn default() -> Self {
-        UStr::from_slice_mut(&mut [])
-    }
-}
-
-impl<'a, C: UChar> From<&'a [C]> for &'a UStr<C> {
-    #[inline]
-    fn from(value: &'a [C]) -> Self {
-        UStr::from_slice(value)
-    }
-}
-
-impl<'a, C: UChar> From<&'a mut [C]> for &'a UStr<C> {
-    #[inline]
-    fn from(value: &'a mut [C]) -> Self {
-        UStr::from_slice(value)
-    }
-}
-
-impl<'a, C: UChar> From<&'a mut [C]> for &'a mut UStr<C> {
-    #[inline]
-    fn from(value: &'a mut [C]) -> Self {
-        UStr::from_slice_mut(value)
-    }
-}
-
-impl<C: UChar, I> Index<I> for UStr<C>
-where
-    I: SliceIndex<[C], Output = [C]>,
-{
-    type Output = Self;
-
-    #[inline]
-    fn index(&self, index: I) -> &Self::Output {
-        Self::from_slice(&self.inner[index])
-    }
-}
-
-impl<C: UChar, I> IndexMut<I> for UStr<C>
-where
-    I: SliceIndex<[C], Output = [C]>,
-{
-    #[inline]
-    fn index_mut(&mut self, index: I) -> &mut Self::Output {
-        Self::from_slice_mut(&mut self.inner[index])
-    }
-}
-
-impl<C: UChar> PartialEq<crate::UCStr<C>> for UStr<C> {
-    #[inline]
-    fn eq(&self, other: &crate::UCStr<C>) -> bool {
-        self.as_slice() == other.as_slice()
-    }
-}
-
-impl<C: UChar> PartialOrd<crate::UCStr<C>> for UStr<C> {
-    #[inline]
-    fn partial_cmp(&self, other: &crate::UCStr<C>) -> Option<core::cmp::Ordering> {
-        self.partial_cmp(other.as_ustr())
-    }
-}
-
-/// String slice reference for [`U16String`][crate::U16String].
-///
-/// [`U16Str`] is to [`U16String`][crate::U16String] as [`str`] is to [`String`].
-///
-/// [`U16Str`] is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-16 data. These strings are intended to be used with
-/// FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
-///
-/// [`U16CStr`][crate::U16CStr] should be used instead of nul-aware strings are required.
-///
-/// [`U16Str`] can be converted to many other string types, including
-/// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
-pub type U16Str = UStr<u16>;
-
-/// String slice reference for [`U32String`][crate::U32String].
-///
-/// [`U32Str`] is to [`U32String`][crate::U32String] as [`str`] is to [`String`].
-///
-/// [`U32Str`] is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-32 data. These strings are intended to be used with
-/// FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
-///
-/// [`U32CStr`][crate::U32CStr] should be used instead of nul-aware strings are required.
-///
-/// [`U32Str`] can be converted to many other string types, including
-/// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
-pub type U32Str = UStr<u32>;
+/// Alias for [`U16Str`] or [`U32Str`] depending on platform. Intended to match typical C `wchar_t`
+/// size on platform.
+#[cfg(not(windows))]
+pub type WideStr = U32Str;
 
 /// Alias for [`U16Str`] or [`U32Str`] depending on platform. Intended to match typical C `wchar_t`
 /// size on platform.
-pub type WideStr = UStr<WideChar>;
+#[cfg(windows)]
+pub type WideStr = U16Str;
 
-/// Helper struct for printing [`UStr`] values with [`format!`] and `{}`.
+/// Helper struct for printing wide string values with [`format!`] and `{}`.
 ///
-/// A [`UStr`] might contain ill-formed UTF encoding. This struct implements the
+/// A wide string might contain ill-formed UTF encoding. This struct implements the
 /// [`Display`][std::fmt::Display] trait in a way that decoding the string is lossy but no heap
-/// allocations are performed, such as by [`to_string_lossy`][UStr::to_string_lossy]. It is created
-/// by the [`display`][UStr::display] method on [`UStr`].
+/// allocations are performed, such as by [`to_string_lossy`][U16Str::to_string_lossy]. It is
+/// created by the [`display`][U16Str::display] method on [`U16Str`] and [`U32Str`].
 ///
 /// By default, invalid Unicode data is replaced with
 /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). If you wish to simply
 /// skip any invalid Uncode data and forego the replacement, you may use the
 /// [alternate formatting][std::fmt#sign0] with `{:#}`.
-pub struct Display<'a, C: UChar> {
-    str: &'a UStr<C>,
+pub struct Display<'a, S: ?Sized> {
+    str: &'a S,
 }
 
-impl<'a> core::fmt::Debug for Display<'a, u16> {
+impl<'a> core::fmt::Debug for Display<'a, U16Str> {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::fmt::Debug::fmt(&self.str, f)
     }
 }
 
-impl<'a> core::fmt::Debug for Display<'a, u32> {
+impl<'a> core::fmt::Debug for Display<'a, U32Str> {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::fmt::Debug::fmt(&self.str, f)
     }
 }
 
-impl<'a> core::fmt::Display for Display<'a, u16> {
+impl<'a> core::fmt::Display for Display<'a, U16Str> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for c in crate::decode_utf16_lossy(self.str.as_slice().iter().copied()) {
             // Allow alternate {:#} format which skips replacment chars entirely
@@ -899,7 +906,7 @@ impl<'a> core::fmt::Display for Display<'a, u16> {
     }
 }
 
-impl<'a> core::fmt::Display for Display<'a, u32> {
+impl<'a> core::fmt::Display for Display<'a, U32Str> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for c in crate::decode_utf32_lossy(self.str.as_slice().iter().copied()) {
             // Allow alternate {:#} format which skips replacment chars entirely

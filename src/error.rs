@@ -40,7 +40,10 @@ impl<C> core::fmt::Display for NulError<C> {
 }
 
 #[cfg(feature = "std")]
-impl<C: crate::UChar + 'static> std::error::Error for NulError<C> {
+impl<C> std::error::Error for NulError<C>
+where
+    C: core::fmt::Debug + 'static,
+{
     #[inline]
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
@@ -144,7 +147,7 @@ impl<C> core::fmt::Display for ContainsNul<C> {
 }
 
 #[cfg(feature = "std")]
-impl<C: crate::UChar> std::error::Error for ContainsNul<C> {}
+impl<C> std::error::Error for ContainsNul<C> where C: core::fmt::Debug {}
 
 /// A possible error value when converting a [`String`] from a [`u32`] string.
 ///
@@ -202,7 +205,3 @@ impl core::fmt::Display for DecodeUtf32Error {
 
 #[cfg(feature = "std")]
 impl std::error::Error for DecodeUtf32Error {}
-
-#[doc(hidden)]
-#[deprecated = "use `MissingNulTerminator` instead"]
-pub type MissingNulError = MissingNulTerminator;

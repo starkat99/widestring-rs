@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - **Breaking Change** Minimum supported Rust version is now 1.56.
 - Migrated crate to Rust 2021 edition.
 
+## Added
+- Added `NUL_TERMINATOR` associated constant to `U16CStr`, `U32CStr`, `U16CString`, and 
+  `U32CString`.
+
+### Removed
+- **Breaking Change** Functions and types deprecated in 0.5 have been removed.
+- **Breaking Change** The following types and traits, which were implementation details, have been
+  removed. Use the existing non-generic types instead (e.g. use `U16Str` instead of `UStr<u16>`).
+  - `UChar`
+  - `UStr`
+  - `UCStr`
+  - `UString`
+  - `UCString`
+
 ## [0.5.1] - 2021-10-23 <a name="0.5.1"></a>
 ### Fixed
 - Fixed a regression in 0.5.0 where zero-length vectors and strings were incorrectly causing panics

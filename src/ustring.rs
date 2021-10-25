@@ -1,8 +1,8 @@
 //! Owned, growable wide strings.
 //!
-//! This module contains the [`UString`] strings and related types.
+//! This module contains wide strings and related types.
 
-use crate::{UCStr, UCString, UChar, UStr, WideChar};
+use crate::{U16CStr, U16CString, U16Str, U32CStr, U32CString, U32Str};
 use alloc::{
     borrow::{Cow, ToOwned},
     boxed::Box,
@@ -21,20 +21,17 @@ use core::{
     str::FromStr,
 };
 
-/// An owned, mutable "wide" string for FFI that is **not** nul-aware.
+/// An owned, mutable 16-bit wide string for FFI that is **not** nul-aware.
 ///
-/// [`UString`] is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-16 or UTF-32 data. These strings are intended to be used
-/// with FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
+/// [`U16String`] is not aware of nul values. Strings may or may not be nul-terminated, and may
+/// contain invalid and ill-formed UTF-16. These strings are intended to be used with FFI functions
+/// that directly use string length, where the strings are known to have proper nul-termination
+/// already, or where strings are merely being passed through without modification.
 ///
-/// [`UCString`][crate::UCString] should be used instead if nul-aware strings are required.
+/// [`U16CString`][crate::U16CString] should be used instead if nul-aware strings are required.
 ///
-/// [`UString`] can be converted to and from many other standard Rust string types, including
+/// [`U16String`] can be converted to and from many other standard Rust string types, including
 /// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
-///
-/// Please prefer using the type aliases [`U16String`], [`U32String`], or [`WideString`] to using
-/// this type directly.
 ///
 /// # Examples
 ///
@@ -50,8 +47,28 @@ use core::{
 /// let rust_str = wstr.to_string_lossy();
 /// assert_eq!(rust_str, "Test");
 /// ```
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct U16String {
+    pub(crate) inner: Vec<u16>,
+}
+
+/// An owned, mutable 32-bit wide string for FFI that is **not** nul-aware.
 ///
-/// The same example using [`U32String`] instead:
+/// [`U32String`] is not aware of nul values. Strings may or may not be nul-terminated, and may
+/// contain invalid and ill-formed UTF-32. These strings are intended to be used with FFI functions
+/// that directly use string length, where the strings are known to have proper nul-termination
+/// already, or where strings are merely being passed through without modification.
+///
+/// [`U32CString`][crate::U32CString] should be used instead if nul-aware strings are required.
+///
+/// [`U32String`] can be converted to and from many other standard Rust string types, including
+/// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
+///
+/// # Examples
+///
+/// The following example constructs a [`U32String`] and shows how to convert a [`U32String`] to a
+/// regular Rust [`String`].
 ///
 /// ```rust
 /// use widestring::U32String;
@@ -64,305 +81,833 @@ use core::{
 /// ```
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct UString<C: UChar> {
-    pub(crate) inner: Vec<C>,
+pub struct U32String {
+    pub(crate) inner: Vec<u32>,
 }
 
-impl<C: UChar> UString<C> {
-    /// Constructs a new empty [`UString`].
-    #[inline]
-    pub fn new() -> Self {
-        Self { inner: Vec::new() }
-    }
+macro_rules! ustring_common_impl {
+    ($ustring:ident $uchar:ty => $ustr:ident $ucstring:ident $ucstr:ident) => {
+        impl $ustring {
+            /// Constructs a new empty wide string.
+            #[inline]
+            pub fn new() -> Self {
+                Self { inner: Vec::new() }
+            }
 
-    /// Constructs a [`UString`] from a vector.
-    ///
-    /// No checks are made on the contents of the vector. It may or may not be valid character data.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U16String;
-    /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
-    /// # let cloned = v.clone();
-    /// // Create a wide string from the vector
-    /// let wstr = U16String::from_vec(v);
-    /// # assert_eq!(wstr.into_vec(), cloned);
-    /// ```
-    ///
-    /// ```rust
-    /// use widestring::U32String;
-    /// let v = vec![84u32, 104u32, 101u32]; // 'T' 'h' 'e'
-    /// # let cloned = v.clone();
-    /// // Create a wide string from the vector
-    /// let wstr = U32String::from_vec(v);
-    /// # assert_eq!(wstr.into_vec(), cloned);
-    /// ```
-    #[inline]
-    pub fn from_vec(raw: impl Into<Vec<C>>) -> Self {
-        Self { inner: raw.into() }
-    }
+            /// Constructs a wide string from a vector.
+            ///
+            /// No checks are made on the contents of the vector. It may or may not be valid
+            /// character data.
+            ///
+            /// # Examples
+            ///
+            /// ```rust
+            /// use widestring::U16String;
+            /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
+            /// # let cloned = v.clone();
+            /// // Create a wide string from the vector
+            /// let wstr = U16String::from_vec(v);
+            /// # assert_eq!(wstr.into_vec(), cloned);
+            /// ```
+            ///
+            /// ```rust
+            /// use widestring::U32String;
+            /// let v = vec![84u32, 104u32, 101u32]; // 'T' 'h' 'e'
+            /// # let cloned = v.clone();
+            /// // Create a wide string from the vector
+            /// let wstr = U32String::from_vec(v);
+            /// # assert_eq!(wstr.into_vec(), cloned);
+            /// ```
+            #[inline]
+            pub fn from_vec(raw: impl Into<Vec<$uchar>>) -> Self {
+                Self { inner: raw.into() }
+            }
 
-    /// Constructs a [`UString`] copy from a pointer and a length.
-    ///
-    /// The `len` argument is the number of elements, **not** the number of bytes.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe as there is no guarantee that the given pointer is valid for `len`
-    /// elements.
-    ///
-    /// In addition, the data must meet the safety conditions of [std::slice::from_raw_parts].
-    ///
-    /// # Panics
-    ///
-    /// Panics if `len` is greater than 0 but `p` is a null pointer.
-    pub unsafe fn from_ptr(p: *const C, len: usize) -> Self {
-        if len == 0 {
-            return Self::new();
+            /// Constructs a wide string copy from a pointer and a length.
+            ///
+            /// The `len` argument is the number of elements, **not** the number of bytes.
+            ///
+            /// # Safety
+            ///
+            /// This function is unsafe as there is no guarantee that the given pointer is valid for
+            /// `len` elements.
+            ///
+            /// In addition, the data must meet the safety conditions of
+            /// [std::slice::from_raw_parts].
+            ///
+            /// # Panics
+            ///
+            /// Panics if `len` is greater than 0 but `p` is a null pointer.
+            pub unsafe fn from_ptr(p: *const $uchar, len: usize) -> Self {
+                if len == 0 {
+                    return Self::new();
+                }
+                assert!(!p.is_null());
+                let slice = slice::from_raw_parts(p, len);
+                Self::from_vec(slice)
+            }
+
+            /// Constructs a wide string with the given capacity.
+            ///
+            /// The string will be able to hold exactly `capacity` elements without reallocating.
+            /// If `capacity` is set to 0, the string will not initially allocate.
+            #[inline]
+            pub fn with_capacity(capacity: usize) -> Self {
+                Self {
+                    inner: Vec::with_capacity(capacity),
+                }
+            }
+
+            /// Returns the capacity this wide string can hold without reallocating.
+            #[inline]
+            pub fn capacity(&self) -> usize {
+                self.inner.capacity()
+            }
+
+            /// Truncates the wide string to zero length.
+            #[inline]
+            pub fn clear(&mut self) {
+                self.inner.clear()
+            }
+
+            /// Reserves the capacity for at least `additional` more capacity to be inserted in the
+            /// given wide string.
+            ///
+            /// More space may be reserved to avoid frequent allocations.
+            #[inline]
+            pub fn reserve(&mut self, additional: usize) {
+                self.inner.reserve(additional)
+            }
+
+            /// Reserves the minimum capacity for exactly `additional` more capacity to be inserted
+            /// in the given wide string. Does nothing if the capacity is already sufficient.
+            ///
+            /// Note that the allocator may give more space than is requested. Therefore capacity
+            /// can not be relied upon to be precisely minimal. Prefer [`reserve`][Self::reserve] if
+            /// future insertions are expected.
+            #[inline]
+            pub fn reserve_exact(&mut self, additional: usize) {
+                self.inner.reserve_exact(additional)
+            }
+
+            /// Converts the string into a [`Vec`], consuming the string in the process.
+            #[inline]
+            pub fn into_vec(self) -> Vec<$uchar> {
+                self.inner
+            }
+
+            /// Converts to a wide string slice.
+            #[inline]
+            pub fn as_ustr(&self) -> &$ustr {
+                $ustr::from_slice(&self.inner)
+            }
+
+            /// Converts to a mutable wide string slice.
+            #[inline]
+            pub fn as_mut_ustr(&mut self) -> &mut $ustr {
+                $ustr::from_slice_mut(&mut self.inner)
+            }
+
+            /// Returns a [`Vec`] reference to the contents of this string.
+            #[inline]
+            pub fn as_vec(&self) -> &Vec<$uchar> {
+                &self.inner
+            }
+
+            /// Returns a mutable reference to the contents of this string.
+            #[inline]
+            pub fn as_mut_vec(&mut self) -> &mut Vec<$uchar> {
+                &mut self.inner
+            }
+
+            /// Extends the string with the given string slice.
+            ///
+            /// No checks are performed on the strings. It is possible to end up nul values inside
+            /// the string, and it is up to the caller to determine if that is acceptable.
+            ///
+            /// # Examples
+            ///
+            /// ```rust
+            /// use widestring::U16String;
+            /// let s = "MyString";
+            /// let mut wstr = U16String::from_str(s);
+            /// let cloned = wstr.clone();
+            /// // Push the clone to the end, repeating the string twice.
+            /// wstr.push(cloned);
+            ///
+            /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
+            /// ```
+            ///
+            /// ```rust
+            /// use widestring::U32String;
+            /// let s = "MyString";
+            /// let mut wstr = U32String::from_str(s);
+            /// let cloned = wstr.clone();
+            /// // Push the clone to the end, repeating the string twice.
+            /// wstr.push(cloned);
+            ///
+            /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
+            /// ```
+            #[inline]
+            pub fn push(&mut self, s: impl AsRef<$ustr>) {
+                self.inner.extend_from_slice(&s.as_ref().inner)
+            }
+
+            /// Extends the string with the given slice.
+            ///
+            /// No checks are performed on the strings. It is possible to end up nul values inside
+            /// the string, and it is up to the caller to determine if that is acceptable.
+            ///
+            /// # Examples
+            ///
+            /// ```rust
+            /// use widestring::U16String;
+            /// let s = "MyString";
+            /// let mut wstr = U16String::from_str(s);
+            /// let cloned = wstr.clone();
+            /// // Push the clone to the end, repeating the string twice.
+            /// wstr.push_slice(cloned);
+            ///
+            /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
+            /// ```
+            ///
+            /// ```rust
+            /// use widestring::U32String;
+            /// let s = "MyString";
+            /// let mut wstr = U32String::from_str(s);
+            /// let cloned = wstr.clone();
+            /// // Push the clone to the end, repeating the string twice.
+            /// wstr.push_slice(cloned);
+            ///
+            /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
+            /// ```
+            #[inline]
+            pub fn push_slice(&mut self, s: impl AsRef<[$uchar]>) {
+                self.inner.extend_from_slice(s.as_ref())
+            }
+
+            /// Shrinks the capacity of the wide string to match its length.
+            ///
+            /// # Examples
+            ///
+            /// ```rust
+            /// use widestring::U16String;
+            ///
+            /// let mut s = U16String::from_str("foo");
+            ///
+            /// s.reserve(100);
+            /// assert!(s.capacity() >= 100);
+            ///
+            /// s.shrink_to_fit();
+            /// assert_eq!(3, s.capacity());
+            /// ```
+            ///
+            /// ```rust
+            /// use widestring::U32String;
+            ///
+            /// let mut s = U32String::from_str("foo");
+            ///
+            /// s.reserve(100);
+            /// assert!(s.capacity() >= 100);
+            ///
+            /// s.shrink_to_fit();
+            /// assert_eq!(3, s.capacity());
+            /// ```
+            #[inline]
+            pub fn shrink_to_fit(&mut self) {
+                self.inner.shrink_to_fit();
+            }
+
+            /// Converts this wide string into a boxed string slice.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// use widestring::{U16String, U16Str};
+            ///
+            /// let s = U16String::from_str("hello");
+            ///
+            /// let b: Box<U16Str> = s.into_boxed_ustr();
+            /// ```
+            ///
+            /// ```
+            /// use widestring::{U32String, U32Str};
+            ///
+            /// let s = U32String::from_str("hello");
+            ///
+            /// let b: Box<U32Str> = s.into_boxed_ustr();
+            /// ```
+            pub fn into_boxed_ustr(self) -> Box<$ustr> {
+                let rw = Box::into_raw(self.inner.into_boxed_slice()) as *mut $ustr;
+                unsafe { Box::from_raw(rw) }
+            }
+
+            /// Shortens this string to the specified length.
+            ///
+            /// If `new_len` is greater than the string's current length, this has no effect.
+            ///
+            /// Note that this method has no effect on the allocated capacity of the string.
+            #[inline]
+            pub fn truncate(&mut self, new_len: usize) {
+                self.inner.truncate(new_len)
+            }
+
+            /// Inserts a string slice into this string at a specified position.
+            ///
+            /// This is an _O(n)_ operation as it requires copying every element in the buffer.
+            ///
+            /// # Panics
+            ///
+            /// Panics if `idx` is larger than the string's length.
+            pub fn insert_ustr(&mut self, idx: usize, string: &$ustr) {
+                assert!(idx <= self.len());
+                self.inner
+                    .resize_with(self.len() + string.len(), Default::default);
+                self.inner.copy_within(idx.., idx + string.len());
+                self.inner[idx..].copy_from_slice(string.as_slice());
+            }
+
+            /// Splits the string into two at the given index.
+            ///
+            /// Returns a newly allocated string. `self` contains values `[0, at)`, and the returned
+            /// string contains values `[at, len)`.
+            ///
+            /// Note that the capacity of `self` does not change.
+            ///
+            /// # Panics
+            ///
+            /// Panics if `at` is equal to or greater than the length of the string.
+            #[inline]
+            pub fn split_off(&mut self, at: usize) -> $ustring {
+                Self::from_vec(self.inner.split_off(at))
+            }
         }
-        assert!(!p.is_null());
-        let slice = slice::from_raw_parts(p, len);
-        Self::from_vec(slice)
-    }
 
-    /// Constructs a [`UString`] with the given capacity.
-    ///
-    /// The string will be able to hold exactly `capacity` elements without reallocating.
-    /// If `capacity` is set to 0, the string will not initially allocate.
-    #[inline]
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self {
-            inner: Vec::with_capacity(capacity),
+        impl Add<&$ustr> for $ustring {
+            type Output = $ustring;
+
+            #[inline]
+            fn add(mut self, rhs: &$ustr) -> Self::Output {
+                self.push(rhs);
+                self
+            }
         }
-    }
 
-    /// Returns the capacity this [`UString`] can hold without reallocating.
-    #[inline]
-    pub fn capacity(&self) -> usize {
-        self.inner.capacity()
-    }
+        impl Add<&$ucstr> for $ustring {
+            type Output = $ustring;
 
-    /// Truncates the [`UString`] to zero length.
-    #[inline]
-    pub fn clear(&mut self) {
-        self.inner.clear()
-    }
+            #[inline]
+            fn add(mut self, rhs: &$ucstr) -> Self::Output {
+                self.push(rhs);
+                self
+            }
+        }
 
-    /// Reserves the capacity for at least `additional` more capacity to be inserted in the given
-    /// [`UString`].
-    ///
-    /// More space may be reserved to avoid frequent allocations.
-    #[inline]
-    pub fn reserve(&mut self, additional: usize) {
-        self.inner.reserve(additional)
-    }
+        impl Add<&str> for $ustring {
+            type Output = $ustring;
 
-    /// Reserves the minimum capacity for exactly `additional` more capacity to be inserted in the
-    /// given [`UString`]. Does nothing if the capacity is already sufficient.
-    ///
-    /// Note that the allocator may give more space than is requested. Therefore capacity can not
-    /// be relied upon to be precisely minimal. Prefer [`reserve`][Self::reserve] if future
-    /// insertions are expected.
-    #[inline]
-    pub fn reserve_exact(&mut self, additional: usize) {
-        self.inner.reserve_exact(additional)
-    }
+            #[inline]
+            fn add(mut self, rhs: &str) -> Self::Output {
+                self.push_str(rhs);
+                self
+            }
+        }
 
-    /// Converts the string into a [`Vec`], consuming the string in the process.
-    #[inline]
-    pub fn into_vec(self) -> Vec<C> {
-        self.inner
-    }
+        impl AddAssign<&$ustr> for $ustring {
+            #[inline]
+            fn add_assign(&mut self, rhs: &$ustr) {
+                self.push(rhs)
+            }
+        }
 
-    /// Converts to a [`UStr`] reference.
-    #[inline]
-    pub fn as_ustr(&self) -> &UStr<C> {
-        UStr::from_slice(&self.inner)
-    }
+        impl AddAssign<&$ucstr> for $ustring {
+            #[inline]
+            fn add_assign(&mut self, rhs: &$ucstr) {
+                self.push(rhs)
+            }
+        }
 
-    /// Converts to a mutable [`UStr`] reference.
-    #[inline]
-    pub fn as_mut_ustr(&mut self) -> &mut UStr<C> {
-        UStr::from_slice_mut(&mut self.inner)
-    }
+        impl AddAssign<&str> for $ustring {
+            #[inline]
+            fn add_assign(&mut self, rhs: &str) {
+                self.push_str(rhs);
+            }
+        }
 
-    /// Returns a [`Vec`] reference to the contents of this string.
-    #[inline]
-    pub fn as_vec(&self) -> &Vec<C> {
-        &self.inner
-    }
+        impl AsMut<$ustr> for $ustring {
+            #[inline]
+            fn as_mut(&mut self) -> &mut $ustr {
+                self.as_mut_ustr()
+            }
+        }
 
-    /// Returns a mutable reference to the contents of this string.
-    #[inline]
-    pub fn as_mut_vec(&mut self) -> &mut Vec<C> {
-        &mut self.inner
-    }
+        impl AsMut<[$uchar]> for $ustring {
+            #[inline]
+            fn as_mut(&mut self) -> &mut [$uchar] {
+                self.as_mut_slice()
+            }
+        }
 
-    /// Extends the string with the given string slice.
-    ///
-    /// No checks are performed on the strings. It is possible to end up nul values inside the
-    /// string, and it is up to the caller to determine if that is acceptable.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U16String;
-    /// let s = "MyString";
-    /// let mut wstr = U16String::from_str(s);
-    /// let cloned = wstr.clone();
-    /// // Push the clone to the end, repeating the string twice.
-    /// wstr.push(cloned);
-    ///
-    /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
-    /// ```
-    ///
-    /// ```rust
-    /// use widestring::U32String;
-    /// let s = "MyString";
-    /// let mut wstr = U32String::from_str(s);
-    /// let cloned = wstr.clone();
-    /// // Push the clone to the end, repeating the string twice.
-    /// wstr.push(cloned);
-    ///
-    /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
-    /// ```
-    #[inline]
-    pub fn push(&mut self, s: impl AsRef<UStr<C>>) {
-        self.inner.extend_from_slice(&s.as_ref().inner)
-    }
+        impl AsRef<$ustr> for $ustring {
+            #[inline]
+            fn as_ref(&self) -> &$ustr {
+                self.as_ustr()
+            }
+        }
 
-    /// Extends the string with the given slice.
-    ///
-    /// No checks are performed on the strings. It is possible to end up nul values inside the
-    /// string, and it is up to the caller to determine if that is acceptable.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U16String;
-    /// let s = "MyString";
-    /// let mut wstr = U16String::from_str(s);
-    /// let cloned = wstr.clone();
-    /// // Push the clone to the end, repeating the string twice.
-    /// wstr.push_slice(cloned);
-    ///
-    /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
-    /// ```
-    ///
-    /// ```rust
-    /// use widestring::U32String;
-    /// let s = "MyString";
-    /// let mut wstr = U32String::from_str(s);
-    /// let cloned = wstr.clone();
-    /// // Push the clone to the end, repeating the string twice.
-    /// wstr.push_slice(cloned);
-    ///
-    /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
-    /// ```
-    #[inline]
-    pub fn push_slice(&mut self, s: impl AsRef<[C]>) {
-        self.inner.extend_from_slice(s.as_ref())
-    }
+        impl AsRef<[$uchar]> for $ustring {
+            #[inline]
+            fn as_ref(&self) -> &[$uchar] {
+                self.as_slice()
+            }
+        }
 
-    /// Shrinks the capacity of the [`UString`] to match its length.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use widestring::U16String;
-    ///
-    /// let mut s = U16String::from_str("foo");
-    ///
-    /// s.reserve(100);
-    /// assert!(s.capacity() >= 100);
-    ///
-    /// s.shrink_to_fit();
-    /// assert_eq!(3, s.capacity());
-    /// ```
-    ///
-    /// ```rust
-    /// use widestring::U32String;
-    ///
-    /// let mut s = U32String::from_str("foo");
-    ///
-    /// s.reserve(100);
-    /// assert!(s.capacity() >= 100);
-    ///
-    /// s.shrink_to_fit();
-    /// assert_eq!(3, s.capacity());
-    /// ```
-    #[inline]
-    pub fn shrink_to_fit(&mut self) {
-        self.inner.shrink_to_fit();
-    }
+        impl Borrow<$ustr> for $ustring {
+            #[inline]
+            fn borrow(&self) -> &$ustr {
+                self.as_ustr()
+            }
+        }
 
-    /// Converts this [`UString`] into a boxed [`UStr`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use widestring::{U16String, U16Str};
-    ///
-    /// let s = U16String::from_str("hello");
-    ///
-    /// let b: Box<U16Str> = s.into_boxed_ustr();
-    /// ```
-    ///
-    /// ```
-    /// use widestring::{U32String, U32Str};
-    ///
-    /// let s = U32String::from_str("hello");
-    ///
-    /// let b: Box<U32Str> = s.into_boxed_ustr();
-    /// ```
-    pub fn into_boxed_ustr(self) -> Box<UStr<C>> {
-        let rw = Box::into_raw(self.inner.into_boxed_slice()) as *mut UStr<C>;
-        unsafe { Box::from_raw(rw) }
-    }
+        impl BorrowMut<$ustr> for $ustring {
+            #[inline]
+            fn borrow_mut(&mut self) -> &mut $ustr {
+                self.as_mut_ustr()
+            }
+        }
 
-    /// Shortens this string to the specified length.
-    ///
-    /// If `new_len` is greater than the string’s current length, this has no effect.
-    ///
-    /// Note that this method has no effect on the allocated capacity of the string.
-    #[inline]
-    pub fn truncate(&mut self, new_len: usize) {
-        self.inner.truncate(new_len)
-    }
+        impl Default for Box<$ustr> {
+            #[inline]
+            fn default() -> Self {
+                let boxed: Box<[$uchar]> = Box::from([]);
+                let rw = Box::into_raw(boxed) as *mut $ustr;
+                unsafe { Box::from_raw(rw) }
+            }
+        }
 
-    /// Inserts a string slice into this string at a specified position.
-    ///
-    /// This is an _O(n)_ operation as it requires copying every element in the buffer.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `idx` is larger than the string's length.
-    pub fn insert_ustr(&mut self, idx: usize, string: &UStr<C>) {
-        assert!(idx <= self.len());
-        self.inner
-            .resize_with(self.len() + string.len(), Default::default);
-        self.inner.copy_within(idx.., idx + string.len());
-        self.inner[idx..].copy_from_slice(string.as_slice());
-    }
+        impl Deref for $ustring {
+            type Target = $ustr;
 
-    /// Splits the string into two at the given index.
-    ///
-    /// Returns a newly allocated string. `self` contains values `[0, at)`, and the returned string
-    /// contains values `[at, len)`.
-    ///
-    /// Note that the capacity of `self` does not change.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `at` is equal to or greater than the length of the string.
-    #[inline]
-    pub fn split_off(&mut self, at: usize) -> UString<C> {
-        Self::from_vec(self.inner.split_off(at))
-    }
+            #[inline]
+            fn deref(&self) -> &$ustr {
+                self.as_ustr()
+            }
+        }
+
+        impl DerefMut for $ustring {
+            #[inline]
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                self.as_mut_ustr()
+            }
+        }
+
+        impl<'a> Extend<&'a $ustr> for $ustring {
+            #[inline]
+            fn extend<T: IntoIterator<Item = &'a $ustr>>(&mut self, iter: T) {
+                iter.into_iter().for_each(|s| self.push(s))
+            }
+        }
+
+        impl<'a> Extend<&'a $ucstr> for $ustring {
+            #[inline]
+            fn extend<T: IntoIterator<Item = &'a $ucstr>>(&mut self, iter: T) {
+                iter.into_iter().for_each(|s| self.push(s))
+            }
+        }
+
+        impl<'a> Extend<&'a str> for $ustring {
+            #[inline]
+            fn extend<T: IntoIterator<Item = &'a str>>(&mut self, iter: T) {
+                iter.into_iter().for_each(|s| self.push_str(s))
+            }
+        }
+
+        impl Extend<$ustring> for $ustring {
+            #[inline]
+            fn extend<T: IntoIterator<Item = $ustring>>(&mut self, iter: T) {
+                iter.into_iter().for_each(|s| self.push(s))
+            }
+        }
+
+        impl Extend<$ucstring> for $ustring {
+            #[inline]
+            fn extend<T: IntoIterator<Item = $ucstring>>(&mut self, iter: T) {
+                iter.into_iter().for_each(|s| self.push(s.as_ucstr()))
+            }
+        }
+
+        impl Extend<String> for $ustring {
+            #[inline]
+            fn extend<T: IntoIterator<Item = String>>(&mut self, iter: T) {
+                iter.into_iter().for_each(|s| self.push_str(s))
+            }
+        }
+
+        impl Extend<char> for $ustring {
+            #[inline]
+            fn extend<T: IntoIterator<Item = char>>(&mut self, iter: T) {
+                let iter = iter.into_iter();
+                let (lower_bound, _) = iter.size_hint();
+                self.reserve(lower_bound);
+                iter.for_each(|c| self.push_char(c));
+            }
+        }
+
+        impl<'a> Extend<&'a char> for $ustring {
+            #[inline]
+            fn extend<T: IntoIterator<Item = &'a char>>(&mut self, iter: T) {
+                self.extend(iter.into_iter().copied())
+            }
+        }
+
+        impl Extend<Box<$ustr>> for $ustring {
+            #[inline]
+            fn extend<T: IntoIterator<Item = Box<$ustr>>>(&mut self, iter: T) {
+                iter.into_iter().for_each(|s| self.push(s))
+            }
+        }
+
+        impl<'a> Extend<Cow<'a, $ustr>> for $ustring {
+            #[inline]
+            fn extend<T: IntoIterator<Item = Cow<'a, $ustr>>>(&mut self, iter: T) {
+                iter.into_iter().for_each(|s| self.push(s))
+            }
+        }
+
+        impl From<$ustring> for Vec<$uchar> {
+            #[inline]
+            fn from(value: $ustring) -> Self {
+                value.into_vec()
+            }
+        }
+
+        impl<'a> From<$ustring> for Cow<'a, $ustr> {
+            #[inline]
+            fn from(s: $ustring) -> Self {
+                Cow::Owned(s)
+            }
+        }
+
+        impl From<Vec<$uchar>> for $ustring {
+            #[inline]
+            fn from(value: Vec<$uchar>) -> Self {
+                Self::from_vec(value)
+            }
+        }
+
+        impl From<String> for $ustring {
+            #[inline]
+            fn from(s: String) -> Self {
+                Self::from_str(&s)
+            }
+        }
+
+        impl From<&str> for $ustring {
+            #[inline]
+            fn from(s: &str) -> Self {
+                Self::from_str(s)
+            }
+        }
+
+        #[cfg(feature = "std")]
+        impl From<std::ffi::OsString> for $ustring {
+            #[inline]
+            fn from(s: std::ffi::OsString) -> Self {
+                Self::from_os_str(&s)
+            }
+        }
+
+        #[cfg(feature = "std")]
+        impl From<$ustring> for std::ffi::OsString {
+            #[inline]
+            fn from(s: $ustring) -> Self {
+                s.to_os_string()
+            }
+        }
+
+        impl<'a, T: ?Sized + AsRef<$ustr>> From<&'a T> for $ustring {
+            #[inline]
+            fn from(s: &'a T) -> Self {
+                s.as_ref().to_ustring()
+            }
+        }
+
+        impl<'a> From<&'a $ustr> for Cow<'a, $ustr> {
+            #[inline]
+            fn from(s: &'a $ustr) -> Self {
+                Cow::Borrowed(s)
+            }
+        }
+
+        impl<'a> From<&'a $ustr> for Box<$ustr> {
+            fn from(s: &'a $ustr) -> Self {
+                let boxed: Box<[$uchar]> = Box::from(&s.inner);
+                let rw = Box::into_raw(boxed) as *mut $ustr;
+                unsafe { Box::from_raw(rw) }
+            }
+        }
+
+        impl From<Box<$ustr>> for $ustring {
+            #[inline]
+            fn from(boxed: Box<$ustr>) -> Self {
+                boxed.into_ustring()
+            }
+        }
+
+        impl From<$ustring> for Box<$ustr> {
+            #[inline]
+            fn from(s: $ustring) -> Self {
+                s.into_boxed_ustr()
+            }
+        }
+
+        impl<'a> FromIterator<&'a $ustr> for $ustring {
+            #[inline]
+            fn from_iter<T: IntoIterator<Item = &'a $ustr>>(iter: T) -> Self {
+                let mut string = Self::new();
+                string.extend(iter);
+                string
+            }
+        }
+
+        impl<'a> FromIterator<&'a $ucstr> for $ustring {
+            #[inline]
+            fn from_iter<T: IntoIterator<Item = &'a $ucstr>>(iter: T) -> Self {
+                let mut string = Self::new();
+                string.extend(iter);
+                string
+            }
+        }
+
+        impl<'a> FromIterator<&'a str> for $ustring {
+            #[inline]
+            fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {
+                let mut string = Self::new();
+                string.extend(iter);
+                string
+            }
+        }
+
+        impl FromIterator<$ustring> for $ustring {
+            #[inline]
+            fn from_iter<T: IntoIterator<Item = $ustring>>(iter: T) -> Self {
+                let mut string = Self::new();
+                string.extend(iter);
+                string
+            }
+        }
+
+        impl FromIterator<$ucstring> for $ustring {
+            #[inline]
+            fn from_iter<T: IntoIterator<Item = $ucstring>>(iter: T) -> Self {
+                let mut string = Self::new();
+                string.extend(iter);
+                string
+            }
+        }
+
+        impl FromIterator<String> for $ustring {
+            #[inline]
+            fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
+                let mut string = Self::new();
+                string.extend(iter);
+                string
+            }
+        }
+
+        impl FromIterator<char> for $ustring {
+            #[inline]
+            fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {
+                let mut string = Self::new();
+                string.extend(iter);
+                string
+            }
+        }
+
+        impl<'a> FromIterator<&'a char> for $ustring {
+            #[inline]
+            fn from_iter<T: IntoIterator<Item = &'a char>>(iter: T) -> Self {
+                let mut string = Self::new();
+                string.extend(iter);
+                string
+            }
+        }
+
+        impl FromIterator<Box<$ustr>> for $ustring {
+            #[inline]
+            fn from_iter<T: IntoIterator<Item = Box<$ustr>>>(iter: T) -> Self {
+                let mut string = Self::new();
+                string.extend(iter);
+                string
+            }
+        }
+
+        impl<'a> FromIterator<Cow<'a, $ustr>> for $ustring {
+            #[inline]
+            fn from_iter<T: IntoIterator<Item = Cow<'a, $ustr>>>(iter: T) -> Self {
+                let mut string = Self::new();
+                string.extend(iter);
+                string
+            }
+        }
+
+        impl FromStr for $ustring {
+            type Err = Infallible;
+
+            #[inline]
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Ok(Self::from_str(s))
+            }
+        }
+
+        impl<I> Index<I> for $ustring
+        where
+            I: SliceIndex<[$uchar], Output = [$uchar]>,
+        {
+            type Output = $ustr;
+
+            #[inline]
+            fn index(&self, index: I) -> &$ustr {
+                &self.as_ustr()[index]
+            }
+        }
+
+        impl<I> IndexMut<I> for $ustring
+        where
+            I: SliceIndex<[$uchar], Output = [$uchar]>,
+        {
+            fn index_mut(&mut self, index: I) -> &mut Self::Output {
+                &mut self.as_mut_ustr()[index]
+            }
+        }
+
+        impl PartialEq<$ustr> for $ustring {
+            #[inline]
+            fn eq(&self, other: &$ustr) -> bool {
+                self.as_ustr() == other
+            }
+        }
+
+        impl PartialEq<$ucstr> for $ustring {
+            #[inline]
+            fn eq(&self, other: &$ucstr) -> bool {
+                self.as_ustr() == other
+            }
+        }
+
+        impl PartialEq<$ucstring> for $ustring {
+            #[inline]
+            fn eq(&self, other: &$ucstring) -> bool {
+                self.as_ustr() == other.as_ucstr()
+            }
+        }
+
+        impl<'a> PartialEq<&'a $ustr> for $ustring {
+            #[inline]
+            fn eq(&self, other: &&'a $ustr) -> bool {
+                self.as_ustr() == *other
+            }
+        }
+
+        impl<'a> PartialEq<&'a $ucstr> for $ustring {
+            #[inline]
+            fn eq(&self, other: &&'a $ucstr) -> bool {
+                self.as_ustr() == *other
+            }
+        }
+
+        impl<'a> PartialEq<Cow<'a, $ustr>> for $ustring {
+            #[inline]
+            fn eq(&self, other: &Cow<'a, $ustr>) -> bool {
+                self.as_ustr() == other.as_ref()
+            }
+        }
+
+        impl<'a> PartialEq<Cow<'a, $ucstr>> for $ustring {
+            #[inline]
+            fn eq(&self, other: &Cow<'a, $ucstr>) -> bool {
+                self.as_ustr() == other.as_ref()
+            }
+        }
+
+        impl PartialOrd<$ustr> for $ustring {
+            #[inline]
+            fn partial_cmp(&self, other: &$ustr) -> Option<cmp::Ordering> {
+                self.as_ustr().partial_cmp(other)
+            }
+        }
+
+        impl PartialOrd<$ucstr> for $ustring {
+            #[inline]
+            fn partial_cmp(&self, other: &$ucstr) -> Option<cmp::Ordering> {
+                self.as_ustr().partial_cmp(other)
+            }
+        }
+
+        impl<'a> PartialOrd<&'a $ustr> for $ustring {
+            #[inline]
+            fn partial_cmp(&self, other: &&'a $ustr) -> Option<cmp::Ordering> {
+                self.as_ustr().partial_cmp(*other)
+            }
+        }
+
+        impl<'a> PartialOrd<&'a $ucstr> for $ustring {
+            #[inline]
+            fn partial_cmp(&self, other: &&'a $ucstr) -> Option<cmp::Ordering> {
+                self.as_ustr().partial_cmp(*other)
+            }
+        }
+
+        impl<'a> PartialOrd<Cow<'a, $ustr>> for $ustring {
+            #[inline]
+            fn partial_cmp(&self, other: &Cow<'a, $ustr>) -> Option<cmp::Ordering> {
+                self.as_ustr().partial_cmp(other.as_ref())
+            }
+        }
+
+        impl<'a> PartialOrd<Cow<'a, $ucstr>> for $ustring {
+            #[inline]
+            fn partial_cmp(&self, other: &Cow<'a, $ucstr>) -> Option<cmp::Ordering> {
+                self.as_ustr().partial_cmp(other.as_ref())
+            }
+        }
+
+        impl PartialOrd<$ucstring> for $ustring {
+            #[inline]
+            fn partial_cmp(&self, other: &$ucstring) -> Option<cmp::Ordering> {
+                self.as_ustr().partial_cmp(other.as_ucstr())
+            }
+        }
+
+        impl ToOwned for $ustr {
+            type Owned = $ustring;
+
+            #[inline]
+            fn to_owned(&self) -> $ustring {
+                self.to_ustring()
+            }
+        }
+
+        impl Write for $ustring {
+            #[inline]
+            fn write_str(&mut self, s: &str) -> core::fmt::Result {
+                self.push_str(s);
+                Ok(())
+            }
+
+            #[inline]
+            fn write_char(&mut self, c: char) -> core::fmt::Result {
+                self.push_char(c);
+                Ok(())
+            }
+        }
+    };
 }
 
-impl UString<u16> {
+ustring_common_impl!(U16String u16 => U16Str U16CString U16CStr);
+ustring_common_impl!(U32String u32 => U32Str U32CString U32CStr);
+
+impl U16String {
     /// Encodes a [`U16String`] copy from a [`str`].
     ///
     /// This makes a string copy of the [`str`]. Since [`str`] will always be valid UTF-8, the
@@ -532,7 +1077,7 @@ impl UString<u16> {
     }
 }
 
-impl UString<u32> {
+impl U32String {
     /// Constructs a [`U32String`] from a [`char`][prim@char] vector.
     ///
     /// No checks are made on the contents of the vector.
@@ -712,116 +1257,6 @@ impl UString<u32> {
     }
 }
 
-impl<C: UChar> Add<&UStr<C>> for UString<C> {
-    type Output = UString<C>;
-
-    #[inline]
-    fn add(mut self, rhs: &UStr<C>) -> Self::Output {
-        self.push(rhs);
-        self
-    }
-}
-
-impl<C: UChar> Add<&UCStr<C>> for UString<C> {
-    type Output = UString<C>;
-
-    #[inline]
-    fn add(mut self, rhs: &UCStr<C>) -> Self::Output {
-        self.push(rhs);
-        self
-    }
-}
-
-impl Add<&str> for U16String {
-    type Output = U16String;
-
-    #[inline]
-    fn add(mut self, rhs: &str) -> Self::Output {
-        self.push_str(rhs);
-        self
-    }
-}
-
-impl Add<&str> for U32String {
-    type Output = U32String;
-
-    #[inline]
-    fn add(mut self, rhs: &str) -> Self::Output {
-        self.push_str(rhs);
-        self
-    }
-}
-
-impl<C: UChar> AddAssign<&UStr<C>> for UString<C> {
-    #[inline]
-    fn add_assign(&mut self, rhs: &UStr<C>) {
-        self.push(rhs)
-    }
-}
-
-impl<C: UChar> AddAssign<&UCStr<C>> for UString<C> {
-    #[inline]
-    fn add_assign(&mut self, rhs: &UCStr<C>) {
-        self.push(rhs)
-    }
-}
-
-impl AddAssign<&str> for U16String {
-    #[inline]
-    fn add_assign(&mut self, rhs: &str) {
-        self.push_str(rhs);
-    }
-}
-
-impl AddAssign<&str> for U32String {
-    #[inline]
-    fn add_assign(&mut self, rhs: &str) {
-        self.push_str(rhs);
-    }
-}
-
-impl<C: UChar> AsMut<UStr<C>> for UString<C> {
-    #[inline]
-    fn as_mut(&mut self) -> &mut UStr<C> {
-        self.as_mut_ustr()
-    }
-}
-
-impl<C: UChar> AsMut<[C]> for UString<C> {
-    #[inline]
-    fn as_mut(&mut self) -> &mut [C] {
-        self.as_mut_slice()
-    }
-}
-
-impl<C: UChar> AsRef<UStr<C>> for UString<C> {
-    #[inline]
-    fn as_ref(&self) -> &UStr<C> {
-        self.as_ustr()
-    }
-}
-
-impl<C: UChar> AsRef<[C]> for UString<C> {
-    #[inline]
-    fn as_ref(&self) -> &[C] {
-        self.as_slice()
-    }
-}
-
-impl<C: UChar> Borrow<UStr<C>> for UString<C> {
-    #[inline]
-    fn borrow(&self) -> &UStr<C> {
-        self.as_ustr()
-    }
-}
-
-impl<C: UChar> BorrowMut<UStr<C>> for UString<C> {
-    #[inline]
-    fn borrow_mut(&mut self) -> &mut UStr<C> {
-        self.as_mut_ustr()
-    }
-}
-
 impl core::fmt::Debug for U16String {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -836,626 +1271,22 @@ impl core::fmt::Debug for U32String {
     }
 }
 
-impl<C: UChar> Default for Box<UStr<C>> {
-    #[inline]
-    fn default() -> Self {
-        let boxed: Box<[C]> = Box::from([]);
-        let rw = Box::into_raw(boxed) as *mut UStr<C>;
-        unsafe { Box::from_raw(rw) }
-    }
-}
-
-impl<C: UChar> Deref for UString<C> {
-    type Target = UStr<C>;
-
-    #[inline]
-    fn deref(&self) -> &UStr<C> {
-        self.as_ustr()
-    }
-}
-
-impl<C: UChar> DerefMut for UString<C> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.as_mut_ustr()
-    }
-}
-
-impl<'a, C: UChar> Extend<&'a UStr<C>> for UString<C> {
-    #[inline]
-    fn extend<T: IntoIterator<Item = &'a UStr<C>>>(&mut self, iter: T) {
-        iter.into_iter().for_each(|s| self.push(s))
-    }
-}
-
-impl<'a, C: UChar> Extend<&'a UCStr<C>> for UString<C> {
-    #[inline]
-    fn extend<T: IntoIterator<Item = &'a UCStr<C>>>(&mut self, iter: T) {
-        iter.into_iter().for_each(|s| self.push(s))
-    }
-}
-
-impl<'a> Extend<&'a str> for U16String {
-    #[inline]
-    fn extend<T: IntoIterator<Item = &'a str>>(&mut self, iter: T) {
-        iter.into_iter().for_each(|s| self.push_str(s))
-    }
-}
-
-impl<'a> Extend<&'a str> for U32String {
-    #[inline]
-    fn extend<T: IntoIterator<Item = &'a str>>(&mut self, iter: T) {
-        iter.into_iter().for_each(|s| self.push_str(s))
-    }
-}
-
-impl<C: UChar> Extend<UString<C>> for UString<C> {
-    #[inline]
-    fn extend<T: IntoIterator<Item = UString<C>>>(&mut self, iter: T) {
-        iter.into_iter().for_each(|s| self.push(s))
-    }
-}
-
-impl<C: UChar> Extend<UCString<C>> for UString<C> {
-    #[inline]
-    fn extend<T: IntoIterator<Item = UCString<C>>>(&mut self, iter: T) {
-        iter.into_iter().for_each(|s| self.push(s.as_ucstr()))
-    }
-}
-
-impl Extend<String> for U16String {
-    #[inline]
-    fn extend<T: IntoIterator<Item = String>>(&mut self, iter: T) {
-        iter.into_iter().for_each(|s| self.push_str(s))
-    }
-}
-
-impl Extend<String> for U32String {
-    #[inline]
-    fn extend<T: IntoIterator<Item = String>>(&mut self, iter: T) {
-        iter.into_iter().for_each(|s| self.push_str(s))
-    }
-}
-
-impl Extend<char> for U16String {
-    #[inline]
-    fn extend<T: IntoIterator<Item = char>>(&mut self, iter: T) {
-        let iter = iter.into_iter();
-        let (lower_bound, _) = iter.size_hint();
-        self.reserve(lower_bound);
-        iter.for_each(|c| self.push_char(c));
-    }
-}
-
-impl Extend<char> for U32String {
-    #[inline]
-    fn extend<T: IntoIterator<Item = char>>(&mut self, iter: T) {
-        let iter = iter.into_iter();
-        let (lower_bound, _) = iter.size_hint();
-        self.reserve(lower_bound);
-        iter.for_each(|c| self.push_char(c));
-    }
-}
-
-impl<'a> Extend<&'a char> for U16String {
-    #[inline]
-    fn extend<T: IntoIterator<Item = &'a char>>(&mut self, iter: T) {
-        self.extend(iter.into_iter().copied())
-    }
-}
-
-impl<'a> Extend<&'a char> for U32String {
-    #[inline]
-    fn extend<T: IntoIterator<Item = &'a char>>(&mut self, iter: T) {
-        self.extend(iter.into_iter().copied())
-    }
-}
-
-impl<C: UChar> Extend<Box<UStr<C>>> for UString<C> {
-    #[inline]
-    fn extend<T: IntoIterator<Item = Box<UStr<C>>>>(&mut self, iter: T) {
-        iter.into_iter().for_each(|s| self.push(s))
-    }
-}
-
-impl<'a, C: UChar> Extend<Cow<'a, UStr<C>>> for UString<C> {
-    #[inline]
-    fn extend<T: IntoIterator<Item = Cow<'a, UStr<C>>>>(&mut self, iter: T) {
-        iter.into_iter().for_each(|s| self.push(s))
-    }
-}
-
-impl<C: UChar> From<UString<C>> for Vec<C> {
-    #[inline]
-    fn from(value: UString<C>) -> Self {
-        value.into_vec()
-    }
-}
-
-impl<'a> From<UString<u16>> for Cow<'a, UStr<u16>> {
-    #[inline]
-    fn from(s: UString<u16>) -> Self {
-        Cow::Owned(s)
-    }
-}
-
-impl<'a> From<UString<u32>> for Cow<'a, UStr<u32>> {
-    #[inline]
-    fn from(s: UString<u32>) -> Self {
-        Cow::Owned(s)
-    }
-}
-
-impl From<Vec<u16>> for UString<u16> {
-    #[inline]
-    fn from(value: Vec<u16>) -> Self {
-        Self::from_vec(value)
-    }
-}
-
-impl From<Vec<u32>> for UString<u32> {
-    #[inline]
-    fn from(value: Vec<u32>) -> Self {
-        Self::from_vec(value)
-    }
-}
-
-impl From<Vec<char>> for UString<u32> {
+impl From<Vec<char>> for U32String {
     #[inline]
     fn from(value: Vec<char>) -> Self {
         Self::from_chars(value)
     }
 }
 
-impl From<String> for UString<u16> {
-    #[inline]
-    fn from(s: String) -> Self {
-        Self::from_str(&s)
-    }
-}
-
-impl From<String> for UString<u32> {
-    #[inline]
-    fn from(s: String) -> Self {
-        Self::from_str(&s)
-    }
-}
-
-impl From<&str> for UString<u16> {
-    #[inline]
-    fn from(s: &str) -> Self {
-        Self::from_str(s)
-    }
-}
-
-impl From<&str> for UString<u32> {
-    #[inline]
-    fn from(s: &str) -> Self {
-        Self::from_str(s)
-    }
-}
-
-#[cfg(feature = "std")]
-impl From<std::ffi::OsString> for UString<u16> {
-    #[inline]
-    fn from(s: std::ffi::OsString) -> Self {
-        Self::from_os_str(&s)
-    }
-}
-
-#[cfg(feature = "std")]
-impl From<std::ffi::OsString> for UString<u32> {
-    #[inline]
-    fn from(s: std::ffi::OsString) -> Self {
-        Self::from_os_str(&s)
-    }
-}
-
-#[cfg(feature = "std")]
-impl From<UString<u16>> for std::ffi::OsString {
-    #[inline]
-    fn from(s: UString<u16>) -> Self {
-        s.to_os_string()
-    }
-}
-
-#[cfg(feature = "std")]
-impl From<UString<u32>> for std::ffi::OsString {
-    #[inline]
-    fn from(s: UString<u32>) -> Self {
-        s.to_os_string()
-    }
-}
-
-impl<'a, C: UChar, T: ?Sized + AsRef<UStr<C>>> From<&'a T> for UString<C> {
-    #[inline]
-    fn from(s: &'a T) -> Self {
-        s.as_ref().to_ustring()
-    }
-}
-
-impl<'a> From<&'a UStr<u16>> for Cow<'a, UStr<u16>> {
-    #[inline]
-    fn from(s: &'a UStr<u16>) -> Self {
-        Cow::Borrowed(s)
-    }
-}
-
-impl<'a> From<&'a UStr<u32>> for Cow<'a, UStr<u32>> {
-    #[inline]
-    fn from(s: &'a UStr<u32>) -> Self {
-        Cow::Borrowed(s)
-    }
-}
-
-impl<'a, C: UChar> From<&'a UStr<C>> for Box<UStr<C>> {
-    fn from(s: &'a UStr<C>) -> Self {
-        let boxed: Box<[C]> = Box::from(&s.inner);
-        let rw = Box::into_raw(boxed) as *mut UStr<C>;
-        unsafe { Box::from_raw(rw) }
-    }
-}
-
-impl<C: UChar> From<Box<UStr<C>>> for UString<C> {
-    #[inline]
-    fn from(boxed: Box<UStr<C>>) -> Self {
-        boxed.into_ustring()
-    }
-}
-
-impl<C: UChar> From<UString<C>> for Box<UStr<C>> {
-    #[inline]
-    fn from(s: UString<C>) -> Self {
-        s.into_boxed_ustr()
-    }
-}
-
-impl<'a, C: UChar + 'a> FromIterator<&'a UStr<C>> for UString<C> {
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = &'a UStr<C>>>(iter: T) -> Self {
-        let mut string = Self::new();
-        string.extend(iter);
-        string
-    }
-}
-
-impl<'a, C: UChar + 'a> FromIterator<&'a UCStr<C>> for UString<C> {
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = &'a UCStr<C>>>(iter: T) -> Self {
-        let mut string = Self::new();
-        string.extend(iter);
-        string
-    }
-}
-
-impl<'a> FromIterator<&'a str> for U16String {
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {
-        let mut string = Self::new();
-        string.extend(iter);
-        string
-    }
-}
-
-impl<'a> FromIterator<&'a str> for U32String {
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {
-        let mut string = Self::new();
-        string.extend(iter);
-        string
-    }
-}
-
-impl<C: UChar> FromIterator<UString<C>> for UString<C> {
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = UString<C>>>(iter: T) -> Self {
-        let mut string = Self::new();
-        string.extend(iter);
-        string
-    }
-}
-
-impl<C: UChar> FromIterator<UCString<C>> for UString<C> {
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = UCString<C>>>(iter: T) -> Self {
-        let mut string = Self::new();
-        string.extend(iter);
-        string
-    }
-}
-
-impl FromIterator<String> for U16String {
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
-        let mut string = Self::new();
-        string.extend(iter);
-        string
-    }
-}
-
-impl FromIterator<String> for U32String {
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
-        let mut string = Self::new();
-        string.extend(iter);
-        string
-    }
-}
-
-impl FromIterator<char> for U16String {
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {
-        let mut string = Self::new();
-        string.extend(iter);
-        string
-    }
-}
-
-impl FromIterator<char> for U32String {
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {
-        let mut string = Self::new();
-        string.extend(iter);
-        string
-    }
-}
-
-impl<'a> FromIterator<&'a char> for U16String {
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = &'a char>>(iter: T) -> Self {
-        let mut string = Self::new();
-        string.extend(iter);
-        string
-    }
-}
-
-impl<'a> FromIterator<&'a char> for U32String {
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = &'a char>>(iter: T) -> Self {
-        let mut string = Self::new();
-        string.extend(iter);
-        string
-    }
-}
-
-impl<C: UChar> FromIterator<Box<UStr<C>>> for UString<C> {
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = Box<UStr<C>>>>(iter: T) -> Self {
-        let mut string = Self::new();
-        string.extend(iter);
-        string
-    }
-}
-
-impl<'a, C: UChar + 'a> FromIterator<Cow<'a, UStr<C>>> for UString<C> {
-    #[inline]
-    fn from_iter<T: IntoIterator<Item = Cow<'a, UStr<C>>>>(iter: T) -> Self {
-        let mut string = Self::new();
-        string.extend(iter);
-        string
-    }
-}
-
-impl FromStr for U16String {
-    type Err = Infallible;
-
-    #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self::from_str(s))
-    }
-}
-
-impl FromStr for U32String {
-    type Err = Infallible;
-
-    #[inline]
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self::from_str(s))
-    }
-}
-
-impl<C: UChar, I> Index<I> for UString<C>
-where
-    I: SliceIndex<[C], Output = [C]>,
-{
-    type Output = UStr<C>;
-
-    #[inline]
-    fn index(&self, index: I) -> &UStr<C> {
-        &self.as_ustr()[index]
-    }
-}
-
-impl<C: UChar, I> IndexMut<I> for UString<C>
-where
-    I: SliceIndex<[C], Output = [C]>,
-{
-    fn index_mut(&mut self, index: I) -> &mut Self::Output {
-        &mut self.as_mut_ustr()[index]
-    }
-}
-
-impl<C: UChar> PartialEq<UStr<C>> for UString<C> {
-    #[inline]
-    fn eq(&self, other: &UStr<C>) -> bool {
-        self.as_ustr() == other
-    }
-}
-
-impl<C: UChar> PartialEq<UCStr<C>> for UString<C> {
-    #[inline]
-    fn eq(&self, other: &UCStr<C>) -> bool {
-        self.as_ustr() == other
-    }
-}
-
-impl<C: UChar> PartialEq<UCString<C>> for UString<C> {
-    #[inline]
-    fn eq(&self, other: &UCString<C>) -> bool {
-        self.as_ustr() == other.as_ucstr()
-    }
-}
-
-impl<'a, C: UChar> PartialEq<&'a UStr<C>> for UString<C> {
-    #[inline]
-    fn eq(&self, other: &&'a UStr<C>) -> bool {
-        self.as_ustr() == *other
-    }
-}
-
-impl<'a, C: UChar> PartialEq<&'a UCStr<C>> for UString<C> {
-    #[inline]
-    fn eq(&self, other: &&'a UCStr<C>) -> bool {
-        self.as_ustr() == *other
-    }
-}
-
-impl<'a, C: UChar> PartialEq<Cow<'a, UStr<C>>> for UString<C> {
-    #[inline]
-    fn eq(&self, other: &Cow<'a, UStr<C>>) -> bool {
-        self.as_ustr() == other.as_ref()
-    }
-}
-
-impl<'a, C: UChar> PartialEq<Cow<'a, UCStr<C>>> for UString<C> {
-    #[inline]
-    fn eq(&self, other: &Cow<'a, UCStr<C>>) -> bool {
-        self.as_ustr() == other.as_ref()
-    }
-}
-
-impl<C: UChar> PartialOrd<UStr<C>> for UString<C> {
-    #[inline]
-    fn partial_cmp(&self, other: &UStr<C>) -> Option<cmp::Ordering> {
-        self.as_ustr().partial_cmp(other)
-    }
-}
-
-impl<C: UChar> PartialOrd<UCStr<C>> for UString<C> {
-    #[inline]
-    fn partial_cmp(&self, other: &UCStr<C>) -> Option<cmp::Ordering> {
-        self.as_ustr().partial_cmp(other)
-    }
-}
-
-impl<'a, C: UChar> PartialOrd<&'a UStr<C>> for UString<C> {
-    #[inline]
-    fn partial_cmp(&self, other: &&'a UStr<C>) -> Option<cmp::Ordering> {
-        self.as_ustr().partial_cmp(*other)
-    }
-}
-
-impl<'a, C: UChar> PartialOrd<&'a UCStr<C>> for UString<C> {
-    #[inline]
-    fn partial_cmp(&self, other: &&'a UCStr<C>) -> Option<cmp::Ordering> {
-        self.as_ustr().partial_cmp(*other)
-    }
-}
-
-impl<'a, C: UChar> PartialOrd<Cow<'a, UStr<C>>> for UString<C> {
-    #[inline]
-    fn partial_cmp(&self, other: &Cow<'a, UStr<C>>) -> Option<cmp::Ordering> {
-        self.as_ustr().partial_cmp(other.as_ref())
-    }
-}
-
-impl<'a, C: UChar> PartialOrd<Cow<'a, UCStr<C>>> for UString<C> {
-    #[inline]
-    fn partial_cmp(&self, other: &Cow<'a, UCStr<C>>) -> Option<cmp::Ordering> {
-        self.as_ustr().partial_cmp(other.as_ref())
-    }
-}
-
-impl<C: UChar> PartialOrd<UCString<C>> for UString<C> {
-    #[inline]
-    fn partial_cmp(&self, other: &UCString<C>) -> Option<cmp::Ordering> {
-        self.as_ustr().partial_cmp(other.as_ucstr())
-    }
-}
-
-impl<C: UChar> ToOwned for UStr<C> {
-    type Owned = UString<C>;
-
-    #[inline]
-    fn to_owned(&self) -> UString<C> {
-        self.to_ustring()
-    }
-}
-
-impl Write for U16String {
-    #[inline]
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        self.push_str(s);
-        Ok(())
-    }
-
-    #[inline]
-    fn write_char(&mut self, c: char) -> core::fmt::Result {
-        self.push_char(c);
-        Ok(())
-    }
-}
-
-/// An owned, mutable "wide" string for FFI that is **not** nul-aware.
-///
-/// [`U16String`] is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-16 data. These strings are intended to be used with
-/// FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
-///
-/// [`U16CString`][crate::U16CString] should be used instead if nul-aware strings are required.
-///
-/// [`U16String`] can be converted to and from many other standard Rust string types, including
-/// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
-///
-/// # Examples
-///
-/// The following example constructs a [`U16String`] and shows how to convert a [`U16String`] to a
-/// regular Rust [`String`].
-///
-/// ```rust
-/// use widestring::U16String;
-/// let s = "Test";
-/// // Create a wide string from the rust string
-/// let wstr = U16String::from_str(s);
-/// // Convert back to a rust string
-/// let rust_str = wstr.to_string_lossy();
-/// assert_eq!(rust_str, "Test");
-/// ```
-pub type U16String = UString<u16>;
-
-/// An owned, mutable 32-bit wide string for FFI that is **not** nul-aware.
-///
-/// [`U32String`] is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-32 data. These strings are intended to be used with
-/// FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
-///
-/// [`U32CString`][crate::U32CString] should be used instead if nul-aware 32-bit strings are
-/// required.
-///
-/// [`U32String`] can be converted to and from many other standard Rust string types, including
-/// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
-///
-/// # Examples
-///
-/// The following example constructs a [`U32String`] and shows how to convert a [`U32String`] to a
-/// regular Rust [`String`].
-///
-/// ```rust
-/// use widestring::U32String;
-/// let s = "Test";
-/// // Create a wide string from the rust string
-/// let wstr = U32String::from_str(s);
-/// // Convert back to a rust string
-/// let rust_str = wstr.to_string_lossy();
-/// assert_eq!(rust_str, "Test");
-/// ```
-pub type U32String = UString<u32>;
+/// Alias for [`U16String`] or [`U32String`] depending on platform. Intended to match typical C
+/// `wchar_t` size on platform.
+#[cfg(not(windows))]
+pub type WideString = U32String;
 
 /// Alias for [`U16String`] or [`U32String`] depending on platform. Intended to match typical C
 /// `wchar_t` size on platform.
-pub type WideString = UString<WideChar>;
+#[cfg(windows)]
+pub type WideString = U16String;
 
 #[cfg(test)]
 mod test {

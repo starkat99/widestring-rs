@@ -111,7 +111,8 @@ impl<I> FusedIterator for DecodeUtf32Lossy<I> where I: Iterator<Item = u32> + Fu
 
 /// An iterator over decoded [`char`][prim@char]s of a string slice.
 ///
-/// This struct is created by the [`chars`][crate::UStr<u16>::chars] method on [`U16Str`] and [`U16CStr`].
+/// This struct is created by the [`chars`][crate::U16Str::chars] method on [`U16Str`] and
+/// [`U16CStr`].
 /// See its documentation for more.
 #[derive(Clone)]
 pub struct Utf16Chars<'a> {
@@ -156,7 +157,8 @@ impl<'a> core::fmt::Debug for Utf16Chars<'a> {
 
 /// An iterator over decoded [`char`][prim@char]s of a string slice.
 ///
-/// This struct is created by the [`chars`][crate::UStr<u32>::chars] method on [`U32Str`] and [`U32CStr`].
+/// This struct is created by the [`chars`][crate::U32Str::chars] method on [`U32Str`] and
+/// [`U32CStr`].
 /// See its documentation for more.
 #[derive(Clone)]
 pub struct Utf32Chars<'a> {
@@ -201,8 +203,8 @@ impl<'a> core::fmt::Debug for Utf32Chars<'a> {
 
 /// A lossy iterator over decoded [`char`][prim@char]s of a string slice.
 ///
-/// This struct is created by the [`chars`][crate::UStr<u16>::chars] method on [`UStr`][crate::UStr] and
-/// [`UCStr`][crate::UCStr]. See its documentation for more.
+/// This struct is created by the [`chars`][crate::U16Str::chars] method.
+/// See its documentation for more.
 #[derive(Clone)]
 pub struct CharsLossy<'a> {
     inner: CharsDecoderLossy<'a>,
@@ -282,8 +284,8 @@ impl<'a> core::fmt::Debug for CharsLossy<'a> {
 
 /// An iterator over the [`char`][prim@char]s of a string slice, and their positions.
 ///
-/// This struct is created by the [`char_indices`][crate::UStr<u16>::char_indices] method on [`U16Str`] and
-/// [`U16CStr`]. See its documentation for more.
+/// This struct is created by the [`char_indices`][U16Str::char_indices] method on [`U16Str`]
+/// and [`U16CStr`]. See its documentation for more.
 #[derive(Debug, Clone)]
 pub struct Utf16CharIndices<'a> {
     index: usize,
@@ -335,8 +337,8 @@ impl<'a> FusedIterator for Utf16CharIndices<'a> {}
 
 /// A lossy iterator over the [`char`][prim@char]s of a string slice, and their positions.
 ///
-/// This struct is created by the [`char_indices_lossy`][crate::UStr<u16>::char_indices_lossy] method on
-/// [`U16Str`] and [`U16CStr`]. See its documentation for more.
+/// This struct is created by the [`char_indices_lossy`][U16Str::char_indices_lossy] method
+/// on [`U16Str`] and [`U16CStr`]. See its documentation for more.
 #[derive(Debug, Clone)]
 pub struct Utf16CharIndicesLossy<'a> {
     index: usize,

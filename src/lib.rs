@@ -1,8 +1,7 @@
 //! A wide string FFI module for converting to and from wide string variants.
 //!
 //! This module provides multiple types of wide strings: [`U16String`], [`U16CString`],
-//! [`U32String`], and [`U32CString`]. These types are backed by two generic implementations
-//! parameterized by element size: [`UString<C>`] and [`UCString<C>`]. The `UCString` types are
+//! [`U32String`], and [`U32CString`]. The `UCString` types are
 //! analogous to the standard [`CString`] FFI type, while the `UString` types are analogous to
 //! [`OsString`]. Otherwise, `U16` and `U32` types differ only in character width.
 //!
@@ -225,46 +224,14 @@ pub mod ustr;
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub mod ustring;
 
-#[doc(hidden)]
-#[deprecated(note = "use `error::ContainsNul` instead")]
-pub use error::ContainsNul as NulError;
-#[doc(hidden)]
-#[deprecated(note = "use `error::FromUt32Error` instead")]
-pub use error::FromUtf32Error;
-#[doc(hidden)]
-#[allow(deprecated)]
-pub use error::MissingNulError;
-
-pub use ucstr::{U16CStr, U32CStr, UCStr, WideCStr};
+pub use ucstr::{U16CStr, U32CStr, WideCStr};
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-pub use ucstring::{U16CString, U32CString, UCString, WideCString};
-pub use ustr::{U16Str, U32Str, UStr, WideStr};
+pub use ucstring::{U16CString, U32CString, WideCString};
+pub use ustr::{U16Str, U32Str, WideStr};
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-pub use ustring::{U16String, U32String, UString, WideString};
-
-/// Marker trait for primitive types used to represent wide character data. Should not be used
-/// directly.
-pub trait UChar: core::fmt::Debug + Sized + Copy + Default + Ord + Eq + private::Sealed {
-    /// NUL character value.
-    const NUL: Self;
-}
-
-impl UChar for u16 {
-    const NUL: u16 = 0;
-}
-
-impl UChar for u32 {
-    const NUL: u32 = 0;
-}
-
-mod private {
-    pub trait Sealed {}
-
-    impl Sealed for u16 {}
-    impl Sealed for u32 {}
-}
+pub use ustring::{U16String, U32String, WideString};
 
 #[cfg(not(windows))]
 /// Alias for [`u16`] or [`u32`] depending on platform. Intended to match typical C `wchar_t` size
