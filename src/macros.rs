@@ -121,7 +121,7 @@ implement_utf32_macro! {
 
 implement_utf32_macro! {
     /// Converts string literal into a `const` UTF-32 string slice of type
-    /// [`U32Str`][crate::U32Str].
+    /// [`U32CStr`][crate::U32CStr].
     ///
     /// The resulting `const` string slice will always be valid UTF-32 and include a nul terminator.
     ///
@@ -149,8 +149,8 @@ macro_rules! widestr {
     }};
 }
 
-/// Alias for [`u16str`] or [`u32str`] macros depending on platform. Intended to be used when using
-/// [`WideCStr`][crate::WideCStr] type alias.
+/// Alias for [`u16cstr`] or [`u32cstr`] macros depending on platform. Intended to be used when
+/// using [`WideCStr`][crate::WideCStr] type alias.
 #[cfg(not(windows))]
 #[macro_export]
 macro_rules! widecstr {
@@ -171,8 +171,8 @@ macro_rules! widestr {
     }};
 }
 
-/// Alias for [`u16str`] or [`u32str`] macros depending on platform. Intended to be used when using
-/// [`WideCStr`][crate::WideCStr] type alias.
+/// Alias for [`u16cstr`] or [`u32cstr`] macros depending on platform. Intended to be used when
+/// using [`WideCStr`][crate::WideCStr] type alias.
 #[cfg(windows)]
 #[macro_export]
 macro_rules! widecstr {
