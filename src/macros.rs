@@ -228,7 +228,7 @@ pub mod internals {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "alloc"))]
 mod test {
     use crate::{
         U16CStr, U16Str, U16String, U32CStr, U32Str, U32String, WideCStr, WideStr, WideString,
