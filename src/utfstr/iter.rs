@@ -45,14 +45,14 @@ impl<'a> FusedIterator for Utf16Chars<'a> {}
 
 impl<'a> core::fmt::Debug for Utf16Chars<'a> {
     #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         debug_fmt_char_iter(self.clone(), f)
     }
 }
 
 impl<'a> core::fmt::Display for Utf16Chars<'a> {
     #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         self.clone().try_for_each(|c| f.write_char(c))
     }
 }
@@ -108,14 +108,14 @@ impl<'a> ExactSizeIterator for Utf32Chars<'a> {
 
 impl<'a> core::fmt::Debug for Utf32Chars<'a> {
     #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         debug_fmt_char_iter(self.clone(), f)
     }
 }
 
 impl<'a> core::fmt::Display for Utf32Chars<'a> {
     #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         self.clone().try_for_each(|c| f.write_char(c))
     }
 }
@@ -252,7 +252,7 @@ macro_rules! escape_impls {
     ($($name:ident),+) => {$(
         impl<I> core::fmt::Display for $name<I> where I: Iterator<Item = char> + Clone {
             #[inline]
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 self.clone().try_for_each(|c| f.write_char(c))
             }
         }

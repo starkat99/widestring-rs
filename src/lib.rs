@@ -439,12 +439,14 @@ fn debug_fmt_char_iter(
 
 /// Returns whether the code unit a UTF-16 surrogate value.
 #[inline(always)]
+#[allow(dead_code)]
 const fn is_utf16_surrogate(u: u16) -> bool {
     u >= 0xD800 && u <= 0xDFFF
 }
 
 /// Returns whether the code unit a UTF-16 high surrogate value.
 #[inline(always)]
+#[allow(dead_code)]
 const fn is_utf16_high_surrogate(u: u16) -> bool {
     u >= 0xD800 && u <= 0xDBFF
 }
@@ -458,6 +460,7 @@ const fn is_utf16_low_surrogate(u: u16) -> bool {
 /// Convert a code unit or a UTF-16 surrogate pair to a `char`. Does not validate if the surrogates
 /// are valid.
 #[inline(always)]
+#[allow(dead_code)]
 unsafe fn utf16_to_char_unchecked(s: &[u16; 2]) -> char {
     decode_utf16(s.iter().copied()).next().unwrap().unwrap()
 }

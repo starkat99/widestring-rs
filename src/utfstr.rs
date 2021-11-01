@@ -9,7 +9,7 @@ use crate::{
 #[cfg(feature = "alloc")]
 use crate::{Utf16String, Utf32String};
 #[cfg(feature = "alloc")]
-use alloc::{borrow::Cow, string::String};
+use alloc::{borrow::Cow, boxed::Box, string::String};
 use core::{
     convert::{AsMut, AsRef, TryFrom},
     fmt::Write,
@@ -208,7 +208,7 @@ macro_rules! utfstr_common_impl {
 
         impl core::fmt::Debug for $utfstr {
             #[inline]
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 f.write_char('"')?;
                 self.escape_debug().try_for_each(|c| f.write_char(c))?;
                 f.write_char('"')
@@ -233,7 +233,7 @@ macro_rules! utfstr_common_impl {
 
         impl core::fmt::Display for $utfstr {
             #[inline]
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 self.chars().try_for_each(|c| f.write_char(c))
             }
         }
@@ -483,6 +483,7 @@ utfstr_common_impl! {
     ///
     /// ```
     /// # use widestring::{utf16str};
+    /// # #[cfg(feature = "alloc")] {
     /// let mut v = utf16str!("⚧️🏳️‍⚧️➡️s").to_owned();
     /// unsafe {
     ///     assert_eq!(utf16str!("⚧️"), v.get_unchecked_mut(..2));
@@ -490,6 +491,7 @@ utfstr_common_impl! {
     ///     assert_eq!(utf16str!("➡️"), v.get_unchecked_mut(8..10));
     ///     assert_eq!(utf16str!("s"), v.get_unchecked_mut(10..));
     /// }
+    /// # }
     /// ```
     fn get_unchecked_mut() {}
 
@@ -612,6 +614,7 @@ utfstr_common_impl! {
     ///
     /// ```
     /// # use widestring::utf32str;
+    /// # #[cfg(feature = "alloc")] {
     /// let mut v = utf32str!("⚧️🏳️‍⚧️➡️s").to_owned();
     /// unsafe {
     ///     assert_eq!(utf32str!("⚧️"), v.get_unchecked_mut(..2));
@@ -619,6 +622,7 @@ utfstr_common_impl! {
     ///     assert_eq!(utf32str!("➡️"), v.get_unchecked_mut(7..9));
     ///     assert_eq!(utf32str!("s"), v.get_unchecked_mut(9..))
     /// }
+    /// # }
     /// ```
     fn get_unchecked_mut() {}
 
@@ -1104,6 +1108,7 @@ impl Utf16Str {
     ///
     /// ```
     /// # use widestring::{utf16str};
+    /// # #[cfg(feature = "alloc")] {
     /// let mut v = utf16str!("⚧️🏳️‍⚧️➡️s").to_owned();
     ///
     /// assert_eq!(utf16str!("⚧️"), v.get_mut(..2).unwrap());
@@ -1112,6 +1117,7 @@ impl Utf16Str {
     /// assert_eq!(utf16str!("s"), v.get_mut(10..).unwrap());
     ///
     /// assert!(v.get_mut(3..4).is_none());
+    /// # }
     /// ```
     #[inline]
     pub fn get_mut<I>(&mut self, index: I) -> Option<&mut Self>
@@ -1179,12 +1185,14 @@ impl Utf16Str {
     ///
     /// ```
     /// # use widestring::utf16str;
+    /// # #[cfg(feature = "alloc")] {
     /// let mut s = utf16str!("Per Martin-Löf").to_owned();
     ///
     /// let (first, last) = s.split_at_mut(3);
     ///
     /// assert_eq!("Per", first);
     /// assert_eq!(" Martin-Löf", last);
+    /// # }
     /// ```
     #[inline]
     pub fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self) {
@@ -1748,12 +1756,14 @@ impl Utf32Str {
     ///
     /// ```
     /// # use widestring::{utf32str};
+    /// # #[cfg(feature = "alloc")] {
     /// let mut v = utf32str!("⚧️🏳️‍⚧️➡️s").to_owned();
     ///
     /// assert_eq!(utf32str!("⚧️"), v.get_mut(..2).unwrap());
     /// assert_eq!(utf32str!("🏳️‍⚧️"), v.get_mut(2..7).unwrap());
     /// assert_eq!(utf32str!("➡️"), v.get_mut(7..9).unwrap());
     /// assert_eq!(utf32str!("s"), v.get_mut(9..).unwrap());
+    /// # }
     /// ```
     #[inline]
     pub fn get_mut<I>(&mut self, index: I) -> Option<&mut Self>
@@ -1838,12 +1848,14 @@ impl Utf32Str {
     ///
     /// ```
     /// # use widestring::utf32str;
+    /// # #[cfg(feature = "alloc")] {
     /// let mut s = utf32str!("Per Martin-Löf").to_owned();
     ///
     /// let (first, last) = s.split_at_mut(3);
     ///
     /// assert_eq!("Per", first);
     /// assert_eq!(" Martin-Löf", last);
+    /// # }
     /// ```
     #[inline]
     pub fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self) {

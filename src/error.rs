@@ -3,6 +3,8 @@
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 #[doc(no_inline)]
 pub use alloc::string::FromUtf16Error;
 #[doc(no_inline)]

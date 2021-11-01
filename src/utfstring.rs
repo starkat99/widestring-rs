@@ -7,7 +7,12 @@ use crate::{
     is_utf16_low_surrogate, is_utf16_surrogate, utf16_to_char_unchecked, validate_utf16,
     validate_utf32, Utf16Str, Utf32Str,
 };
-use alloc::borrow::{Cow, ToOwned};
+use alloc::{
+    borrow::{Cow, ToOwned},
+    boxed::Box,
+    string::String,
+    vec::Vec,
+};
 use core::{
     borrow::{Borrow, BorrowMut},
     convert::{AsMut, AsRef, From, Infallible, TryFrom},
@@ -318,7 +323,7 @@ macro_rules! utfstring_common_impl {
 
         impl core::fmt::Debug for $utfstring {
             #[inline]
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 core::fmt::Debug::fmt(self.as_utfstr(), f)
             }
         }
@@ -341,7 +346,7 @@ macro_rules! utfstring_common_impl {
 
         impl core::fmt::Display for $utfstring {
             #[inline]
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 core::fmt::Display::fmt(self.as_utfstr(), f)
             }
         }
@@ -837,13 +842,13 @@ macro_rules! utfstring_common_impl {
 
         impl Write for $utfstring {
             #[inline]
-            fn write_str(&mut self, s: &str) -> std::fmt::Result {
+            fn write_str(&mut self, s: &str) -> core::fmt::Result {
                 self.push_str(s);
                 Ok(())
             }
 
             #[inline]
-            fn write_char(&mut self, c: char) -> std::fmt::Result {
+            fn write_char(&mut self, c: char) -> core::fmt::Result {
                 self.push(c);
                 Ok(())
             }
