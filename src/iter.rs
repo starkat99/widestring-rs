@@ -4,7 +4,7 @@ use crate::{error::DecodeUtf32Error, U16CStr, U16Str, U32CStr, U32Str};
 use core::{
     char::{self, DecodeUtf16Error},
     fmt::Write,
-    iter::{Copied, FusedIterator},
+    iter::{Copied, DoubleEndedIterator, ExactSizeIterator, FusedIterator},
     slice::Iter,
 };
 
@@ -73,7 +73,29 @@ where
     }
 }
 
+impl<I> DoubleEndedIterator for DecodeUtf32<I>
+where
+    I: Iterator<Item = u32> + DoubleEndedIterator,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter
+            .next_back()
+            .map(|u| core::char::from_u32(u).ok_or_else(|| DecodeUtf32Error::new(u)))
+    }
+}
+
 impl<I> FusedIterator for DecodeUtf32<I> where I: Iterator<Item = u32> + FusedIterator {}
+
+impl<I> ExactSizeIterator for DecodeUtf32<I>
+where
+    I: Iterator<Item = u32> + ExactSizeIterator,
+{
+    #[inline]
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+}
 
 /// An iterator that lossily decodes possibly ill-formed UTF-32 encoded code points from an iterator
 /// of `u32`s.
@@ -107,7 +129,29 @@ where
     }
 }
 
+impl<I> DoubleEndedIterator for DecodeUtf32Lossy<I>
+where
+    I: Iterator<Item = u32> + DoubleEndedIterator,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter
+            .next_back()
+            .map(|res| res.unwrap_or(core::char::REPLACEMENT_CHARACTER))
+    }
+}
+
 impl<I> FusedIterator for DecodeUtf32Lossy<I> where I: Iterator<Item = u32> + FusedIterator {}
+
+impl<I> ExactSizeIterator for DecodeUtf32Lossy<I>
+where
+    I: Iterator<Item = u32> + ExactSizeIterator,
+{
+    #[inline]
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+}
 
 /// An iterator over decoded [`char`][prim@char]s of a string slice.
 ///

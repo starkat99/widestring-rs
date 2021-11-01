@@ -3,6 +3,11 @@
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
+#[doc(no_inline)]
+pub use alloc::string::FromUtf16Error;
+#[doc(no_inline)]
+pub use core::char::DecodeUtf16Error;
+
 /// An error returned to indicate a problem with nul values occurred.
 ///
 /// The error will either being a [`MissingNulTerminator`] or [`ContainsNul`].
@@ -205,3 +210,75 @@ impl core::fmt::Display for DecodeUtf32Error {
 
 #[cfg(feature = "std")]
 impl std::error::Error for DecodeUtf32Error {}
+
+/// Errors which can occur when attempting to interpret a sequence of `u16` as UTF-16.
+#[derive(Debug, Clone)]
+pub struct Utf16Error {
+    index: usize,
+    source: core::char::DecodeUtf16Error,
+}
+
+impl Utf16Error {
+    pub(crate) fn new(index: usize, source: core::char::DecodeUtf16Error) -> Self {
+        Self { index, source }
+    }
+
+    /// Returns the index in the given string at which the invalid UTF-16 value occurred.
+    pub fn index(&self) -> usize {
+        self.index
+    }
+}
+
+impl core::fmt::Display for Utf16Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "unpaired UTF-16 surrogate {:x} at index {}",
+            self.source.unpaired_surrogate(),
+            self.index
+        )
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for Utf16Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.source)
+    }
+}
+
+/// Errors which can occur when attempting to interpret a sequence of `u32` as UTF-32.
+#[derive(Debug, Clone)]
+pub struct Utf32Error {
+    index: usize,
+    source: DecodeUtf32Error,
+}
+
+impl Utf32Error {
+    pub(crate) fn new(index: usize, source: DecodeUtf32Error) -> Self {
+        Self { index, source }
+    }
+
+    /// Returns the index in the given string at which the invalid UTF-32 value occurred.
+    pub fn index(&self) -> usize {
+        self.index
+    }
+}
+
+impl core::fmt::Display for Utf32Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "invalid UTF-32 value {:x} at index {}",
+            self.source.invalid_code_point(),
+            self.index
+        )
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for Utf32Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.source)
+    }
+}

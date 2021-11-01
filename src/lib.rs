@@ -224,6 +224,10 @@ pub mod ustr;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub mod ustring;
+pub mod utfstr;
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+pub mod utfstring;
 
 #[doc(hidden)]
 pub use macros::internals;
@@ -235,6 +239,10 @@ pub use ustr::{U16Str, U32Str, WideStr};
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub use ustring::{U16String, U32String, WideString};
+pub use utfstr::{Utf16Str, Utf32Str};
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+pub use utfstring::{Utf16String, Utf32String};
 
 #[cfg(not(windows))]
 /// Alias for [`u16`] or [`u32`] depending on platform. Intended to match typical C `wchar_t` size
@@ -354,7 +362,7 @@ where
 ///
 /// Properly encoded input data will output valid strings with escape sequences, however invalid
 /// encoding will purposefully output any unpaired surrogate as \<XXXX> which is not a valid escape
-/// sequence. This is intentional, as debug output is not meant to be parsed by read by humans.
+/// sequence. This is intentional, as debug output is not meant to be parsed but read by humans.
 fn debug_fmt_u16(s: &[u16], fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     debug_fmt_utf16_iter(core::char::decode_utf16(s.iter().copied()), fmt)
 }
@@ -363,7 +371,7 @@ fn debug_fmt_u16(s: &[u16], fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Re
 ///
 /// Properly encoded input data will output valid strings with escape sequences, however invalid
 /// encoding will purposefully output any unpaired surrogate as \<XXXX> which is not a valid escape
-/// sequence. This is intentional, as debug output is not meant to be parsed by read by humans.
+/// sequence. This is intentional, as debug output is not meant to be parsed but read by humans.
 fn debug_fmt_utf16_iter(
     iter: impl Iterator<Item = Result<char, DecodeUtf16Error>>,
     fmt: &mut core::fmt::Formatter<'_>,
@@ -388,7 +396,7 @@ fn debug_fmt_utf16_iter(
 ///
 /// Properly encoded input data will output valid strings with escape sequences, however invalid
 /// encoding will purposefully output any  invalid code point as \<XXXX> which is not a valid escape
-/// sequence. This is intentional, as debug output is not meant to be parsed by read by humans.
+/// sequence. This is intentional, as debug output is not meant to be parsed but read by humans.
 fn debug_fmt_u32(s: &[u32], fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     debug_fmt_utf32_iter(decode_utf32(s.iter().copied()), fmt)
 }
@@ -397,7 +405,7 @@ fn debug_fmt_u32(s: &[u32], fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Re
 ///
 /// Properly encoded input data will output valid strings with escape sequences, however invalid
 /// encoding will purposefully output any  invalid code point as \<XXXX> which is not a valid escape
-/// sequence. This is intentional, as debug output is not meant to be parsed by read by humans.
+/// sequence. This is intentional, as debug output is not meant to be parsed but read by humans.
 fn debug_fmt_utf32_iter(
     iter: impl Iterator<Item = Result<char, DecodeUtf32Error>>,
     fmt: &mut core::fmt::Formatter<'_>,
@@ -418,20 +426,60 @@ fn debug_fmt_utf32_iter(
     fmt.write_char('"')
 }
 
-#[cfg(feature = "alloc")]
-#[inline(always)]
-fn is_utf16_surrogate(u: u16) -> bool {
-    (0xD800..=0xDFFF).contains(&u)
+/// Debug implementation for any `char` iterator.
+fn debug_fmt_char_iter(
+    iter: impl Iterator<Item = char>,
+    fmt: &mut core::fmt::Formatter<'_>,
+) -> core::fmt::Result {
+    fmt.write_char('"')?;
+    iter.flat_map(|c| c.escape_debug())
+        .try_for_each(|c| fmt.write_char(c))?;
+    fmt.write_char('"')
 }
 
-#[cfg(feature = "alloc")]
+/// Returns whether the code unit a UTF-16 surrogate value.
 #[inline(always)]
-fn is_utf16_high_surrogate(u: u16) -> bool {
-    (0xD800..=0xDBFF).contains(&u)
+const fn is_utf16_surrogate(u: u16) -> bool {
+    u >= 0xD800 && u <= 0xDFFF
 }
 
-#[cfg(feature = "alloc")]
+/// Returns whether the code unit a UTF-16 high surrogate value.
 #[inline(always)]
-fn is_utf16_low_surrogate(u: u16) -> bool {
-    (0xDC00..=0xDFFF).contains(&u)
+const fn is_utf16_high_surrogate(u: u16) -> bool {
+    u >= 0xD800 && u <= 0xDBFF
+}
+
+/// Returns whether the code unit a UTF-16 low surrogate value.
+#[inline(always)]
+const fn is_utf16_low_surrogate(u: u16) -> bool {
+    u >= 0xDC00 && u <= 0xDFFF
+}
+
+/// Convert a code unit or a UTF-16 surrogate pair to a `char`. Does not validate if the surrogates
+/// are valid.
+#[inline(always)]
+unsafe fn utf16_to_char_unchecked(s: &[u16; 2]) -> char {
+    decode_utf16(s.iter().copied()).next().unwrap().unwrap()
+}
+
+/// Validates whether a slice of 16-bit values is valid UTF-16, returning an error if it is not.
+#[inline(always)]
+fn validate_utf16(s: &[u16]) -> Result<(), crate::error::Utf16Error> {
+    for (index, result) in crate::decode_utf16(s.iter().copied()).enumerate() {
+        if let Err(e) = result {
+            return Err(crate::error::Utf16Error::new(index, e));
+        }
+    }
+    Ok(())
+}
+
+/// Validates whether a slice of 32-bit values is valid UTF-32, returning an error if it is not.
+#[inline(always)]
+fn validate_utf32(s: &[u32]) -> Result<(), crate::error::Utf32Error> {
+    for (index, result) in crate::decode_utf32(s.iter().copied()).enumerate() {
+        if let Err(e) = result {
+            return Err(crate::error::Utf32Error::new(index, e));
+        }
+    }
+    Ok(())
 }

@@ -36,6 +36,23 @@ macro_rules! implement_utf16_macro {
 
 implement_utf16_macro! {
     /// Converts a string literal into a `const` UTF-16 string slice of type
+    /// [`Utf16Str`][crate::Utf16Str].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "alloc")] {
+    /// use widestring::{utf16str, Utf16Str, Utf16String};
+    ///
+    /// const STRING: &Utf16Str = utf16str!("My string");
+    /// assert_eq!(Utf16String::from_str("My string"), STRING);
+    /// # }
+    /// ```
+    utf16str 0 Utf16Str from_utf16_unchecked
+}
+
+implement_utf16_macro! {
+    /// Converts a string literal into a `const` UTF-16 string slice of type
     /// [`U16Str`][crate::U16Str].
     ///
     /// The resulting `const` string slice will always be valid UTF-16.
@@ -81,7 +98,7 @@ macro_rules! implement_utf32_macro {
                 const _WIDESTRING_U32_MACRO_UTF8: &$crate::internals::core::primitive::str = $text;
                 const _WIDESTRING_U32_MACRO_LEN: $crate::internals::core::primitive::usize =
                     $crate::internals::length_as_utf32(_WIDESTRING_U32_MACRO_UTF8) + $extra_len;
-                const _WIDESTRING_U32_MACRO_UTF16: [$crate::internals::core::primitive::u32;
+                const _WIDESTRING_U32_MACRO_UTF32: [$crate::internals::core::primitive::u32;
                         _WIDESTRING_U32_MACRO_LEN] = {
                     let mut buffer = [0u32; _WIDESTRING_U32_MACRO_LEN];
                     let mut bytes = _WIDESTRING_U32_MACRO_UTF8.as_bytes();
@@ -94,10 +111,27 @@ macro_rules! implement_utf32_macro {
                     buffer
                 };
                 #[allow(unused_unsafe)]
-                unsafe { $crate::$str::$fn(&_WIDESTRING_U32_MACRO_UTF16) }
+                unsafe { $crate::$str::$fn(&_WIDESTRING_U32_MACRO_UTF32) }
             }};
         }
     }
+}
+
+implement_utf32_macro! {
+    /// Converts a string literal into a `const` UTF-32 string slice of type
+    /// [`Utf32Str`][crate::Utf32Str].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "alloc")] {
+    /// use widestring::{utf32str, Utf32Str, Utf32String};
+    ///
+    /// const STRING: &Utf32Str = utf32str!("My string");
+    /// assert_eq!(Utf32String::from_str("My string"), STRING);
+    /// # }
+    /// ```
+    utf32str 0 Utf32Str from_utf32_unchecked
 }
 
 implement_utf32_macro! {
@@ -239,29 +273,34 @@ pub mod internals {
 #[cfg(all(test, feature = "alloc"))]
 mod test {
     use crate::{
-        U16CStr, U16Str, U16String, U32CStr, U32Str, U32String, WideCStr, WideStr, WideString,
+        U16CStr, U16Str, U32CStr, U32Str, Utf16Str, Utf16String, Utf32Str, Utf32String, WideCStr,
+        WideStr, WideString,
     };
 
-    const U16STR_TEST: &U16Str = u16str!("TEST STR");
-    const U16CSTR_TEST: &U16CStr = u16cstr!("TEST STR");
-    const U32STR_TEST: &U32Str = u32str!("TEST STR");
-    const U32CSTR_TEST: &U32CStr = u32cstr!("TEST STR");
-    const WIDESTR_TEST: &WideStr = widestr!("TEST STR");
-    const WIDECSTR_TEST: &WideCStr = widecstr!("TEST STR");
+    const UTF16STR_TEST: &Utf16Str = utf16str!("⚧️🏳️‍⚧️➡️s");
+    const U16STR_TEST: &U16Str = u16str!("⚧️🏳️‍⚧️➡️s");
+    const U16CSTR_TEST: &U16CStr = u16cstr!("⚧️🏳️‍⚧️➡️s");
+    const UTF32STR_TEST: &Utf32Str = utf32str!("⚧️🏳️‍⚧️➡️s");
+    const U32STR_TEST: &U32Str = u32str!("⚧️🏳️‍⚧️➡️s");
+    const U32CSTR_TEST: &U32CStr = u32cstr!("⚧️🏳️‍⚧️➡️s");
+    const WIDESTR_TEST: &WideStr = widestr!("⚧️🏳️‍⚧️➡️s");
+    const WIDECSTR_TEST: &WideCStr = widecstr!("⚧️🏳️‍⚧️➡️s");
 
     #[test]
     fn str_macros() {
-        let str = U16String::from_str("TEST STR");
+        let str = Utf16String::from_str("⚧️🏳️‍⚧️➡️s");
+        assert_eq!(&str, UTF16STR_TEST);
         assert_eq!(&str, U16STR_TEST);
         assert_eq!(&str, U16CSTR_TEST);
         assert!(matches!(U16CSTR_TEST.as_slice_with_nul().last(), Some(&0)));
 
-        let str = U32String::from_str("TEST STR");
+        let str = Utf32String::from_str("⚧️🏳️‍⚧️➡️s");
+        assert_eq!(&str, UTF32STR_TEST);
         assert_eq!(&str, U32STR_TEST);
         assert_eq!(&str, U32CSTR_TEST);
         assert!(matches!(U32CSTR_TEST.as_slice_with_nul().last(), Some(&0)));
 
-        let str = WideString::from_str("TEST STR");
+        let str = WideString::from_str("⚧️🏳️‍⚧️➡️s");
         assert_eq!(&str, WIDESTR_TEST);
         assert_eq!(&str, WIDECSTR_TEST);
         assert!(matches!(WIDECSTR_TEST.as_slice_with_nul().last(), Some(&0)));

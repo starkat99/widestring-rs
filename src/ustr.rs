@@ -71,7 +71,7 @@ macro_rules! ustr_common_impl {
             ///
             /// # Safety
             ///
-            /// This function is unsafe as there is no guarantee that the given pointer is valid for \
+            /// This function is unsafe as there is no guarantee that the given pointer is valid for
             /// `len` elements.
             ///
             /// In addition, the data must meet the safety conditions of
