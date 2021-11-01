@@ -23,6 +23,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - `new`
 
 ## Added
+- Added new UTF-encoded string types and associated types:
+  - `Utf16Str`
+  - `Utf32Str`
+  - `Utf16String`
+  - `Utf32String`
 - Added macros to convert string literals into `const` wide string slices:
   - `u16str!`
   - `u16cstr!`
@@ -30,6 +35,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - `u32cstr!`
   - `widestr!`
   - `widecstr!`
+  - `utf16str!`
+  - `utf32str!`
 - Added `NUL_TERMINATOR` associated constant to `U16CStr`, `U32CStr`, `U16CString`, and 
   `U32CString`.
 

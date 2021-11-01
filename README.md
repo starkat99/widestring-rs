@@ -15,7 +15,7 @@ provided, including support for UTF-16 and UTF-32, malformed encoding, C-style s
 - **`alloc`** - Enabled by default. Enable use of the [`alloc`](https://doc.rust-lang.org/alloc/)
   crate when not using the `std` library.
 
-  This enables the `U16String`, `U32String`, `U16CString`, `U32CString` types and aliases.
+  This enables the owned string types and aliases.
 
 - **`std`** - Enabled by default. Enable features that depend on the Rust `std` library, including
   everything in the `alloc` feature.
