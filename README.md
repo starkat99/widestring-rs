@@ -5,6 +5,9 @@ A wide string Rust library for converting to and from wide strings, such as
 those often used in Windows API or other FFI libaries. Both `u16` and `u32` string types are
 provided, including support for UTF-16 and UTF-32, malformed encoding, C-style strings, etc.
 
+Macros for converting string literals to UTF-16 and UTF-32 strings at compile time are also 
+included.
+
 ## Documentation
 
 - [Crate API Reference](https://docs.rs/widestring/)
