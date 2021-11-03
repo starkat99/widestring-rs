@@ -5,7 +5,7 @@
 use crate::{
     error::{Utf16Error, Utf32Error},
     is_utf16_low_surrogate, is_utf16_surrogate, utf16_to_char_unchecked, validate_utf16,
-    validate_utf32, Utf16Str, Utf32Str,
+    validate_utf16_vec, validate_utf32, validate_utf32_vec, Utf16Str, Utf32Str,
 };
 use alloc::{
     borrow::{Cow, ToOwned},
@@ -1098,7 +1098,8 @@ impl Utf16String {
     /// # Errors
     ///
     /// Returns an error if the vector is not UTF-16 with a description as to why the provided
-    /// vector is not UTF-16.
+    /// vector is not UTF-16. The error will contain the original [`Vec`] that can be reclaimed with
+    /// [`into_vec`][Utf16Error::into_vec].
     ///
     /// # Examples
     ///
@@ -1121,8 +1122,7 @@ impl Utf16String {
     /// assert!(Utf16String::from_vec(sparkle_heart).is_err());
     /// ```
     pub fn from_vec(v: impl Into<Vec<u16>>) -> Result<Self, Utf16Error> {
-        let v = v.into();
-        validate_utf16(&v)?;
+        let v = validate_utf16_vec(v.into())?;
         Ok(unsafe { Self::from_vec_unchecked(v) })
     }
 
@@ -1665,14 +1665,15 @@ impl Utf32String {
     /// [`from_vec_unchecked`][Self::from_vec_unchecked], which has the same behavior but skips
     /// the check.
     ///
-    /// If you need a string slice, consider using [`Utf32Str::from_vec`] instead.
+    /// If you need a string slice, consider using [`Utf32Str::from_slice`] instead.
     ///
     /// The inverse of this method is [`into_vec`][Self::into_vec].
     ///
     /// # Errors
     ///
     /// Returns an error if the vector is not UTF-32 with a description as to why the provided
-    /// vector is not UTF-32.
+    /// vector is not UTF-32. The error will contain the original [`Vec`] that can be reclaimed with
+    /// [`into_vec`][Utf32Error::into_vec].
     ///
     /// # Examples
     ///
@@ -1695,8 +1696,7 @@ impl Utf32String {
     /// assert!(Utf32String::from_vec(sparkle_heart).is_err());
     /// ```
     pub fn from_vec(v: impl Into<Vec<u32>>) -> Result<Self, Utf32Error> {
-        let v = v.into();
-        validate_utf32(&v)?;
+        let v = validate_utf32_vec(v.into())?;
         Ok(unsafe { Self::from_vec_unchecked(v) })
     }
 

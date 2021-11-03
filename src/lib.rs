@@ -208,6 +208,8 @@
 extern crate alloc;
 
 use crate::error::DecodeUtf32Error;
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
 use core::{char::DecodeUtf16Error, fmt::Write};
 
 pub mod error;
@@ -470,10 +472,22 @@ unsafe fn utf16_to_char_unchecked(s: &[u16; 2]) -> char {
 fn validate_utf16(s: &[u16]) -> Result<(), crate::error::Utf16Error> {
     for (index, result) in crate::decode_utf16(s.iter().copied()).enumerate() {
         if let Err(e) = result {
-            return Err(crate::error::Utf16Error::new(index, e));
+            return Err(crate::error::Utf16Error::empty(index, e));
         }
     }
     Ok(())
+}
+
+/// Validates whether a vector of 16-bit values is valid UTF-16, returning an error if it is not.
+#[inline(always)]
+#[cfg(feature = "alloc")]
+fn validate_utf16_vec(v: Vec<u16>) -> Result<Vec<u16>, crate::error::Utf16Error> {
+    for (index, result) in crate::decode_utf16(v.iter().copied()).enumerate() {
+        if let Err(e) = result {
+            return Err(crate::error::Utf16Error::new(v, index, e));
+        }
+    }
+    Ok(v)
 }
 
 /// Validates whether a slice of 32-bit values is valid UTF-32, returning an error if it is not.
@@ -481,8 +495,20 @@ fn validate_utf16(s: &[u16]) -> Result<(), crate::error::Utf16Error> {
 fn validate_utf32(s: &[u32]) -> Result<(), crate::error::Utf32Error> {
     for (index, result) in crate::decode_utf32(s.iter().copied()).enumerate() {
         if let Err(e) = result {
-            return Err(crate::error::Utf32Error::new(index, e));
+            return Err(crate::error::Utf32Error::empty(index, e));
         }
     }
     Ok(())
+}
+
+/// Validates whether a vector of 32-bit values is valid UTF-32, returning an error if it is not.
+#[inline(always)]
+#[cfg(feature = "alloc")]
+fn validate_utf32_vec(v: Vec<u32>) -> Result<Vec<u32>, crate::error::Utf32Error> {
+    for (index, result) in crate::decode_utf32(v.iter().copied()).enumerate() {
+        if let Err(e) = result {
+            return Err(crate::error::Utf32Error::new(v, index, e));
+        }
+    }
+    Ok(v)
 }

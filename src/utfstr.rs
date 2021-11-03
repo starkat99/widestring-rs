@@ -772,7 +772,7 @@ impl Utf16Str {
     /// [`from_slice_unchecked`][Self::from_slice_unchecked], which has the same behavior but skips
     /// the check.
     ///
-    /// If you need an owned string, consider using [`Utf16String::from_slice`] instead.
+    /// If you need an owned string, consider using [`Utf16String::from_vec`] instead.
     ///
     /// Because you can stack-allocate a `[u16; N]`, this function is one way to have a
     /// stack-allocated string. Indeed, the [`utf16str!`][crate::utf16str] macro does exactly this
@@ -820,7 +820,7 @@ impl Utf16Str {
     /// [`from_slice_unchecked_mut`][Self::from_slice_unchecked_mut], which has the same behavior
     /// but skips the check.
     ///
-    /// If you need an owned string, consider using [`Utf16String::from_slice`] instead.
+    /// If you need an owned string, consider using [`Utf16String::from_vec`] instead.
     ///
     /// Because you can stack-allocate a `[u16; N]`, this function is one way to have a
     /// stack-allocated string. Indeed, the [`utf16str!`][crate::utf16str] macro does exactly this
@@ -1346,7 +1346,7 @@ impl Utf32Str {
     /// [`from_slice_unchecked`][Self::from_slice_unchecked], which has the same behavior but skips
     /// the check.
     ///
-    /// If you need an owned string, consider using [`Utf32String::from_slice`] instead.
+    /// If you need an owned string, consider using [`Utf32String::from_vec`] instead.
     ///
     /// Because you can stack-allocate a `[u32; N]`, this function is one way to have a
     /// stack-allocated string. Indeed, the [`utf32str!`][crate::utf32str] macro does exactly this
@@ -1394,7 +1394,7 @@ impl Utf32Str {
     /// [`from_slice_unchecked_mut`][Self::from_slice_unchecked_mut], which has the same behavior
     /// but skips the check.
     ///
-    /// If you need an owned string, consider using [`Utf32String::from_slice`] instead.
+    /// If you need an owned string, consider using [`Utf32String::from_vec`] instead.
     ///
     /// Because you can stack-allocate a `[u32; N]`, this function is one way to have a
     /// stack-allocated string. Indeed, the [`utf32str!`][crate::utf32str] macro does exactly this

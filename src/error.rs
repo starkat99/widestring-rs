@@ -139,6 +139,9 @@ impl<C> ContainsNul<C> {
 
     /// Consumes this error, returning the underlying vector of values which generated the error in
     /// the first place.
+    ///
+    /// If the sequence that generated the error was a reference to a slice instead of a [`Vec`],
+    /// this will return [`None`].
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
@@ -218,16 +221,49 @@ impl std::error::Error for DecodeUtf32Error {}
 pub struct Utf16Error {
     index: usize,
     source: core::char::DecodeUtf16Error,
+    #[cfg(feature = "alloc")]
+    inner: Option<Vec<u16>>,
 }
 
 impl Utf16Error {
-    pub(crate) fn new(index: usize, source: core::char::DecodeUtf16Error) -> Self {
+    #[cfg(feature = "alloc")]
+    pub(crate) fn new(inner: Vec<u16>, index: usize, source: core::char::DecodeUtf16Error) -> Self {
+        Self {
+            inner: Some(inner),
+            index,
+            source,
+        }
+    }
+
+    #[cfg(feature = "alloc")]
+    pub(crate) fn empty(index: usize, source: core::char::DecodeUtf16Error) -> Self {
+        Self {
+            index,
+            source,
+            inner: None,
+        }
+    }
+
+    #[cfg(not(feature = "alloc"))]
+    pub(crate) fn empty(index: usize, source: core::char::DecodeUtf16Error) -> Self {
         Self { index, source }
     }
 
     /// Returns the index in the given string at which the invalid UTF-16 value occurred.
     pub fn index(&self) -> usize {
         self.index
+    }
+
+    /// Consumes this error, returning the underlying vector of values which generated the error in
+    /// the first place.
+    ///
+    /// If the sequence that generated the error was a reference to a slice instead of a [`Vec`],
+    /// this will return [`None`].
+    #[inline]
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    pub fn into_vec(self) -> Option<Vec<u16>> {
+        self.inner
     }
 }
 
@@ -254,16 +290,49 @@ impl std::error::Error for Utf16Error {
 pub struct Utf32Error {
     index: usize,
     source: DecodeUtf32Error,
+    #[cfg(feature = "alloc")]
+    inner: Option<Vec<u32>>,
 }
 
 impl Utf32Error {
-    pub(crate) fn new(index: usize, source: DecodeUtf32Error) -> Self {
+    #[cfg(feature = "alloc")]
+    pub(crate) fn new(inner: Vec<u32>, index: usize, source: DecodeUtf32Error) -> Self {
+        Self {
+            inner: Some(inner),
+            index,
+            source,
+        }
+    }
+
+    #[cfg(feature = "alloc")]
+    pub(crate) fn empty(index: usize, source: DecodeUtf32Error) -> Self {
+        Self {
+            index,
+            source,
+            inner: None,
+        }
+    }
+
+    #[cfg(not(feature = "alloc"))]
+    pub(crate) fn empty(index: usize, source: DecodeUtf32Error) -> Self {
         Self { index, source }
     }
 
     /// Returns the index in the given string at which the invalid UTF-32 value occurred.
     pub fn index(&self) -> usize {
         self.index
+    }
+
+    /// Consumes this error, returning the underlying vector of values which generated the error in
+    /// the first place.
+    ///
+    /// If the sequence that generated the error was a reference to a slice instead of a [`Vec`],
+    /// this will return [`None`].
+    #[inline]
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    pub fn into_vec(self) -> Option<Vec<u32>> {
+        self.inner
     }
 }
 
