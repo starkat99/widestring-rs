@@ -1,75 +1,99 @@
-//! A wide string FFI module for converting to and from wide string variants.
+//! A wide string library for converting to and from wide string variants.
 //!
-//! This module provides multiple types of wide strings: [`U16String`], [`U16CString`],
-//! [`U32String`], and [`U32CString`]. The `UCString` types are
-//! analogous to the standard [`CString`] FFI type, while the `UString` types are analogous to
-//! [`OsString`]. Otherwise, `U16` and `U32` types differ only in character width.
+//! This library provides multiple types of wide strings, each corresponding to a string types in
+//! the Rust standard library. [`Utf16String`] and [`Utf32String`] are analogous to the standard
+//! [`String`] type, providing a similar interface, and are always encoded as valid UTF-16 and
+//! UTF-32, respectively. They are the only type in this library that can losslessly and infallibly
+//! convert to and from [`String`], and are the easiest type to work with. They are not designed for
+//! working with FFI, but do support efficient conversions from the FFI types.
 //!
-//! For [`U16String`] and [`U32String`], no guarantees are made about the underlying string data;
-//! they are simply a sequence of UTF-16 *code units* or UTF-32 code points, both of which may be
-//! ill-formed or contain nul values. [`U16CString`] and [`U32CString`], on the other hand, are
-//! aware of nul values and are guaranteed to be terminated with a nul value (unless unchecked
-//! methods are used to construct the strings). Because [`U16CString`] and [`U32CString`] are
-//! C-style, nul-terminated strings, they will have no interior nul values. All four string types
-//! may still have unpaired UTF-16 surrogates or invalid UTF-32 code points; ill-formed data is
-//! preserved until conversion to a basic Rust [`String`].
+//! [`U16String`] and [`U32String`], on the other hand, are similar to (but not the same as),
+//! [`OsString`], and are designed around working with FFI. Unlike the UTF variants, these strings
+//! do not have a defined encoding, and can work with any wide character strings, regardless of
+//! the encoding. They can be converted to and from [`OsString`] (but may require an encoding
+//! conversion depending on the platform), although that string type is an OS-specified
+//! encoding, so take special care.
 //!
-//! Use [`U16String`] or [`U32String`] when you simply need to pass-through strings, or when you
-//! know or don't care if you're not dealing with a nul-terminated string, such as when string
-//! lengths are provided and you are only reading strings from FFI, not writing them out to a FFI.
+//! [`U16String`] and [`U32String`] also allow access and mutation that relies on the user
+//! to enforce any constraints on the data. Some methods do assume a UTF encoding, but do so in a
+//! way that handles malformed encoding data. For FFI, use [`U16String`] or [`U32String`] when you
+//! simply need to pass-through string data, or when you're not dealing with a nul-terminated data.
 //!
-//! Use [`U16CString`] or [`U32CString`] when you must properly handle nul values, and must deal
-//! with nul-terminated C-style wide strings, such as when you pass strings into FFI functions.
+//! Finally, [`U16CString`] and [`U32CString`] are wide version of the standard [`CString`] type.
+//! Like [`U16String`] and [`U32String`], they do not have defined encoding, but are designed to
+//! work with FFI, particularly C-style nul-terminated wide string data. These C-style strings are
+//! always terminated in a nul value, and are guaranteed to contain no interior nul values (unless
+//! unchecked methods are used). Again, these types may contain ill-formed encoding data, and
+//! methods handle it appropriately. Use [`U16CString`] or [`U32CString`] anytime you must properly
+//! handle nul values for when dealing with wide string C FFI.
 //!
-//! # Relationship to other Rust Strings
+//! Like the standard Rust string types, each wide string type has its corresponding wide string
+//! slice type, as shown in the following table:
 //!
-//! Standard Rust strings [`String`] and [`str`] are well-formed Unicode data encoded as UTF-8. The
-//! standard strings provide proper handling of Unicode and ensure strong safety guarantees.
+//! | String Type     | Slice Type   |
+//! |-----------------|--------------|
+//! | [`Utf16String`] | [`Utf16Str`] |
+//! | [`Utf32String`] | [`Utf32Str`] |
+//! | [`U16String`]   | [`U16Str`]   |
+//! | [`U32String`]   | [`U32Str`]   |
+//! | [`U16CString`]  | [`U16CStr`]  |
+//! | [`U32CString`]  | [`U32CStr`]  |
 //!
-//! [`CString`] and [`CStr`] are strings used for C FFI. They handle nul-terminated C-style
-//! strings. However, they do not have a builtin encoding, and  conversions between C-style and
-//! other Rust strings must specifically encode and decode the strings, and handle possibly invalid
-//! encoding data. They are safe to use only in passing string-like data back and forth from C APIs
-//! but do not provide any other guarantees, so may not be well-formed.
+//! All the string types in this library can be converted between string types of the same bit
+//! width, as well as appropriate standard Rust types, but be lossy and/or require knowledge of the
+//! underlying encoding. The UTF strings additionally can be converted between the two sizes of
+//! string, re-encoding the strings.
 //!
-//! [`OsString`] and [`OsStr`] are also strings for use with FFI. Unlike [`CString`], they do no
-//! special handling of nul values, but instead have an OS-specified encoding. While, for example,
-//! on Linux systems this is usually the UTF-8 encoding, this is not the case for every platform.
-//! The encoding may not even be 8-bit: on Windows, [`OsString`] uses a malformed encoding sometimes
-//! referred to as "WTF-8". In any case, like [`CString`], [`OsString`] has no additional guarantees
-//! and may not be well-formed.
+//! # Wide string literals
 //!
-//! Due to the loss of safety of these other string types, conversion to standard Rust [`String`] is
-//! lossy, and may require knowledge of the underlying encoding, including platform-specific
-//! quirks.
+//! Macros are provided for each wide string slice type that convert standard Rust [`str`] literals
+//! into UTF-16 or UTF-32 encoded versions of the slice type at *compile time*.
 //!
-//! The wide strings in this crate are roughly based on the principles of the string types in
-//! [`std::ffi`], though there are differences. [`U16String`], [`U32String`], [`U16Str`], and
-//! [`U32Str`] are roughly similar in role to [`OsString`] and [`OsStr`], while [`U16CString`],
-//! [`U32CString`], [`U16CStr`], and [`U32CStr`] are roughly similar in role to [`CString`] and
-//! [`CStr`]. Conversion to FFI string types is generally very straight forward and safe, while
-//! conversion directly between standard Rust [`String`] is a lossy conversion just as [`OsString`]
-//! is.
+//! ```
+//! use widestring::u16str;
+//! let hello = u16str!("Hello, world!"); // `hello` will be a &U16Str value
+//! ```
 //!
-//! [`U16String`] and [`U16CString`] are treated as though they use UTF-16 encoding, even if they
-//! may contain unpaired surrogates. [`U32String`] and [`U32CString`] are treated as though they use
-//! UTF-32 encoding, even if they may contain values outside the valid Unicode character range.
+//! These can be used anywhere a `const` function can be used, and provide a convenient method of
+//! specifying wide string literals instead of coding values by hand. The resulting string slices
+//! are always valid UTF encoding, and the [`u16cstr!`] and [`u32cstr!`] macros are automatically
+//! nul-terminated.
 //!
-//! # Remarks on UTF-16 Code Units
+//! # Cargo features
 //!
-//! *Code units* are the 16-bit units that comprise UTF-16 sequences. Code units
-//! can specify Unicode code points either as single units or in *surrogate pairs*. Because every
-//! code unit might be part of a surrogate pair, many regular string operations, including
-//! indexing into a wide string, writing to a wide string, or even iterating a wide string should
-//! be handled with care and are greatly discouraged. Some operations have safer alternatives
-//! provided, such as Unicode code point iteration instead of code unit iteration. Always keep in
-//! mind that the number of code units (`len()`) of a wide string is **not** equivalent to the
-//! number of Unicode characters in the string, merely the length of the UTF-16 encoding sequence.
-//! In fact, Unicode code points do not even have a one-to-one mapping with characters!
+//! This crate supports `no_std` when default cargo features are disabled. The `std` and `alloc`
+//! cargo features (enabled by default) enable the owned string types: [`U16String`], [`U32String`],
+//! [`U16CString`], [`U32CString`], [`Utf16String`], and [`Utf32String`] types and their modules.
+//! Other types such as the string slices do not require allocation and can be used in a `no_std`
+//! environment, even without the [`alloc`](https://doc.rust-lang.org/stable/alloc/index.html)
+//! crate.
 //!
-//! UTF-32 simply encodes Unicode code points as-is in 32-bit values, but Unicode character code
-//! points are reserved only for 21-bits. Again, Unicode code points do not have a one-to-one
-//! mapping with the concept of a visual character glyph.
+//! # Remarks on UTF-16 and UTF-32
+//!
+//! UTF-16 encoding is a variable-length encoding. The 16-bit code units can specificy Unicode code
+//! points either as single units or in _surrogate pairs_. Because every value might be part of a
+//! surrogate pair, many regular string operations on UTF-16 data, including indexing, writing, or
+//! even iterating, require considering either one or two values at a time. This library provides
+//! safe methods for these operations when the data is known to be UTF-16, such as with
+//! [`Utf16String`]. In those cases, keep in mind that the number of elements (`len()`) of the
+//! wide string is _not_ equivalent to the number of Unicode code points in the string, but is
+//! instead the number of code unit values.
+//!
+//! For [`U16String`] and [`U16CString`], which do not define an encoding, these same operations
+//! (indexing, mutating, iterating) do _not_ take into account UTF-16 encoding and may result in
+//! sequences that are ill-formed UTF-16. Some methods are provided that do make an exception to
+//! this and treat the strings as malformed UTF-16, which are specified in their documentation as to
+//! how they handle the invalid data.
+//!
+//! UTF-32 simply encodes Unicode code points as-is in 32-bit Unicode Scalar Values, but Unicode
+//! character code points are reserved only for 21-bits, and UTF-16 surrogates are invalid in
+//! UTF-32. Since UTF-32 is a fixed-width encoding, it is much easier to deal with, but equivalent
+//! methods to the 16-bit strings are provided for compatibility.
+//!
+//! All the 32-bit wide strings provide efficient methods to convert to and from sequences of
+//! [`char`] data, as the representation of UTF-32 strings is functionally equivalent to sequences
+//! of [`char`]s. Keep in mind that only [`Utf32String`] guaruntees this equivalence, however, since
+//! the other strings may contain invalid values.
 //!
 //! # FFI with C/C++ `wchar_t`
 //!
@@ -77,16 +101,13 @@
 //! and platform. Typically, `wchar_t` is 16-bits on Windows and 32-bits on most Unix-based
 //! platforms. For convenience when using `wchar_t`-based FFI's, type aliases for the corresponding
 //! string types are provided: [`WideString`] aliases [`U16String`] on Windows or [`U32String`]
-//! elsewhere, [`WideCString`] aliases [`U16CString`] or [`U32CString`], etc. The [`WideChar`] alias
-//! is also provided, aliasing [`u16`] or [`u32`].
+//! elsewhere, [`WideCString`] aliases [`U16CString`] or [`U32CString`], and [`WideUtfString`]
+//! aliases [`Utf16String`] or [`Utf32String`]. [`WideStr`], [`WideCStr`], and [`WideUtfStr`] are
+//! provided for the string slice types. The [`WideChar`] alias is also provided, aliasing [`u16`]
+//! or [`u32`] depending on platform.
 //!
-//! When not interacting with a FFI using `wchar_t`, it is recommended to use the string types
+//! When not interacting with a FFI that uses `wchar_t`, it is recommended to use the string types
 //! directly rather than via the wide alias.
-//!
-//! This crate supports `no_std` when default features are disabled. The `std` and `alloc` features
-//! (enabled by default) enable the [`U16String`], [`U32String`], [`U16CString`], and [`U32CString`]
-//! types and aliases. Other types do not require allocation and can be used in a `no_std`
-//! environment.
 //!
 //! # Nul values
 //!
@@ -241,10 +262,10 @@ pub use ustr::{U16Str, U32Str, WideStr};
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub use ustring::{U16String, U32String, WideString};
-pub use utfstr::{Utf16Str, Utf32Str};
+pub use utfstr::{Utf16Str, Utf32Str, WideUtfStr};
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-pub use utfstring::{Utf16String, Utf32String};
+pub use utfstring::{Utf16String, Utf32String, WideUtfString};
 
 #[cfg(not(windows))]
 /// Alias for [`u16`] or [`u32`] depending on platform. Intended to match typical C `wchar_t` size

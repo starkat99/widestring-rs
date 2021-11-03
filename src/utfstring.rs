@@ -46,6 +46,7 @@ macro_rules! utfstring_common_impl {
     } => {
         $(#[$utfstring_meta])*
         #[derive(Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
         pub struct $utfstring {
             inner: Vec<$uchar>,
         }
@@ -108,7 +109,7 @@ macro_rules! utfstring_common_impl {
                 unsafe { $utfstr::from_slice_unchecked_mut(&mut self.inner) }
             }
 
-            /// Converts an encoded string into an unencoded wide string slice.
+            /// Converts this string into a wide string of undefined encoding.
             #[inline]
             pub fn as_ustr(&self) -> &crate::$ustr {
                 crate::$ustr::from_slice(self.as_slice())
@@ -1205,8 +1206,8 @@ impl Utf16String {
         }
     }
 
-    /// Converts an unencoded string to a UTF-16 string without checking that the string contains
-    /// valid UTF-16.
+    /// Converts a wide string of undefined encoding to a UTF-16 string without checking that the
+    /// string contains valid UTF-16.
     ///
     /// See the safe version, [`from_ustring`][Self::from_ustring], for more information.
     ///
@@ -1232,11 +1233,11 @@ impl Utf16String {
         Self::from_vec_unchecked(s.into().into_vec())
     }
 
-    /// Converts an unencoded string into a UTF-16 string.
+    /// Converts a wide string of undefined encoding into a UTF-16 string.
     ///
-    /// Not all unencoded strings are valid to convert, since [`Utf16String`] requires that
-    /// it is always valid UTF-16. This function checks to ensure that the string is valid UTF-16,
-    /// and then does the conversion. This does not do any copying.
+    /// Not all strings with undefined encoding are valid to convert, since [`Utf16String`] requires
+    /// that it is always valid UTF-16. This function checks to ensure that the string is valid
+    /// UTF-16, and then does the conversion. This does not do any copying.
     ///
     /// If you are sure that the string is valid UTF-16, and you don't want to incur the overhead of
     /// the validity check, there is an unsafe version of this function,
@@ -1277,7 +1278,8 @@ impl Utf16String {
         Self::from_vec(s.into().into_vec())
     }
 
-    /// Converts an unencoded string slice of to a UTF-16 string, including invalid characters.
+    /// Converts a wide string slice of undefined encoding of to a UTF-16 string, including invalid
+    /// characters.
     ///
     /// Since the given string slice may not be valid UTF-16, and [`Utf16String`] requires that
     /// it is always valid UTF-16, during the conversion this function replaces any invalid UTF-16
@@ -1761,8 +1763,8 @@ impl Utf32String {
         }
     }
 
-    /// Converts an unencoded string to a UTF-32 string without checking that the string contains
-    /// valid UTF-32.
+    /// Converts a wide string of undefined encoding to a UTF-32 string without checking that the
+    /// string contains valid UTF-32.
     ///
     /// See the safe version, [`from_ustring`][Self::from_ustring], for more information.
     ///
@@ -1788,11 +1790,11 @@ impl Utf32String {
         Self::from_vec_unchecked(s.into().into_vec())
     }
 
-    /// Converts an unencoded string into a UTF-32 string.
+    /// Converts a wide string of undefined encoding string into a UTF-32 string.
     ///
-    /// Not all unencoded strings are valid to convert, since [`Utf32String`] requires that
-    /// it is always valid UTF-32. This function checks to ensure that the string is valid UTF-32,
-    /// and then does the conversion. This does not do any copying.
+    /// Not all strings of undefined encoding are valid to convert, since [`Utf32String`] requires
+    /// that it is always valid UTF-32. This function checks to ensure that the string is valid
+    /// UTF-32, and then does the conversion. This does not do any copying.
     ///
     /// If you are sure that the string is valid UTF-32, and you don't want to incur the overhead of
     /// the validity check, there is an unsafe version of this function,
@@ -1833,7 +1835,8 @@ impl Utf32String {
         Self::from_vec(s.into().into_vec())
     }
 
-    /// Converts an unencoded string slice of to a UTF-32 string, including invalid characters.
+    /// Converts a wide string slice of undefined encoding to a UTF-32 string, including invalid
+    /// characters.
     ///
     /// Since the given string slice may not be valid UTF-32, and [`Utf32String`] requires that
     /// it is always valid UTF-32, during the conversion this function replaces any invalid UTF-32
@@ -2321,3 +2324,13 @@ impl TryFrom<&[u32]> for Utf32String {
         Utf32String::from_vec(value)
     }
 }
+
+/// Alias for [`Utf16String`] or [`Utf32String`] depending on platform. Intended to match typical C
+/// `wchar_t` size on platform.
+#[cfg(not(windows))]
+pub type WideUtfString = Utf32String;
+
+/// Alias for [`Utf16String`] or [`Utf32String`] depending on platform. Intended to match typical C
+/// `wchar_t` size on platform.
+#[cfg(windows)]
+pub type WideUtfString = Utf16String;

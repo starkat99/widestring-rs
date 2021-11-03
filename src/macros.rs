@@ -183,6 +183,17 @@ macro_rules! widestr {
     }};
 }
 
+/// Alias for [`utf16str`] or [`utf32str`] macros depending on platform. Intended to be used when
+/// using [`WideUtfStr`][crate::WideUtfStr] type alias.
+#[cfg(not(windows))]
+#[macro_export]
+macro_rules! wideutfstr {
+    ($text:expr) => {{
+        use $crate::*;
+        utf32str!($text)
+    }};
+}
+
 /// Alias for [`u16cstr`] or [`u32cstr`] macros depending on platform. Intended to be used when
 /// using [`WideCStr`][crate::WideCStr] type alias.
 #[cfg(not(windows))]
@@ -202,6 +213,17 @@ macro_rules! widestr {
     ($text:expr) => {{
         use $crate::*;
         u16str!($text)
+    }};
+}
+
+/// Alias for [`utf16str`] or [`utf32str`] macros depending on platform. Intended to be used when
+/// using [`WideUtfStr`][crate::WideUtfStr] type alias.
+#[cfg(windows)]
+#[macro_export]
+macro_rules! wideutfstr {
+    ($text:expr) => {{
+        use $crate::*;
+        utf16str!($text)
     }};
 }
 

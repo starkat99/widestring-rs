@@ -15,139 +15,32 @@ use core::{
     ptr, slice,
 };
 
-/// An owned, mutable C-style 16-bit wide string for FFI that is nul-aware and nul-terminated.
-///
-/// [`U16CString`] is aware of nul values. Unless unchecked conversions are used, all [`U16CString`]
-/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
-/// The strings may still contain invalid or ill-formed UTF-16 data. These strings are
-/// intended to be used with FFI functions such as Windows API that may require nul-terminated
-/// strings.
-///
-/// [`U16CString`] can be converted to and from many other string types, including [`U16String`],
-/// [`OsString`][std::ffi::OsString], and [`String`], making proper Unicode FFI safe and easy.
-///
-/// # Examples
-///
-/// The following example constructs a [`U16CString`] and shows how to convert a [`U16CString`] to a
-/// regular Rust [`String`].
-///
-/// ```rust
-/// use widestring::U16CString;
-/// let s = "Test";
-/// // Create a wide string from the rust string
-/// let wstr = U16CString::from_str(s).unwrap();
-/// // Convert back to a rust string
-/// let rust_str = wstr.to_string_lossy();
-/// assert_eq!(rust_str, "Test");
-/// ```
-#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct U16CString {
-    pub(crate) inner: Box<[u16]>,
-}
-
-/// An owned, mutable C-style 32-bit wide string for FFI that is nul-aware and nul-terminated.
-///
-/// [`U32CString`] is aware of nul values. Unless unchecked conversions are used, all [`U32CString`]
-/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
-/// The strings may still contain invalid or ill-formed UTF-32 data. These strings are
-/// intended to be used with FFI functions such as Windows API that may require nul-terminated
-/// strings.
-///
-/// [`U32CString`] can be converted to and from many other string types, including [`U32String`],
-/// [`OsString`][std::ffi::OsString], and [`String`], making proper Unicode FFI safe and easy.
-///
-/// # Examples
-///
-/// The following example constructs a [`U32CString`] and shows how to convert a [`U32CString`] to a
-/// regular Rust [`String`].
-///
-/// ```rust
-/// use widestring::U32CString;
-/// let s = "Test";
-/// // Create a wide string from the rust string
-/// let wstr = U32CString::from_str(s).unwrap();
-/// // Convert back to a rust string
-/// let rust_str = wstr.to_string_lossy();
-/// assert_eq!(rust_str, "Test");
-/// ```
-#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct U32CString {
-    pub(crate) inner: Box<[u32]>,
-}
-
 macro_rules! ucstring_common_impl {
-    ($ucstring:ident $uchar:ty => $ucstr:ident $ustring:ident $ustr:ident) => {
+    {
+        $(#[$ucstring_meta:meta])*
+        struct $ucstring:ident([$uchar:ty]);
+        type UCStr = $ucstr:ident;
+        type UString = $ustring:ident;
+        type UStr = $ustr:ident;
+        $(#[$from_vec_meta:meta])*
+        fn from_vec() -> {}
+        $(#[$from_vec_truncate_meta:meta])*
+        fn from_vec_truncate() -> {}
+        $(#[$into_boxed_ucstr_meta:meta])*
+        fn into_boxed_ucstr() -> {}
+    } => {
+        $(#[$ucstring_meta])*
+        #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+        #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        pub struct $ucstring {
+            pub(crate) inner: Box<[$uchar]>,
+        }
+
         impl $ucstring {
             /// The nul terminator character value.
             pub const NUL_TERMINATOR: $uchar = 0;
 
-            /// Constructs a wide C string from a container of wide character data.
-            ///
-            /// This method will consume the provided data and use the underlying elements to
-            /// construct a new string. The data will be scanned for invalid interior nul values.
-            ///
-            /// # Errors
-            ///
-            /// This function will return an error if the data contains a nul value that is not the
-            /// terminating nul.
-            /// The returned error will contain the original [`Vec`] as well as the position of the
-            /// nul value.
-            ///
-            /// # Examples
-            ///
-            /// ```rust
-            /// use widestring::U16CString;
-            /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
-            /// # let cloned = v.clone();
-            /// // Create a wide string from the vector
-            /// let wcstr = U16CString::from_vec(v).unwrap();
-            /// # assert_eq!(wcstr.into_vec(), cloned);
-            /// ```
-            ///
-            /// ```rust
-            /// use widestring::U32CString;
-            /// let v = vec![84u32, 104u32, 101u32]; // 'T' 'h' 'e'
-            /// # let cloned = v.clone();
-            /// // Create a wide string from the vector
-            /// let wcstr = U32CString::from_vec(v).unwrap();
-            /// # assert_eq!(wcstr.into_vec(), cloned);
-            /// ```
-            ///
-            /// Empty vectors are valid and will return an empty string with a nul terminator:
-            ///
-            /// ```
-            /// use widestring::U16CString;
-            /// let wcstr = U16CString::from_vec(vec![]).unwrap();
-            /// assert_eq!(wcstr, U16CString::default());
-            /// ```
-            ///
-            /// ```
-            /// use widestring::U32CString;
-            /// let wcstr = U32CString::from_vec(vec![]).unwrap();
-            /// assert_eq!(wcstr, U32CString::default());
-            /// ```
-            ///
-            /// The following example demonstrates errors from nul values in a vector.
-            ///
-            /// ```rust
-            /// use widestring::U16CString;
-            /// let v = vec![84u16, 0u16, 104u16, 101u16]; // 'T' NUL 'h' 'e'
-            /// // Create a wide string from the vector
-            /// let res = U16CString::from_vec(v);
-            /// assert!(res.is_err());
-            /// assert_eq!(res.err().unwrap().nul_position(), 1);
-            /// ```
-            ///
-            /// ```rust
-            /// use widestring::U32CString;
-            /// let v = vec![84u32, 0u32, 104u32, 101u32]; // 'T' NUL 'h' 'e'
-            /// // Create a wide string from the vector
-            /// let res = U32CString::from_vec(v);
-            /// assert!(res.is_err());
-            /// assert_eq!(res.err().unwrap().nul_position(), 1);
-            /// ```
+            $(#[$from_vec_meta])*
             pub fn from_vec(v: impl Into<Vec<$uchar>>) -> Result<Self, ContainsNul<$uchar>> {
                 let v = v.into();
                 // Check for nul vals, ignoring nul terminator
@@ -158,30 +51,7 @@ macro_rules! ucstring_common_impl {
                 }
             }
 
-            /// Constructs a wide C string from a container of wide character data, truncating at
-            /// the first nul terminator.
-            ///
-            /// The string will be truncated at the first nul value in the data.
-            ///
-            /// # Examples
-            ///
-            /// ```rust
-            /// use widestring::U16CString;
-            /// let v = vec![84u16, 104u16, 101u16, 0u16]; // 'T' 'h' 'e' NUL
-            /// # let cloned = v[..3].to_owned();
-            /// // Create a wide string from the vector
-            /// let wcstr = U16CString::from_vec_truncate(v);
-            /// # assert_eq!(wcstr.into_vec(), cloned);
-            /// ```
-            ///
-            /// ```rust
-            /// use widestring::U32CString;
-            /// let v = vec![84u32, 104u32, 101u32, 0u32]; // 'T' 'h' 'e' NUL
-            /// # let cloned = v[..3].to_owned();
-            /// // Create a wide string from the vector
-            /// let wcstr = U32CString::from_vec_truncate(v);
-            /// # assert_eq!(wcstr.into_vec(), cloned);
-            /// ```
+            $(#[$from_vec_truncate_meta])*
             pub fn from_vec_truncate(v: impl Into<Vec<$uchar>>) -> Self {
                 let mut v = v.into();
                 // Check for nul vals
@@ -474,29 +344,7 @@ macro_rules! ucstring_common_impl {
                 }
             }
 
-            /// Converts this wide C string into a boxed wide C string slice.
-            ///
-            /// # Examples
-            ///
-            /// ```
-            /// use widestring::{U16CString, U16CStr};
-            ///
-            /// let mut v = vec![102u16, 111u16, 111u16]; // "foo"
-            /// let c_string = U16CString::from_vec(v.clone()).unwrap();
-            /// let boxed = c_string.into_boxed_ucstr();
-            /// v.push(0);
-            /// assert_eq!(&*boxed, U16CStr::from_slice(&v).unwrap());
-            /// ```
-            ///
-            /// ```
-            /// use widestring::{U32CString, U32CStr};
-            ///
-            /// let mut v = vec![102u32, 111u32, 111u32]; // "foo"
-            /// let c_string = U32CString::from_vec(v.clone()).unwrap();
-            /// let boxed = c_string.into_boxed_ucstr();
-            /// v.push(0);
-            /// assert_eq!(&*boxed, U32CStr::from_slice(&v).unwrap());
-            /// ```
+            $(#[$into_boxed_ucstr_meta])*
             #[inline]
             pub fn into_boxed_ucstr(self) -> Box<$ucstr> {
                 unsafe { Box::from_raw(Box::into_raw(self.into_inner()) as *mut $ucstr) }
@@ -722,6 +570,20 @@ macro_rules! ucstring_common_impl {
             }
         }
 
+        impl PartialEq<$ucstring> for &$ucstr {
+            #[inline]
+            fn eq(&self, other: &$ucstring) -> bool {
+                self == other.as_ucstr()
+            }
+        }
+
+        impl PartialEq<$ucstring> for &$ustr {
+            #[inline]
+            fn eq(&self, other: &$ucstring) -> bool {
+                self == other.as_ucstr()
+            }
+        }
+
         impl PartialOrd<$ustr> for $ucstring {
             #[inline]
             fn partial_cmp(&self, other: &$ustr) -> Option<cmp::Ordering> {
@@ -782,11 +644,336 @@ macro_rules! ucstring_common_impl {
     };
 }
 
-ucstring_common_impl!(U16CString u16 => U16CStr U16String U16Str);
-ucstring_common_impl!(U32CString u32 => U32CStr U32String U32Str);
+ucstring_common_impl! {
+    /// An owned, mutable C-style 16-bit wide string for FFI that is nul-aware and nul-terminated.
+    ///
+    /// The string slice of a [`U16CString`] is [`U16CStr`].
+    ///
+    /// [`U16CString`] strings do not have a defined encoding. While it is sometimes
+    /// assumed that they contain possibly invalid or ill-formed UTF-16 data, they may be used for
+    /// any wide encoded string.
+    ///
+    /// # Nul termination
+    ///
+    /// [`U16CString`] is aware of nul (`0`) values. Unless unchecked conversions are used, all
+    /// [`U16CString`] strings end with a nul-terminator in the underlying buffer and contain no
+    /// internal nul values. These strings are intended to be used with FFI functions that require
+    /// nul-terminated strings.
+    ///
+    /// Because of the nul termination requirement, multiple classes methods for provided for
+    /// construction a [`U16CString`] under various scenarios. By default, methods such as
+    /// [`from_ptr`][Self::from_ptr] and [`from_vec`][Self::from_vec] return an error if it contains
+    /// any interior nul values before the terminator. For these methods, the input does not need to
+    /// contain the terminating nul; it is added if it is does not exist.
+    ///
+    /// `_truncate` methods on the other hand, such as
+    /// [`from_ptr_truncate`][Self::from_ptr_truncate] and
+    /// [`from_vec_truncate`][Self::from_vec_truncate], construct a string that terminates with
+    /// the first nul value encountered in the string, and do not return an error. They
+    /// automatically ensure the string is terminated in a nul value even if it was not originally.
+    ///
+    /// Finally, unsafe `_unchecked` variants of these methods, such as
+    /// [`from_ptr_unchecked`][Self::from_ptr_unchecked] and
+    /// [`from_vec_unchecked`][Self::from_vec_unchecked] allow bypassing any checks for nul
+    /// values, when the input has already been ensured to no interior nul values. Again, any
+    /// missing nul terminator is automatically added if necessary.
+    ///
+    /// # Examples
+    ///
+    /// The easiest way to use [`U16CString`] outside of FFI is with the
+    /// [`u16cstr!`][crate::u16cstr] macro to convert string literals into nul-terminated UTF-16
+    /// strings at compile time:
+    ///
+    /// ```
+    /// use widestring::{u16cstr, U16CString};
+    /// let hello = U16CString::from(u16cstr!("Hello, world!"));
+    /// ```
+    ///
+    /// You can also convert any [`u16`] slice or vector directly:
+    ///
+    /// ```
+    /// use widestring::{u16cstr, U16CString};
+    ///
+    /// let sparkle_heart = vec![0xd83d, 0xdc96];
+    /// let sparkle_heart = U16CString::from_vec(sparkle_heart).unwrap();
+    /// // The string will add the missing nul terminator
+    ///
+    /// assert_eq!(u16cstr!("💖"), sparkle_heart);
+    ///
+    /// // This unpaired UTf-16 surrogate is invalid UTF-16, but is perfectly valid in U16CString
+    /// let malformed_utf16 = vec![0xd83d, 0x0];
+    /// let s = U16CString::from_vec(malformed_utf16).unwrap();
+    ///
+    /// assert_eq!(s.len(), 1); // Note the terminating nul is not counted in the length
+    /// ```
+    ///
+    /// When working with a FFI, it is useful to create a [`U16CString`] from a pointer:
+    ///
+    /// ```
+    /// use widestring::{u16cstr, U16CString};
+    ///
+    /// let sparkle_heart = [0xd83d, 0xdc96, 0x0];
+    /// let s = unsafe {
+    ///     // Note the string and pointer length does not include the nul terminator
+    ///     U16CString::from_ptr(sparkle_heart.as_ptr(), sparkle_heart.len() - 1).unwrap()
+    /// };
+    /// assert_eq!(u16cstr!("💖"), s);
+    ///
+    /// // Alternatively, if the length of the pointer is unknown but definitely terminates in nul,
+    /// // a C-style string version can be used
+    /// let s = unsafe { U16CString::from_ptr_str(sparkle_heart.as_ptr()) };
+    ///
+    /// assert_eq!(u16cstr!("💖"), s);
+    /// ```
+    struct U16CString([u16]);
+
+    type UCStr = U16CStr;
+    type UString = U16String;
+    type UStr = U16Str;
+
+    /// Constructs a wide C string from a container of wide character data.
+    ///
+    /// This method will consume the provided data and use the underlying elements to
+    /// construct a new string. The data will be scanned for invalid interior nul values.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the data contains a nul value that is not the
+    /// terminating nul.
+    /// The returned error will contain the original [`Vec`] as well as the position of the
+    /// nul value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::U16CString;
+    /// let v = vec![84u16, 104u16, 101u16]; // 'T' 'h' 'e'
+    /// # let cloned = v.clone();
+    /// // Create a wide string from the vector
+    /// let wcstr = U16CString::from_vec(v).unwrap();
+    /// # assert_eq!(wcstr.into_vec(), cloned);
+    /// ```
+    ///
+    /// Empty vectors are valid and will return an empty string with a nul terminator:
+    ///
+    /// ```
+    /// use widestring::U16CString;
+    /// let wcstr = U16CString::from_vec(vec![]).unwrap();
+    /// assert_eq!(wcstr, U16CString::default());
+    /// ```
+    ///
+    /// The following example demonstrates errors from nul values in a vector.
+    ///
+    /// ```rust
+    /// use widestring::U16CString;
+    /// let v = vec![84u16, 0u16, 104u16, 101u16]; // 'T' NUL 'h' 'e'
+    /// // Create a wide string from the vector
+    /// let res = U16CString::from_vec(v);
+    /// assert!(res.is_err());
+    /// assert_eq!(res.err().unwrap().nul_position(), 1);
+    /// ```
+    fn from_vec() -> {}
+
+    /// Constructs a wide C string from a container of wide character data, truncating at
+    /// the first nul terminator.
+    ///
+    /// The string will be truncated at the first nul value in the data.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::U16CString;
+    /// let v = vec![84u16, 104u16, 101u16, 0u16]; // 'T' 'h' 'e' NUL
+    /// # let cloned = v[..3].to_owned();
+    /// // Create a wide string from the vector
+    /// let wcstr = U16CString::from_vec_truncate(v);
+    /// # assert_eq!(wcstr.into_vec(), cloned);
+    /// ```
+    fn from_vec_truncate() -> {}
+
+    /// Converts this wide C string into a boxed wide C string slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::{U16CString, U16CStr};
+    ///
+    /// let mut v = vec![102u16, 111u16, 111u16]; // "foo"
+    /// let c_string = U16CString::from_vec(v.clone()).unwrap();
+    /// let boxed = c_string.into_boxed_ucstr();
+    /// v.push(0);
+    /// assert_eq!(&*boxed, U16CStr::from_slice(&v).unwrap());
+    /// ```
+    fn into_boxed_ucstr() -> {}
+}
+ucstring_common_impl! {
+    /// An owned, mutable C-style 32-bit wide string for FFI that is nul-aware and nul-terminated.
+    ///
+    /// The string slice of a [`U32CString`] is [`U32CStr`].
+    ///
+    /// [`U32CString`] strings do not have a defined encoding. While it is sometimes
+    /// assumed that they contain possibly invalid or ill-formed UTF-32 data, they may be used for
+    /// any wide encoded string.
+    ///
+    /// # Nul termination
+    ///
+    /// [`U32CString`] is aware of nul (`0`) values. Unless unchecked conversions are used, all
+    /// [`U32CString`] strings end with a nul-terminator in the underlying buffer and contain no
+    /// internal nul values. These strings are intended to be used with FFI functions that require
+    /// nul-terminated strings.
+    ///
+    /// Because of the nul termination requirement, multiple classes methods for provided for
+    /// construction a [`U32CString`] under various scenarios. By default, methods such as
+    /// [`from_ptr`][Self::from_ptr] and [`from_vec`][Self::from_vec] return an error if it contains
+    /// any interior nul values before the terminator. For these methods, the input does not need to
+    /// contain the terminating nul; it is added if it is does not exist.
+    ///
+    /// `_truncate` methods on the other hand, such as
+    /// [`from_ptr_truncate`][Self::from_ptr_truncate] and
+    /// [`from_vec_truncate`][Self::from_vec_truncate], construct a string that terminates with
+    /// the first nul value encountered in the string, and do not return an error. They
+    /// automatically ensure the string is terminated in a nul value even if it was not originally.
+    ///
+    /// Finally, unsafe `_unchecked` variants of these methods, such as
+    /// [`from_ptr_unchecked`][Self::from_ptr_unchecked] and
+    /// [`from_vec_unchecked`][Self::from_vec_unchecked] allow bypassing any checks for nul
+    /// values, when the input has already been ensured to no interior nul values. Again, any
+    /// missing nul terminator is automatically added if necessary.
+    ///
+    /// # Examples
+    ///
+    /// The easiest way to use [`U32CString`] outside of FFI is with the
+    /// [`u32cstr!`][crate::u32cstr] macro to convert string literals into nul-terminated UTF-32
+    /// strings at compile time:
+    ///
+    /// ```
+    /// use widestring::{u32cstr, U32CString};
+    /// let hello = U32CString::from(u32cstr!("Hello, world!"));
+    /// ```
+    ///
+    /// You can also convert any [`u32`] slice or vector directly:
+    ///
+    /// ```
+    /// use widestring::{u32cstr, U32CString};
+    ///
+    /// let sparkle_heart = vec![0x1f496];
+    /// let sparkle_heart = U32CString::from_vec(sparkle_heart).unwrap();
+    /// // The string will add the missing nul terminator
+    ///
+    /// assert_eq!(u32cstr!("💖"), sparkle_heart);
+    ///
+    /// // This UTf-16 surrogate is invalid UTF-32, but is perfectly valid in U32CString
+    /// let malformed_utf32 = vec![0xd83d, 0x0];
+    /// let s = U32CString::from_vec(malformed_utf32).unwrap();
+    ///
+    /// assert_eq!(s.len(), 1); // Note the terminating nul is not counted in the length
+    /// ```
+    ///
+    /// When working with a FFI, it is useful to create a [`U32CString`] from a pointer:
+    ///
+    /// ```
+    /// use widestring::{u32cstr, U32CString};
+    ///
+    /// let sparkle_heart = [0x1f496, 0x0];
+    /// let s = unsafe {
+    ///     // Note the string and pointer length does not include the nul terminator
+    ///     U32CString::from_ptr(sparkle_heart.as_ptr(), sparkle_heart.len() - 1).unwrap()
+    /// };
+    /// assert_eq!(u32cstr!("💖"), s);
+    ///
+    /// // Alternatively, if the length of the pointer is unknown but definitely terminates in nul,
+    /// // a C-style string version can be used
+    /// let s = unsafe { U32CString::from_ptr_str(sparkle_heart.as_ptr()) };
+    ///
+    /// assert_eq!(u32cstr!("💖"), s);
+    /// ```
+    struct U32CString([u32]);
+
+    type UCStr = U32CStr;
+    type UString = U32String;
+    type UStr = U32Str;
+
+    /// Constructs a wide C string from a container of wide character data.
+    ///
+    /// This method will consume the provided data and use the underlying elements to
+    /// construct a new string. The data will be scanned for invalid interior nul values.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the data contains a nul value that is not the
+    /// terminating nul.
+    /// The returned error will contain the original [`Vec`] as well as the position of the
+    /// nul value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::U32CString;
+    /// let v = vec![84u32, 104u32, 101u32]; // 'T' 'h' 'e'
+    /// # let cloned = v.clone();
+    /// // Create a wide string from the vector
+    /// let wcstr = U32CString::from_vec(v).unwrap();
+    /// # assert_eq!(wcstr.into_vec(), cloned);
+    /// ```
+    ///
+    /// Empty vectors are valid and will return an empty string with a nul terminator:
+    ///
+    /// ```
+    /// use widestring::U32CString;
+    /// let wcstr = U32CString::from_vec(vec![]).unwrap();
+    /// assert_eq!(wcstr, U32CString::default());
+    /// ```
+    ///
+    /// The following example demonstrates errors from nul values in a vector.
+    ///
+    /// ```rust
+    /// use widestring::U32CString;
+    /// let v = vec![84u32, 0u32, 104u32, 101u32]; // 'T' NUL 'h' 'e'
+    /// // Create a wide string from the vector
+    /// let res = U32CString::from_vec(v);
+    /// assert!(res.is_err());
+    /// assert_eq!(res.err().unwrap().nul_position(), 1);
+    /// ```
+    fn from_vec() -> {}
+
+    /// Constructs a wide C string from a container of wide character data, truncating at
+    /// the first nul terminator.
+    ///
+    /// The string will be truncated at the first nul value in the data.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::U32CString;
+    /// let v = vec![84u32, 104u32, 101u32, 0u32]; // 'T' 'h' 'e' NUL
+    /// # let cloned = v[..3].to_owned();
+    /// // Create a wide string from the vector
+    /// let wcstr = U32CString::from_vec_truncate(v);
+    /// # assert_eq!(wcstr.into_vec(), cloned);
+    /// ```
+    fn from_vec_truncate() -> {}
+
+    /// Converts this wide C string into a boxed wide C string slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::{U32CString, U32CStr};
+    ///
+    /// let mut v = vec![102u32, 111u32, 111u32]; // "foo"
+    /// let c_string = U32CString::from_vec(v.clone()).unwrap();
+    /// let boxed = c_string.into_boxed_ucstr();
+    /// v.push(0);
+    /// assert_eq!(&*boxed, U32CStr::from_slice(&v).unwrap());
+    /// ```
+    fn into_boxed_ucstr() -> {}
+}
 
 impl U16CString {
-    /// Encodes a [`U16CString`] copied from a [`str`].
+    /// Constructs a [`U16CString`] copy from a [`str`], encoding it as UTF-16.
+    ///
+    /// This makes a string copy of the [`str`]. Since [`str`] will always be valid UTF-8, the
+    /// resulting [`U16CString`] will also be valid UTF-16.
     ///
     /// The string will be scanned for nul values, which are invalid anywhere except the final
     /// character.
@@ -826,7 +1013,11 @@ impl U16CString {
         Self::from_vec(v)
     }
 
-    /// Encodes a [`U16CString`] copied from a [`str`], without checking for interior nul values.
+    /// Constructs a [`U16CString`] copy from a [`str`], encoding it as UTF-16, without checking for
+    /// interior nul values.
+    ///
+    /// This makes a string copy of the [`str`]. Since [`str`] will always be valid UTF-8, the
+    /// resulting [`U16CString`] will also be valid UTF-16.
     ///
     /// The resulting string will always be nul-terminated even if the original string is not.
     ///
@@ -851,7 +1042,11 @@ impl U16CString {
         Self::from_vec_unchecked(v)
     }
 
-    /// Encodes a [`U16CString`] copied from a [`str`], truncating at the first nul terminator.
+    /// Constructs a [`U16CString`] copy from a [`str`], encoding it as UTF-16, truncating at the
+    /// first nul terminator.
+    ///
+    /// This makes a string copy of the [`str`]. Since [`str`] will always be valid UTF-8, the
+    /// resulting [`U16CString`] will also be valid UTF-16.
     ///
     /// The string will be truncated at the first nul value in the string.
     /// The resulting string will always be nul-terminated even if the original string is not.
@@ -871,8 +1066,11 @@ impl U16CString {
         Self::from_vec_truncate(v)
     }
 
-    /// Encodes a [`U16CString`] copied from anything that can be converted to an
-    /// [`OsStr`][std::ffi::OsStr].
+    /// Constructs a [`U16CString`] copy from an [`OsStr`][std::ffi::OsStr].
+    ///
+    /// This makes a string copy of the [`OsStr`][std::ffi::OsStr]. Since [`OsStr`][std::ffi::OsStr]
+    /// makes no guarantees that it is valid data, there is no guarantee that the resulting
+    /// [`U16CString`] will be valid UTF-16.
     ///
     /// The string will be scanned for nul values, which are invalid anywhere except the final
     /// character.
@@ -916,8 +1114,12 @@ impl U16CString {
         Self::from_vec(v)
     }
 
-    /// Encodes a [`U16CString`] from anything that can be converted to an
-    /// [`OsStr`][std::ffi::OsStr], without checking for nul values.
+    /// Constructs a [`U16CString`] copy from an [`OsStr`][std::ffi::OsStr], without checking for nul
+    /// values.
+    ///
+    /// This makes a string copy of the [`OsStr`][std::ffi::OsStr]. Since [`OsStr`][std::ffi::OsStr]
+    /// makes no guarantees that it is valid data, there is no guarantee that the resulting
+    /// [`U16CString`] will be valid UTF-16.
     ///
     /// The resulting string will always be nul-terminated even if the original string is not.
     ///
@@ -947,8 +1149,12 @@ impl U16CString {
         Self::from_vec_unchecked(v)
     }
 
-    /// Encodes a [`U16CString`] copied from anything that can be converted to an
-    /// [`OsStr`][std::ffi::OsStr], truncating at the first nul terminator.
+    /// Constructs a [`U16CString`] copy from an [`OsStr`][std::ffi::OsStr], truncating at the first
+    /// nul terminator.
+    ///
+    /// This makes a string copy of the [`OsStr`][std::ffi::OsStr]. Since [`OsStr`][std::ffi::OsStr]
+    /// makes no guarantees that it is valid data, there is no guarantee that the resulting
+    /// [`U16CString`] will be valid UTF-16.
     ///
     /// The string will be truncated at the first nul value in the string.
     /// The resulting string will always be nul-terminated even if the original string is not.
@@ -1074,7 +1280,11 @@ impl U32CString {
         Self::from_vec_unchecked(v)
     }
 
-    /// Encodes a [`U32CString`] copied from a [`str`], checking for invalid interior nul values.
+    /// Constructs a [`U32CString`] copy from a [`str`], encoding it as UTF-32 and checking for
+    /// invalid interior nul values.
+    ///
+    /// This makes a string copy of the [`str`]. Since [`str`] will always be valid UTF-8, the
+    /// resulting [`U32CString`] will also be valid UTF-32.
     ///
     /// The string will be scanned for nul values, which are invalid anywhere except the last
     /// character.
@@ -1113,7 +1323,11 @@ impl U32CString {
         Self::from_chars(v)
     }
 
-    /// Encodes a [`U32CString`] copied from a [`str`], without checking for nul values.
+    /// Constructs a [`U32CString`] copy from a [`str`], encoding it as UTF-32, without checking for
+    /// nul values.
+    ///
+    /// This makes a string copy of the [`str`]. Since [`str`] will always be valid UTF-8, the
+    /// resulting [`U32CString`] will also be valid UTF-32.
     ///
     /// The resulting string will always be nul-terminated even if the original string is not.
     ///
@@ -1138,7 +1352,11 @@ impl U32CString {
         Self::from_chars_unchecked(v)
     }
 
-    /// Encodes a [`U32CString`] copied from a [`str`], truncating at the first nul terminator.
+    /// Constructs a [`U16CString`] copy from a [`str`], encoding it as UTF-32, truncating at the
+    /// first nul terminator.
+    ///
+    /// This makes a string copy of the [`str`]. Since [`str`] will always be valid UTF-8, the
+    /// resulting [`U32CString`] will also be valid UTF-32.
     ///
     /// The string will be truncated at the first nul value in the string.
     /// The resulting string will always be nul-terminated even if the original string is not.
@@ -1268,8 +1486,12 @@ impl U32CString {
         Self::from_ptr_unchecked(p as *const u32, len)
     }
 
-    /// Encodes a [`U32CString`] copied from anything that can be converted to an
-    /// [`OsStr`][std::ffi::OsStr], checking for invalid nul values.
+    /// Constructs a [`U32CString`] copy from an [`OsStr`][std::ffi::OsStr], checking for invalid
+    /// nul values.
+    ///
+    /// This makes a string copy of the [`OsStr`][std::ffi::OsStr]. Since [`OsStr`][std::ffi::OsStr]
+    /// makes no guarantees that it is valid data, there is no guarantee that the resulting
+    /// [`U32CString`] will be valid UTF-32.
     ///
     /// The string will be scanned for nul values, which are invlaid anywhere except the last
     /// character.
@@ -1313,8 +1535,12 @@ impl U32CString {
         Self::from_chars(v)
     }
 
-    /// Encodes a [`U32CString`] copied from anything that can be converted to an
-    /// [`OsStr`][std::ffi::OsStr], without checking for nul values.
+    /// Constructs a [`U32CString`] copy from an [`OsStr`][std::ffi::OsStr], without checking for
+    /// nul values.
+    ///
+    /// This makes a string copy of the [`OsStr`][std::ffi::OsStr]. Since [`OsStr`][std::ffi::OsStr]
+    /// makes no guarantees that it is valid data, there is no guarantee that the resulting
+    /// [`U32CString`] will be valid UTF-32.
     ///
     /// The resulting string will always be nul-terminated even if the string is not.
     ///
@@ -1345,8 +1571,12 @@ impl U32CString {
         Self::from_chars_unchecked(v)
     }
 
-    /// Encodes a [`U32CString`] copied from anything that can be converted to an
-    /// [`OsStr`][std::ffi::OsStr], truncating at the first nul terminator.
+    /// Constructs a [`U32CString`] copy from an [`OsStr`][std::ffi::OsStr], truncating at the first
+    /// nul terminator.
+    ///
+    /// This makes a string copy of the [`OsStr`][std::ffi::OsStr]. Since [`OsStr`][std::ffi::OsStr]
+    /// makes no guarantees that it is valid data, there is no guarantee that the resulting
+    /// [`U32CString`] will be valid UTF-32.
     ///
     /// The string will be truncated at the first nul value in the string.
     /// The resulting string will always be nul-terminated even if the string is not.

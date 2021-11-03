@@ -155,7 +155,7 @@ macro_rules! utfstr_common_impl {
                 self.inner.as_mut_ptr()
             }
 
-            /// Returns an unencoded wide string slice of this string.
+            /// Returns this string as a wide string slice of undefined encoding.
             #[inline]
             pub const fn as_ustr(&self) -> &$ustr {
                 $ustr::from_slice(self.as_slice())
@@ -857,8 +857,8 @@ impl Utf16Str {
         Ok(unsafe { Self::from_slice_unchecked_mut(s) })
     }
 
-    /// Converts an unencoded string slice to a UTF-16 string slice without checking if the string
-    /// slice is valid UTF-16.
+    /// Converts a wide string slice of undefined encoding to a UTF-16 string slice without checking
+    /// if the string slice is valid UTF-16.
     ///
     /// See the safe version, [`from_ustr`][Self::from_ustr], for more information.
     ///
@@ -882,8 +882,8 @@ impl Utf16Str {
         Self::from_slice_unchecked(s.as_slice())
     }
 
-    /// Converts a mutable unencoded string slice to a mutable UTF-16 string slice without
-    /// checking if the string slice is valid UTF-16.
+    /// Converts a mutable wide string slice of undefined encoding to a mutable UTF-16 string slice
+    /// without checking if the string slice is valid UTF-16.
     ///
     /// See the safe version, [`from_ustr_mut`][Self::from_ustr_mut], for more information.
     ///
@@ -896,7 +896,7 @@ impl Utf16Str {
         Self::from_slice_unchecked_mut(s.as_mut_slice())
     }
 
-    /// Converts an unencoded string slice to a UTF-16 string slice.
+    /// Converts a wide string slice of undefined encoding to a UTF-16 string slice.
     ///
     /// Since [`U16Str`] does not have a specified encoding, this conversion may fail if the
     /// [`U16Str`] does not contain valid UTF-16 data.
@@ -926,7 +926,7 @@ impl Utf16Str {
         Self::from_slice(s.as_slice())
     }
 
-    /// Converts a mutable unencoded string slice to a mutable UTF-16 string slice.
+    /// Converts a mutable wide string slice of undefined encoding to a mutable UTF-16 string slice.
     ///
     /// Since [`U16Str`] does not have a specified encoding, this conversion may fail if the
     /// [`U16Str`] does not contain valid UTF-16 data.
@@ -1431,8 +1431,8 @@ impl Utf32Str {
         Ok(unsafe { Self::from_slice_unchecked_mut(s) })
     }
 
-    /// Converts an unencoded string slice to a UTF-32 string slice without checking if the string
-    /// slice is valid UTF-32.
+    /// Converts a wide string slice of undefined encoding to a UTF-32 string slice without checking
+    /// if the string slice is valid UTF-32.
     ///
     /// See the safe version, [`from_ustr`][Self::from_ustr], for more information.
     ///
@@ -1457,8 +1457,8 @@ impl Utf32Str {
         Self::from_slice_unchecked(s.as_slice())
     }
 
-    /// Converts a mutable unencoded string slice to a mutable UTF-32 string slice without
-    /// checking if the string slice is valid UTF-32.
+    /// Converts a mutable wide string slice of undefined encoding to a mutable UTF-32 string slice
+    /// without checking if the string slice is valid UTF-32.
     ///
     /// See the safe version, [`from_ustr_mut`][Self::from_ustr_mut], for more information.
     ///
@@ -1472,7 +1472,7 @@ impl Utf32Str {
         Self::from_slice_unchecked_mut(s.as_mut_slice())
     }
 
-    /// Converts an unencoded string slice to a UTF-32 string slice.
+    /// Converts a wide string slice of undefined encoding to a UTF-32 string slice.
     ///
     /// Since [`U32Str`] does not have a specified encoding, this conversion may fail if the
     /// [`U32Str`] does not contain valid UTF-32 data.
@@ -1502,7 +1502,7 @@ impl Utf32Str {
         Self::from_slice(s.as_slice())
     }
 
-    /// Converts a mutable unencoded string slice to a mutable UTF-32 string slice.
+    /// Converts a mutable wide string slice of undefined encoding to a mutable UTF-32 string slice.
     ///
     /// Since [`U32Str`] does not have a specified encoding, this conversion may fail if the
     /// [`U32Str`] does not contain valid UTF-32 data.
@@ -2104,3 +2104,13 @@ impl<'a> TryFrom<&'a mut [u32]> for &'a mut Utf32Str {
         Utf32Str::from_slice_mut(value)
     }
 }
+
+/// Alias for [`Utf16Str`] or [`Utf32Str`] depending on platform. Intended to match typical C
+/// `wchar_t` size on platform.
+#[cfg(not(windows))]
+pub type WideUtfStr = Utf32Str;
+
+/// Alias for [`Utf16Str`] or [`Utf32Str`] depending on platform. Intended to match typical C
+/// `wchar_t` size on platform.
+#[cfg(windows)]
+pub type WideUtfStr = Utf16Str;

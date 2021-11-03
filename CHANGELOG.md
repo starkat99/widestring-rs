@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - `is_empty`
 - The following methods on `U16String` and `U32String` are now `const`:
   - `new`
+- **Breaking Change** The following methods on `U16String` and `U32String` have been renamed and
+  replaced by functions with different semantics:
+  - `pop` is now `pop_char`
+  - `remove` is now `remove_char`
+  - `insert` is now `insert_char`
 
 ## Added
 - Added new UTF-encoded string types and associated types:

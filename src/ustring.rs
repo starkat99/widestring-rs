@@ -1,4 +1,4 @@
-//! Owned, growable wide strings.
+//! Owned, growable wide strings with undefined encoding.
 //!
 //! This module contains wide strings and related types.
 
@@ -21,72 +21,27 @@ use core::{
     str::FromStr,
 };
 
-/// An owned, mutable 16-bit wide string for FFI that is **not** nul-aware.
-///
-/// [`U16String`] is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-16. These strings are intended to be used with FFI functions
-/// that directly use string length, where the strings are known to have proper nul-termination
-/// already, or where strings are merely being passed through without modification.
-///
-/// [`U16CString`][crate::U16CString] should be used instead if nul-aware strings are required.
-///
-/// [`U16String`] can be converted to and from many other standard Rust string types, including
-/// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
-///
-/// # Examples
-///
-/// The following example constructs a [`U16String`] and shows how to convert a [`U16String`] to a
-/// regular Rust [`String`].
-///
-/// ```rust
-/// use widestring::U16String;
-/// let s = "Test";
-/// // Create a wide string from the rust string
-/// let wstr = U16String::from_str(s);
-/// // Convert back to a rust string
-/// let rust_str = wstr.to_string_lossy();
-/// assert_eq!(rust_str, "Test");
-/// ```
-#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct U16String {
-    pub(crate) inner: Vec<u16>,
-}
-
-/// An owned, mutable 32-bit wide string for FFI that is **not** nul-aware.
-///
-/// [`U32String`] is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-32. These strings are intended to be used with FFI functions
-/// that directly use string length, where the strings are known to have proper nul-termination
-/// already, or where strings are merely being passed through without modification.
-///
-/// [`U32CString`][crate::U32CString] should be used instead if nul-aware strings are required.
-///
-/// [`U32String`] can be converted to and from many other standard Rust string types, including
-/// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
-///
-/// # Examples
-///
-/// The following example constructs a [`U32String`] and shows how to convert a [`U32String`] to a
-/// regular Rust [`String`].
-///
-/// ```rust
-/// use widestring::U32String;
-/// let s = "Test";
-/// // Create a wide string from the rust string
-/// let wstr = U32String::from_str(s);
-/// // Convert back to a rust string
-/// let rust_str = wstr.to_string_lossy();
-/// assert_eq!(rust_str, "Test");
-/// ```
-#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct U32String {
-    pub(crate) inner: Vec<u32>,
-}
-
 macro_rules! ustring_common_impl {
-    ($ustring:ident $uchar:ty => $ustr:ident $ucstring:ident $ucstr:ident) => {
+    {
+        $(#[$ustring_meta:meta])*
+        struct $ustring:ident([$uchar:ty]);
+        type UStr = $ustr:ident;
+        type UCString = $ucstring:ident;
+        type UCStr = $ucstr:ident;
+        $(#[$push_meta:meta])*
+        fn push() -> {}
+        $(#[$push_slice_meta:meta])*
+        fn push_slice() -> {}
+        $(#[$into_boxed_ustr_meta:meta])*
+        fn into_boxed_ustr() -> {}
+    } => {
+        $(#[$ustring_meta])*
+        #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+        #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        pub struct $ustring {
+            pub(crate) inner: Vec<$uchar>,
+        }
+
         impl $ustring {
             /// Constructs a new empty wide string.
             #[inline]
@@ -220,123 +175,25 @@ macro_rules! ustring_common_impl {
                 &mut self.inner
             }
 
-            /// Extends the string with the given string slice.
-            ///
-            /// No checks are performed on the strings. It is possible to end up nul values inside
-            /// the string, and it is up to the caller to determine if that is acceptable.
-            ///
-            /// # Examples
-            ///
-            /// ```rust
-            /// use widestring::U16String;
-            /// let s = "MyString";
-            /// let mut wstr = U16String::from_str(s);
-            /// let cloned = wstr.clone();
-            /// // Push the clone to the end, repeating the string twice.
-            /// wstr.push(cloned);
-            ///
-            /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
-            /// ```
-            ///
-            /// ```rust
-            /// use widestring::U32String;
-            /// let s = "MyString";
-            /// let mut wstr = U32String::from_str(s);
-            /// let cloned = wstr.clone();
-            /// // Push the clone to the end, repeating the string twice.
-            /// wstr.push(cloned);
-            ///
-            /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
-            /// ```
+            $(#[$push_meta])*
             #[inline]
             pub fn push(&mut self, s: impl AsRef<$ustr>) {
                 self.inner.extend_from_slice(&s.as_ref().inner)
             }
 
-            /// Extends the string with the given slice.
-            ///
-            /// No checks are performed on the strings. It is possible to end up nul values inside
-            /// the string, and it is up to the caller to determine if that is acceptable.
-            ///
-            /// # Examples
-            ///
-            /// ```rust
-            /// use widestring::U16String;
-            /// let s = "MyString";
-            /// let mut wstr = U16String::from_str(s);
-            /// let cloned = wstr.clone();
-            /// // Push the clone to the end, repeating the string twice.
-            /// wstr.push_slice(cloned);
-            ///
-            /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
-            /// ```
-            ///
-            /// ```rust
-            /// use widestring::U32String;
-            /// let s = "MyString";
-            /// let mut wstr = U32String::from_str(s);
-            /// let cloned = wstr.clone();
-            /// // Push the clone to the end, repeating the string twice.
-            /// wstr.push_slice(cloned);
-            ///
-            /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
-            /// ```
+            $(#[$push_slice_meta])*
             #[inline]
             pub fn push_slice(&mut self, s: impl AsRef<[$uchar]>) {
                 self.inner.extend_from_slice(s.as_ref())
             }
 
             /// Shrinks the capacity of the wide string to match its length.
-            ///
-            /// # Examples
-            ///
-            /// ```rust
-            /// use widestring::U16String;
-            ///
-            /// let mut s = U16String::from_str("foo");
-            ///
-            /// s.reserve(100);
-            /// assert!(s.capacity() >= 100);
-            ///
-            /// s.shrink_to_fit();
-            /// assert_eq!(3, s.capacity());
-            /// ```
-            ///
-            /// ```rust
-            /// use widestring::U32String;
-            ///
-            /// let mut s = U32String::from_str("foo");
-            ///
-            /// s.reserve(100);
-            /// assert!(s.capacity() >= 100);
-            ///
-            /// s.shrink_to_fit();
-            /// assert_eq!(3, s.capacity());
-            /// ```
             #[inline]
             pub fn shrink_to_fit(&mut self) {
                 self.inner.shrink_to_fit();
             }
 
-            /// Converts this wide string into a boxed string slice.
-            ///
-            /// # Examples
-            ///
-            /// ```
-            /// use widestring::{U16String, U16Str};
-            ///
-            /// let s = U16String::from_str("hello");
-            ///
-            /// let b: Box<U16Str> = s.into_boxed_ustr();
-            /// ```
-            ///
-            /// ```
-            /// use widestring::{U32String, U32Str};
-            ///
-            /// let s = U32String::from_str("hello");
-            ///
-            /// let b: Box<U32Str> = s.into_boxed_ustr();
-            /// ```
+            $(#[$into_boxed_ustr_meta])*
             pub fn into_boxed_ustr(self) -> Box<$ustr> {
                 let rw = Box::into_raw(self.inner.into_boxed_slice()) as *mut $ustr;
                 unsafe { Box::from_raw(rw) }
@@ -844,6 +701,20 @@ macro_rules! ustring_common_impl {
             }
         }
 
+        impl PartialEq<$ustring> for &$ustr {
+            #[inline]
+            fn eq(&self, other: &$ustring) -> bool {
+                self == other.as_ustr()
+            }
+        }
+
+        impl PartialEq<$ustring> for &$ucstr {
+            #[inline]
+            fn eq(&self, other: &$ustring) -> bool {
+                self.as_ustr() == other.as_ustr()
+            }
+        }
+
         impl PartialOrd<$ustr> for $ustring {
             #[inline]
             fn partial_cmp(&self, other: &$ustr) -> Option<cmp::Ordering> {
@@ -918,11 +789,258 @@ macro_rules! ustring_common_impl {
     };
 }
 
-ustring_common_impl!(U16String u16 => U16Str U16CString U16CStr);
-ustring_common_impl!(U32String u32 => U32Str U32CString U32CStr);
+ustring_common_impl! {
+    /// An owned, mutable 16-bit wide string with undefined encoding.
+    ///
+    /// The string slice of a [`U16String`] is [`U16Str`].
+    ///
+    /// [`U16String`] are strings that do not have a defined encoding. While it is sometimes
+    /// assumed that they contain possibly invalid or ill-formed UTF-16 data, they may be used for
+    /// any wide encoded string. This is because [`U16String`] is intended to be used with FFI
+    /// functions, where proper encoding cannot be guaranteed. If you need string slices that are
+    /// always valid UTF-16 strings, use [`Utf16String`][crate::Utf16String] instead.
+    ///
+    /// Because [`U16String`] does not have a defined encoding, no restrictions are placed on
+    /// mutating or indexing the string. This means that even if the string contained properly
+    /// encoded UTF-16 or other encoding data, mutationing or indexing may result in malformed data.
+    /// Convert to a [`Utf16String`][crate::Utf16String] if retaining proper UTF-16 encoding is
+    /// desired.
+    ///
+    /// # FFI considerations
+    ///
+    /// [`U16String`] is not aware of nul values. Strings may or may not be nul-terminated, and may
+    /// contain invalid and ill-formed UTF-16. These strings are intended to be used with FFI functions
+    /// that directly use string length, where the strings are known to have proper nul-termination
+    /// already, or where strings are merely being passed through without modification.
+    ///
+    /// [`U16CString`][crate::U16CString] should be used instead if nul-aware strings are required.
+    ///
+    /// # Examples
+    ///
+    /// The easiest way to use [`U16String`] outside of FFI is with the [`u16str!`][crate::u16str]
+    /// macro to convert string literals into UTF-16 string slices at compile time:
+    ///
+    /// ```
+    /// use widestring::{u16str, U16String};
+    /// let hello = U16String::from(u16str!("Hello, world!"));
+    /// ```
+    ///
+    /// You can also convert any [`u16`] slice or vector directly:
+    ///
+    /// ```
+    /// use widestring::{u16str, U16String};
+    ///
+    /// let sparkle_heart = vec![0xd83d, 0xdc96];
+    /// let sparkle_heart = U16String::from_vec(sparkle_heart);
+    ///
+    /// assert_eq!(u16str!("💖"), sparkle_heart);
+    ///
+    /// // This unpaired UTf-16 surrogate is invalid UTF-16, but is perfectly valid in U16String
+    /// let malformed_utf16 = vec![0x0, 0xd83d]; // Note that nul values are also valid an untouched
+    /// let s = U16String::from_vec(malformed_utf16);
+    ///
+    /// assert_eq!(s.len(), 2);
+    /// ```
+    ///
+    /// The following example constructs a [`U16String`] and shows how to convert a [`U16String`] to
+    /// a regular Rust [`String`].
+    ///
+    /// ```rust
+    /// use widestring::U16String;
+    /// let s = "Test";
+    /// // Create a wide string from the rust string
+    /// let wstr = U16String::from_str(s);
+    /// // Convert back to a rust string
+    /// let rust_str = wstr.to_string_lossy();
+    /// assert_eq!(rust_str, "Test");
+    /// ```
+    struct U16String([u16]);
+
+    type UStr = U16Str;
+    type UCString = U16CString;
+    type UCStr = U16CStr;
+
+    /// Extends the string with the given string slice.
+    ///
+    /// No checks are performed on the strings. It is possible to end up nul values inside
+    /// the string, or invalid encoding, and it is up to the caller to determine if that is
+    /// acceptable.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::U16String;
+    /// let s = "MyString";
+    /// let mut wstr = U16String::from_str(s);
+    /// let cloned = wstr.clone();
+    /// // Push the clone to the end, repeating the string twice.
+    /// wstr.push(cloned);
+    ///
+    /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
+    /// ```
+    fn push() -> {}
+
+    /// Extends the string with the given slice.
+    ///
+    /// No checks are performed on the strings. It is possible to end up nul values inside
+    /// the string, or invalid encoding, and it is up to the caller to determine if that is
+    /// acceptable.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::U16String;
+    /// let s = "MyString";
+    /// let mut wstr = U16String::from_str(s);
+    /// let cloned = wstr.clone();
+    /// // Push the clone to the end, repeating the string twice.
+    /// wstr.push_slice(cloned);
+    ///
+    /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
+    /// ```
+    fn push_slice() -> {}
+
+    /// Converts this wide string into a boxed string slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::{U16String, U16Str};
+    ///
+    /// let s = U16String::from_str("hello");
+    ///
+    /// let b: Box<U16Str> = s.into_boxed_ustr();
+    /// ```
+    fn into_boxed_ustr() -> {}
+}
+
+ustring_common_impl! {
+    /// An owned, mutable 32-bit wide string with undefined encoding.
+    ///
+    /// The string slice of a [`U32String`] is [`U32Str`].
+    ///
+    /// [`U32String`] are strings that do not have a defined encoding. While it is sometimes
+    /// assumed that they contain possibly invalid or ill-formed UTF-32 data, they may be used for
+    /// any wide encoded string. This is because [`U32String`] is intended to be used with FFI
+    /// functions, where proper encoding cannot be guaranteed. If you need string slices that are
+    /// always valid UTF-32 strings, use [`Utf32String`][crate::Utf32String] instead.
+    ///
+    /// Because [`U32String`] does not have a defined encoding, no restrictions are placed on
+    /// mutating or indexing the string. This means that even if the string contained properly
+    /// encoded UTF-32 or other encoding data, mutationing or indexing may result in malformed data.
+    /// Convert to a [`Utf32String`][crate::Utf32String] if retaining proper UTF-16 encoding is
+    /// desired.
+    ///
+    /// # FFI considerations
+    ///
+    /// [`U32String`] is not aware of nul values. Strings may or may not be nul-terminated, and may
+    /// contain invalid and ill-formed UTF-32. These strings are intended to be used with FFI functions
+    /// that directly use string length, where the strings are known to have proper nul-termination
+    /// already, or where strings are merely being passed through without modification.
+    ///
+    /// [`U32CString`][crate::U32CString] should be used instead if nul-aware strings are required.
+    ///
+    /// # Examples
+    ///
+    /// The easiest way to use [`U32String`] outside of FFI is with the [`u32str!`][crate::u32str]
+    /// macro to convert string literals into UTF-32 string slices at compile time:
+    ///
+    /// ```
+    /// use widestring::{u32str, U32String};
+    /// let hello = U32String::from(u32str!("Hello, world!"));
+    /// ```
+    ///
+    /// You can also convert any [`u32`] slice or vector directly:
+    ///
+    /// ```
+    /// use widestring::{u32str, U32String};
+    ///
+    /// let sparkle_heart = vec![0x1f496];
+    /// let sparkle_heart = U32String::from_vec(sparkle_heart);
+    ///
+    /// assert_eq!(u32str!("💖"), sparkle_heart);
+    ///
+    /// // This UTf-16 surrogate is invalid UTF-32, but is perfectly valid in U32String
+    /// let malformed_utf32 = vec![0x0, 0xd83d]; // Note that nul values are also valid an untouched
+    /// let s = U32String::from_vec(malformed_utf32);
+    ///
+    /// assert_eq!(s.len(), 2);
+    /// ```
+    ///
+    /// The following example constructs a [`U32String`] and shows how to convert a [`U32String`] to
+    /// a regular Rust [`String`].
+    ///
+    /// ```rust
+    /// use widestring::U32String;
+    /// let s = "Test";
+    /// // Create a wide string from the rust string
+    /// let wstr = U32String::from_str(s);
+    /// // Convert back to a rust string
+    /// let rust_str = wstr.to_string_lossy();
+    /// assert_eq!(rust_str, "Test");
+    /// ```
+    struct U32String([u32]);
+
+    type UStr = U32Str;
+    type UCString = U32CString;
+    type UCStr = U32CStr;
+
+    /// Extends the string with the given string slice.
+    ///
+    /// No checks are performed on the strings. It is possible to end up nul values inside
+    /// the string, or invalid encoding, and it is up to the caller to determine if that is
+    /// acceptable.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::U32String;
+    /// let s = "MyString";
+    /// let mut wstr = U32String::from_str(s);
+    /// let cloned = wstr.clone();
+    /// // Push the clone to the end, repeating the string twice.
+    /// wstr.push(cloned);
+    ///
+    /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
+    /// ```
+    fn push() -> {}
+
+    /// Extends the string with the given slice.
+    ///
+    /// No checks are performed on the strings. It is possible to end up nul values inside
+    /// the string, or invalid encoding, and it is up to the caller to determine if that is
+    /// acceptable.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::U32String;
+    /// let s = "MyString";
+    /// let mut wstr = U32String::from_str(s);
+    /// let cloned = wstr.clone();
+    /// // Push the clone to the end, repeating the string twice.
+    /// wstr.push_slice(cloned);
+    ///
+    /// assert_eq!(wstr.to_string().unwrap(), "MyStringMyString");
+    /// ```
+    fn push_slice() -> {}
+
+    /// Converts this wide string into a boxed string slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::{U32String, U32Str};
+    ///
+    /// let s = U32String::from_str("hello");
+    ///
+    /// let b: Box<U32Str> = s.into_boxed_ustr();
+    /// ```
+    fn into_boxed_ustr() -> {}
+}
 
 impl U16String {
-    /// Encodes a [`U16String`] copy from a [`str`].
+    /// Constructs a [`U16String`] copy from a [`str`], encoding it as UTF-16.
     ///
     /// This makes a string copy of the [`str`]. Since [`str`] will always be valid UTF-8, the
     /// resulting [`U16String`] will also be valid UTF-16.
@@ -945,10 +1063,10 @@ impl U16String {
         }
     }
 
-    /// Encodes a [`U16String`] copy from an [`OsStr`][std::ffi::OsStr].
+    /// Constructs a [`U16String`] copy from an [`OsStr`][std::ffi::OsStr].
     ///
     /// This makes a string copy of the [`OsStr`][std::ffi::OsStr]. Since [`OsStr`][std::ffi::OsStr]
-    /// makes no  guarantees that it is valid data, there is no guarantee that the resulting
+    /// makes no guarantees that it is valid data, there is no guarantee that the resulting
     /// [`U16String`] will be valid UTF-16.
     ///
     /// Note that the encoding of [`OsStr`][std::ffi::OsStr] is platform-dependent, so on
@@ -974,7 +1092,7 @@ impl U16String {
         }
     }
 
-    /// Extends the string with the given string slice.
+    /// Extends the string with the given string slice, encoding it at UTF-16.
     ///
     /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
@@ -1018,7 +1136,7 @@ impl U16String {
         self.inner.extend(crate::platform::os_to_wide(s.as_ref()))
     }
 
-    /// Appends the given [`char`][prim@char] to the end of this string.
+    /// Appends the given [`char`][prim@char] encoded as UTF-16 to the end of this string.
     #[inline]
     pub fn push_char(&mut self, c: char) {
         let mut buf = [0; 2];
@@ -1027,9 +1145,12 @@ impl U16String {
 
     /// Removes the last character or unpaired surrogate from the string buffer and returns it.
     ///
+    /// This method assumes UTF-16 encoding, but handles invalid UTF-16 by returning unpaired
+    /// surrogates.
+    ///
     /// Returns `None` if this String is empty. Otherwise, returns the character cast to a
     /// [`u32`][prim@u32] or the value of the unpaired surrogate as a [`u32`][prim@u32] value.
-    pub fn pop(&mut self) -> Option<u32> {
+    pub fn pop_char(&mut self) -> Option<u32> {
         match self.inner.pop() {
             Some(low) if crate::is_utf16_surrogate(low) => {
                 if !crate::is_utf16_low_surrogate(low) || self.inner.is_empty() {
@@ -1058,12 +1179,15 @@ impl U16String {
     /// Removes a [`char`][prim@char] or unpaired surrogate from this string at a position and
     /// returns it as a [`u32`][prim@u32].
     ///
+    /// This method assumes UTF-16 encoding, but handles invalid UTF-16 by returning unpaired
+    /// surrogates.
+    ///
     /// This is an _O(n)_ operation, as it requires copying every element in the buffer.
     ///
     /// # Panics
     ///
     /// Panics if `idx` is larger than or equal to the string's length.
-    pub fn remove(&mut self, idx: usize) -> u32 {
+    pub fn remove_char(&mut self, idx: usize) -> u32 {
         let slice = &self.inner[idx..];
         let c = char::decode_utf16(slice.iter().copied()).next().unwrap();
         let clen = c.as_ref().map(|c| c.len_utf16()).unwrap_or(1);
@@ -1074,14 +1198,14 @@ impl U16String {
         c
     }
 
-    /// Inserts a character into this string at a specified position.
+    /// Inserts a character encoded as UTF-16 into this string at a specified position.
     ///
     /// This is an _O(n)_ operation as it requires copying every element in the buffer.
     ///
     /// # Panics
     ///
     /// Panics if `idx` is larger than the string's length.
-    pub fn insert(&mut self, idx: usize, c: char) {
+    pub fn insert_char(&mut self, idx: usize, c: char) {
         assert!(idx <= self.len());
         let mut buf = [0; 2];
         let slice = c.encode_utf16(&mut buf);
@@ -1119,7 +1243,7 @@ impl U32String {
         }
     }
 
-    /// Encodes a [`U32String`] copy from a [`str`].
+    /// Constructs a [`U16String`] copy from a [`str`], encoding it as UTF-32.
     ///
     /// This makes a string copy of the [`str`]. Since [`str`] will always be valid UTF-8, the
     /// resulting [`U32String`] will also be valid UTF-32.
@@ -1141,7 +1265,7 @@ impl U32String {
         Self::from_chars(v)
     }
 
-    /// Encodes a [`U32String`] copy from an [`OsStr`][std::ffi::OsStr].
+    /// Constructs a [`U32String`] copy from an [`OsStr`][std::ffi::OsStr].
     ///
     /// This makes a string copy of the [`OsStr`][std::ffi::OsStr]. Since [`OsStr`][std::ffi::OsStr]
     /// makes no guarantees that it is valid data, there is no guarantee that the resulting
@@ -1187,7 +1311,7 @@ impl U32String {
         Self::from_ptr(p as *const u32, len)
     }
 
-    /// Extends the string with the given string slice.
+    /// Extends the string with the given string slice, encoding it at UTF-32.
     ///
     /// No checks are performed on the strings. It is possible to end up nul values inside the
     /// string, and it is up to the caller to determine if that is acceptable.
@@ -1232,7 +1356,7 @@ impl U32String {
             .extend(s.as_ref().to_string_lossy().chars().map(|c| c as u32))
     }
 
-    /// Appends the given [`char`][prim@char] to the end of this string.
+    /// Appends the given [`char`][prim@char] encoded as UTF-32 to the end of this string.
     #[inline]
     pub fn push_char(&mut self, c: char) {
         self.inner.push(c as u32);
@@ -1240,13 +1364,17 @@ impl U32String {
 
     /// Removes the last value from the string buffer and returns it.
     ///
+    /// This method assumes UTF-32 encoding.
+    ///
     /// Returns `None` if this String is empty.
     #[inline]
-    pub fn pop(&mut self) -> Option<u32> {
+    pub fn pop_char(&mut self) -> Option<u32> {
         self.inner.pop()
     }
 
     /// Removes a value from this string at a position and returns it.
+    ///
+    /// This method assumes UTF-32 encoding.
     ///
     /// This is an _O(n)_ operation, as it requires copying every element in the buffer.
     ///
@@ -1254,11 +1382,11 @@ impl U32String {
     ///
     /// Panics if `idx` is larger than or equal to the string's length.
     #[inline]
-    pub fn remove(&mut self, idx: usize) -> u32 {
+    pub fn remove_char(&mut self, idx: usize) -> u32 {
         self.inner.remove(idx)
     }
 
-    /// Inserts a character into this string at a specified position.
+    /// Inserts a character encoded as UTF-32 into this string at a specified position.
     ///
     /// This is an _O(n)_ operation as it requires copying every element in the buffer.
     ///
@@ -1266,7 +1394,7 @@ impl U32String {
     ///
     /// Panics if `idx` is larger than the string's length.
     #[inline]
-    pub fn insert(&mut self, idx: usize, c: char) {
+    pub fn insert_char(&mut self, idx: usize, c: char) {
         self.inner.insert(idx, c as u32)
     }
 }

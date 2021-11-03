@@ -15,40 +15,27 @@ use alloc::{
 };
 use core::{fmt::Write, ops::Range, slice};
 
-/// C-style 16-bit wide string slice for [`U16CString`][crate::U16CString].
-///
-/// [`U16CStr`] is aware of nul values. Unless unchecked conversions are used, all [`U16CStr`]
-/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
-/// The strings may still contain invalid or ill-formed UTF-16 data. These strings are
-/// intended to be used with FFI functions such as Windows API that may require nul-terminated
-/// strings.
-///
-/// [`U16CStr`] can be converted to and from many other string types, including
-/// [`U16String`][crate::U16String], [`OsString`][std::ffi::OsString], and [`String`], making proper
-/// Unicode FFI safe and easy.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct U16CStr {
-    inner: [u16],
-}
-
-/// C-style 32-bit wide string slice for [`U32CString`][crate::U32CString].
-///
-/// [`U32CStr`] is aware of nul values. Unless unchecked conversions are used, all [`U32CStr`]
-/// strings end with a nul-terminator in the underlying buffer and contain no internal nul values.
-/// The strings may still contain invalid or ill-formed UTF-32 data. These strings are
-/// intended to be used with FFI functions such as Windows API that may require nul-terminated
-/// strings.
-///
-/// [`U32CStr`] can be converted to and from many other string types, including
-/// [`U32String`][crate::U32String], [`OsString`][std::ffi::OsString], and [`String`], making proper
-/// Unicode FFI safe and easy.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct U32CStr {
-    inner: [u32],
-}
-
 macro_rules! ucstr_common_impl {
-    ($ucstr:ident $uchar:ty => $ucstring:ident $ustr:ident $ustring:ident) => {
+    {
+        $(#[$ucstr_meta:meta])*
+        struct $ucstr:ident([$uchar:ty]);
+        type UCString = $ucstring:ident;
+        type UStr = $ustr:ident;
+        type UString = $ustring:ident;
+        $(#[$to_ustring_meta:meta])*
+        fn to_ustring() -> {}
+        $(#[$into_ucstring_meta:meta])*
+        fn into_ucstring() -> {}
+        $(#[$display_meta:meta])*
+        fn display() -> {}
+    } => {
+        $(#[$ucstr_meta])*
+        #[allow(clippy::derive_hash_xor_eq)]
+        #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+        pub struct $ucstr {
+            inner: [$uchar],
+        }
+
         impl $ucstr {
             /// The nul terminator character value.
             pub const NUL_TERMINATOR: $uchar = 0;
@@ -451,7 +438,7 @@ macro_rules! ucstr_common_impl {
                 }
             }
 
-            /// Constructs a mutable wide C String slice from a mutable slice of values, truncating
+            /// Constructs a mutable wide C string slice from a mutable slice of values, truncating
             /// at the first nul terminator.
             ///
             /// The slice will be scanned for nul values. When a nul value is found, it is treated
@@ -497,7 +484,7 @@ macro_rules! ucstr_common_impl {
                 &mut *(ptr as *mut Self)
             }
 
-            /// Copies the string reference to a new owned wide C String.
+            /// Copies the string reference to a new owned wide C string.
             #[inline]
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
@@ -505,39 +492,7 @@ macro_rules! ucstr_common_impl {
                 unsafe { crate::$ucstring::from_vec_unchecked(self.inner.to_owned()) }
             }
 
-            /// Copies the string reference to a new owned wide string.
-            ///
-            /// The resulting wide string will **not** have a nul terminator.
-            ///
-            /// # Examples
-            ///
-            /// ```rust
-            /// use widestring::U16CString;
-            /// let wcstr = U16CString::from_str("MyString").unwrap();
-            /// // Convert U16CString to a U16String
-            /// let wstr = wcstr.to_ustring();
-            ///
-            /// // U16CString will have a terminating nul
-            /// let wcvec = wcstr.into_vec_with_nul();
-            /// assert_eq!(wcvec[wcvec.len()-1], 0);
-            /// // The resulting U16String will not have the terminating nul
-            /// let wvec = wstr.into_vec();
-            /// assert_ne!(wvec[wvec.len()-1], 0);
-            /// ```
-            ///
-            /// ```rust
-            /// use widestring::U32CString;
-            /// let wcstr = U32CString::from_str("MyString").unwrap();
-            /// // Convert U32CString to a U32String
-            /// let wstr = wcstr.to_ustring();
-            ///
-            /// // U32CString will have a terminating nul
-            /// let wcvec = wcstr.into_vec_with_nul();
-            /// assert_eq!(wcvec[wcvec.len()-1], 0);
-            /// // The resulting U32String will not have the terminating nul
-            /// let wvec = wstr.into_vec();
-            /// assert_ne!(wvec[wvec.len()-1], 0);
-            /// ```
+            $(#[$to_ustring_meta])*
             #[inline]
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
@@ -545,7 +500,7 @@ macro_rules! ucstr_common_impl {
                 crate::$ustring::from_vec(self.as_slice())
             }
 
-            /// Converts to a slice of the underlying code units.
+            /// Converts to a slice of the underlying elements.
             ///
             /// The slice will **not** include the nul terminator.
             #[inline]
@@ -553,7 +508,7 @@ macro_rules! ucstr_common_impl {
                 &self.inner[..self.len()]
             }
 
-            /// Converts to a mutable slice of the underlying code units.
+            /// Converts to a mutable slice of the underlying elements.
             ///
             /// The slice will **not** include the nul terminator.
             ///
@@ -567,7 +522,7 @@ macro_rules! ucstr_common_impl {
                 &mut self.inner[..len]
             }
 
-            /// Converts to a slice of the underlying code units, including the nul terminator.
+            /// Converts to a slice of the underlying elements, including the nul terminator.
             #[inline]
             pub const fn as_slice_with_nul(&self) -> &[$uchar] {
                 &self.inner
@@ -655,28 +610,7 @@ macro_rules! ucstr_common_impl {
                 self.len() == 0
             }
 
-            /// Converts a boxed wide C string slice into a wide C String without copying or
-            /// allocating.
-            ///
-            /// # Examples
-            ///
-            /// ```
-            /// use widestring::U16CString;
-            ///
-            /// let v = vec![102u16, 111u16, 111u16]; // "foo"
-            /// let c_string = U16CString::from_vec(v.clone()).unwrap();
-            /// let boxed = c_string.into_boxed_ucstr();
-            /// assert_eq!(boxed.into_ucstring(), U16CString::from_vec(v).unwrap());
-            /// ```
-            ///
-            /// ```
-            /// use widestring::U32CString;
-            ///
-            /// let v = vec![102u32, 111u32, 111u32]; // "foo"
-            /// let c_string = U32CString::from_vec(v.clone()).unwrap();
-            /// let boxed = c_string.into_boxed_ucstr();
-            /// assert_eq!(boxed.into_ucstring(), U32CString::from_vec(v).unwrap());
-            /// ```
+            $(#[$into_ucstring_meta])*
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
             pub fn into_ucstring(self: Box<Self>) -> crate::$ucstring {
@@ -727,50 +661,7 @@ macro_rules! ucstr_common_impl {
                 unsafe { &mut *(ptr as *mut $ucstr) }
             }
 
-            /// Returns an object that implements [`Display`][std::fmt::Display] for printing
-            /// strings that may contain non-Unicode data.
-            ///
-            /// A wide C string might contain ill-formed UTF encoding. This struct implements the
-            /// [`Display`][std::fmt::Display] trait in a way that decoding the string is lossy but
-            /// no heap allocations are performed, such as by
-            /// [`to_string_lossy`][Self::to_string_lossy].
-            ///
-            /// By default, invalid Unicode data is replaced with
-            /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). If you wish
-            /// to simply skip any invalid Uncode data and forego the replacement, you may use the
-            /// [alternate formatting][std::fmt#sign0] with `{:#}`.
-            ///
-            /// # Examples
-            ///
-            /// Basic usage:
-            ///
-            /// ```
-            /// use widestring::U16CStr;
-            ///
-            /// // 𝄞mus<invalid>ic<invalid>
-            /// let s = U16CStr::from_slice(&[
-            ///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834, 0x0000,
-            /// ]).unwrap();
-            ///
-            /// assert_eq!(format!("{}", s.display()),
-            /// "𝄞mus�ic�"
-            /// );
-            /// ```
-            ///
-            /// Using alternate formatting style to skip invalid values entirely:
-            ///
-            /// ```
-            /// use widestring::U16CStr;
-            ///
-            /// // 𝄞mus<invalid>ic<invalid>
-            /// let s = U16CStr::from_slice(&[
-            ///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834, 0x0000,
-            /// ]).unwrap();
-            ///
-            /// assert_eq!(format!("{:#}", s.display()),
-            /// "𝄞music"
-            /// );
-            /// ```
+            $(#[$display_meta])*
             #[inline]
             pub fn display(&self) -> Display<'_, $ucstr> {
                 Display { str: self }
@@ -831,9 +722,37 @@ macro_rules! ucstr_common_impl {
             }
         }
 
+        impl PartialEq<$ucstr> for &$ucstr {
+            #[inline]
+            fn eq(&self, other: &$ucstr) -> bool {
+                self.as_slice() == other.as_slice()
+            }
+        }
+
+        impl PartialEq<&$ucstr> for $ucstr {
+            #[inline]
+            fn eq(&self, other: &&$ucstr) -> bool {
+                self.as_slice() == other.as_slice()
+            }
+        }
+
         impl PartialEq<$ustr> for $ucstr {
             #[inline]
             fn eq(&self, other: &$ustr) -> bool {
+                self.as_slice() == other.as_slice()
+            }
+        }
+
+        impl PartialEq<$ustr> for &$ucstr {
+            #[inline]
+            fn eq(&self, other: &$ustr) -> bool {
+                self.as_slice() == other.as_slice()
+            }
+        }
+
+        impl PartialEq<&$ustr> for $ucstr {
+            #[inline]
+            fn eq(&self, other: &&$ustr) -> bool {
                 self.as_slice() == other.as_slice()
             }
         }
@@ -847,11 +766,350 @@ macro_rules! ucstr_common_impl {
     };
 }
 
-ucstr_common_impl!(U16CStr u16 => U16CString U16Str U16String);
-ucstr_common_impl!(U32CStr u32 => U32CString U32Str U32String);
+ucstr_common_impl! {
+    /// C-style 16-bit wide string slice for [`U16CString`][crate::U16CString].
+    ///
+    /// [`U16CStr`] is to [`U16CString`][crate::U16CString] as [`CStr`][std::ffi::CStr] is to
+    /// [`CString`][std::ffi::CString].
+    ///
+    /// [`U16CStr`] are string slices that do not have a defined encoding. While it is sometimes
+    /// assumed that they contain possibly invalid or ill-formed UTF-16 data, they may be used for
+    /// any wide encoded string.
+    ///
+    /// # Nul termination
+    ///
+    /// [`U16CStr`] is aware of nul (`0`) values. Unless unchecked conversions are used, all
+    /// [`U16CStr`] strings end with a nul-terminator in the underlying buffer and contain no
+    /// internal nul values. These strings are intended to be used with C FFI functions that
+    /// require nul-terminated strings.
+    ///
+    /// Because of the nul termination requirement, multiple classes methods for provided for
+    /// construction a [`U16CStr`] under various scenarios. By default, methods such as
+    /// [`from_ptr`][Self::from_ptr] and [`from_slice`][Self::from_slice] return an error if the
+    /// input does not terminate with a nul value, or if it contains any interior nul values before
+    /// the terminator.
+    ///
+    /// `_truncate` methods on the other hand, such as
+    /// [`from_ptr_truncate`][Self::from_ptr_truncate] and
+    /// [`from_slice_truncate`][Self::from_slice_truncate], construct a slice that terminates with
+    /// the first nul value encountered in the string, only returning an error if the slice contains
+    /// no nul values at all. Use this to mimic the behavior of C functions such as `strlen` when
+    /// you don't know if the input is clean of interior nuls.
+    ///
+    /// Finally, unsafe `_unchecked` variants of these methods, such as
+    /// [`from_ptr_unchecked`][Self::from_ptr_unchecked] and
+    /// [`from_slice_unchecked`][Self::from_slice_unchecked] allow bypassing any checks for nul
+    /// values, when the input has already been ensured to have a nul terminator and no interior
+    /// nul values.
+    ///
+    /// # Examples
+    ///
+    /// The easiest way to use [`U16CStr`] outside of FFI is with the [`u16cstr!`][crate::u16cstr]
+    /// macro to convert string literals into nul-terminated UTF-16 string slices at compile time:
+    ///
+    /// ```
+    /// use widestring::u16cstr;
+    /// let hello = u16cstr!("Hello, world!");
+    /// ```
+    ///
+    /// You can also convert any [`u16`] slice directly, as long as it has a nul terminator:
+    ///
+    /// ```
+    /// use widestring::{u16cstr, U16CStr};
+    ///
+    /// let sparkle_heart = [0xd83d, 0xdc96, 0x0];
+    /// let sparkle_heart = U16CStr::from_slice(&sparkle_heart).unwrap();
+    ///
+    /// assert_eq!(u16cstr!("💖"), sparkle_heart);
+    ///
+    /// // This unpaired UTf-16 surrogate is invalid UTF-16, but is perfectly valid in U16CStr
+    /// let malformed_utf16 = [0xd83d, 0x0];
+    /// let s = U16CStr::from_slice(&malformed_utf16).unwrap();
+    ///
+    /// assert_eq!(s.len(), 1);
+    /// ```
+    ///
+    /// When working with a FFI, it is useful to create a [`U16CStr`] from a pointer:
+    ///
+    /// ```
+    /// use widestring::{u16cstr, U16CStr};
+    ///
+    /// let sparkle_heart = [0xd83d, 0xdc96, 0x0];
+    /// let s = unsafe {
+    ///     // Note the string and pointer length does not include the nul terminator
+    ///     U16CStr::from_ptr(sparkle_heart.as_ptr(), sparkle_heart.len() - 1).unwrap()
+    /// };
+    /// assert_eq!(u16cstr!("💖"), s);
+    ///
+    /// // Alternatively, if the length of the pointer is unknown but definitely terminates in nul,
+    /// // a C-style string version can be used
+    /// let s = unsafe { U16CStr::from_ptr_str(sparkle_heart.as_ptr()) };
+    ///
+    /// assert_eq!(u16cstr!("💖"), s);
+    /// ```
+    struct U16CStr([u16]);
+
+    type UCString = U16CString;
+    type UStr = U16Str;
+    type UString = U16String;
+
+    /// Copies the string reference to a new owned wide string.
+    ///
+    /// The resulting wide string will **not** have a nul terminator.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::U16CString;
+    /// let wcstr = U16CString::from_str("MyString").unwrap();
+    /// // Convert U16CString to a U16String
+    /// let wstr = wcstr.to_ustring();
+    ///
+    /// // U16CString will have a terminating nul
+    /// let wcvec = wcstr.into_vec_with_nul();
+    /// assert_eq!(wcvec[wcvec.len()-1], 0);
+    /// // The resulting U16String will not have the terminating nul
+    /// let wvec = wstr.into_vec();
+    /// assert_ne!(wvec[wvec.len()-1], 0);
+    /// ```
+    fn to_ustring() -> {}
+
+    /// Converts a boxed wide C string slice into an wide C string without copying or
+    /// allocating.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::U16CString;
+    ///
+    /// let v = vec![102u16, 111u16, 111u16]; // "foo"
+    /// let c_string = U16CString::from_vec(v.clone()).unwrap();
+    /// let boxed = c_string.into_boxed_ucstr();
+    /// assert_eq!(boxed.into_ucstring(), U16CString::from_vec(v).unwrap());
+    /// ```
+    fn into_ucstring() -> {}
+
+    /// Returns an object that implements [`Display`][std::fmt::Display] for printing
+    /// strings that may contain non-Unicode data.
+    ///
+    /// A wide C string might data of any encoding. This function assumes the string is encoded in
+    /// UTF-16, and returns a struct implements the
+    /// [`Display`][std::fmt::Display] trait in a way that decoding the string is lossy but
+    /// no heap allocations are performed, such as by
+    /// [`to_string_lossy`][Self::to_string_lossy].
+    ///
+    /// By default, invalid Unicode data is replaced with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). If you wish
+    /// to simply skip any invalid Uncode data and forego the replacement, you may use the
+    /// [alternate formatting][std::fmt#sign0] with `{:#}`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use widestring::U16CStr;
+    ///
+    /// // 𝄞mus<invalid>ic<invalid>
+    /// let s = U16CStr::from_slice(&[
+    ///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834, 0x0000,
+    /// ]).unwrap();
+    ///
+    /// assert_eq!(format!("{}", s.display()),
+    /// "𝄞mus�ic�"
+    /// );
+    /// ```
+    ///
+    /// Using alternate formatting style to skip invalid values entirely:
+    ///
+    /// ```
+    /// use widestring::U16CStr;
+    ///
+    /// // 𝄞mus<invalid>ic<invalid>
+    /// let s = U16CStr::from_slice(&[
+    ///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834, 0x0000,
+    /// ]).unwrap();
+    ///
+    /// assert_eq!(format!("{:#}", s.display()),
+    /// "𝄞music"
+    /// );
+    /// ```
+    fn display() -> {}
+}
+
+ucstr_common_impl! {
+    /// C-style 32-bit wide string slice for [`U32CString`][crate::U32CString].
+    ///
+    /// [`U32CStr`] is to [`U32CString`][crate::U32CString] as [`CStr`][std::ffi::CStr] is to
+    /// [`CString`][std::ffi::CString].
+    ///
+    /// [`U32CStr`] are string slices that do not have a defined encoding. While it is sometimes
+    /// assumed that they contain possibly invalid or ill-formed UTF-32 data, they may be used for
+    /// any wide encoded string.
+    ///
+    /// # Nul termination
+    ///
+    /// [`U32CStr`] is aware of nul (`0`) values. Unless unchecked conversions are used, all
+    /// [`U32CStr`] strings end with a nul-terminator in the underlying buffer and contain no
+    /// internal nul values. These strings are intended to be used with C FFI functions that
+    /// require nul-terminated strings.
+    ///
+    /// Because of the nul termination requirement, multiple classes methods for provided for
+    /// construction a [`U32CStr`] under various scenarios. By default, methods such as
+    /// [`from_ptr`][Self::from_ptr] and [`from_slice`][Self::from_slice] return an error if the
+    /// input does not terminate with a nul value, or if it contains any interior nul values before
+    /// the terminator.
+    ///
+    /// `_truncate` methods on the other hand, such as
+    /// [`from_ptr_truncate`][Self::from_ptr_truncate] and
+    /// [`from_slice_truncate`][Self::from_slice_truncate], construct a slice that terminates with
+    /// the first nul value encountered in the string, only returning an error if the slice contains
+    /// no nul values at all. Use this to mimic the behavior of C functions such as `strlen` when
+    /// you don't know if the input is clean of interior nuls.
+    ///
+    /// Finally, unsafe `_unchecked` variants of these methods, such as
+    /// [`from_ptr_unchecked`][Self::from_ptr_unchecked] and
+    /// [`from_slice_unchecked`][Self::from_slice_unchecked] allow bypassing any checks for nul
+    /// values, when the input has already been ensured to have a nul terminator and no interior
+    /// nul values.
+    ///
+    /// # Examples
+    ///
+    /// The easiest way to use [`U32CStr`] outside of FFI is with the [`u32cstr!`][crate::u32cstr]
+    /// macro to convert string literals into nul-terminated UTF-32 string slices at compile time:
+    ///
+    /// ```
+    /// use widestring::u32cstr;
+    /// let hello = u32cstr!("Hello, world!");
+    /// ```
+    ///
+    /// You can also convert any [`u32`] slice directly, as long as it has a nul terminator:
+    ///
+    /// ```
+    /// use widestring::{u32cstr, U32CStr};
+    ///
+    /// let sparkle_heart = [0x1f496, 0x0];
+    /// let sparkle_heart = U32CStr::from_slice(&sparkle_heart).unwrap();
+    ///
+    /// assert_eq!(u32cstr!("💖"), sparkle_heart);
+    ///
+    /// // This UTf-16 surrogate is invalid UTF-32, but is perfectly valid in U32CStr
+    /// let malformed_utf32 = [0xd83d, 0x0];
+    /// let s = U32CStr::from_slice(&malformed_utf32).unwrap();
+    ///
+    /// assert_eq!(s.len(), 1);
+    /// ```
+    ///
+    /// When working with a FFI, it is useful to create a [`U32CStr`] from a pointer:
+    ///
+    /// ```
+    /// use widestring::{u32cstr, U32CStr};
+    ///
+    /// let sparkle_heart = [0x1f496, 0x0];
+    /// let s = unsafe {
+    ///     // Note the string and pointer length does not include the nul terminator
+    ///     U32CStr::from_ptr(sparkle_heart.as_ptr(), sparkle_heart.len() - 1).unwrap()
+    /// };
+    /// assert_eq!(u32cstr!("💖"), s);
+    ///
+    /// // Alternatively, if the length of the pointer is unknown but definitely terminates in nul,
+    /// // a C-style string version can be used
+    /// let s = unsafe { U32CStr::from_ptr_str(sparkle_heart.as_ptr()) };
+    ///
+    /// assert_eq!(u32cstr!("💖"), s);
+    /// ```
+    struct U32CStr([u32]);
+
+    type UCString = U32CString;
+    type UStr = U32Str;
+    type UString = U32String;
+
+    /// Copies the string reference to a new owned wide string.
+    ///
+    /// The resulting wide string will **not** have a nul terminator.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use widestring::U32CString;
+    /// let wcstr = U32CString::from_str("MyString").unwrap();
+    /// // Convert U32CString to a U32String
+    /// let wstr = wcstr.to_ustring();
+    ///
+    /// // U32CString will have a terminating nul
+    /// let wcvec = wcstr.into_vec_with_nul();
+    /// assert_eq!(wcvec[wcvec.len()-1], 0);
+    /// // The resulting U32String will not have the terminating nul
+    /// let wvec = wstr.into_vec();
+    /// assert_ne!(wvec[wvec.len()-1], 0);
+    /// ```
+    fn to_ustring() -> {}
+
+    /// Converts a boxed wide C string slice into an owned wide C string without copying or
+    /// allocating.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::U32CString;
+    ///
+    /// let v = vec![102u32, 111u32, 111u32]; // "foo"
+    /// let c_string = U32CString::from_vec(v.clone()).unwrap();
+    /// let boxed = c_string.into_boxed_ucstr();
+    /// assert_eq!(boxed.into_ucstring(), U32CString::from_vec(v).unwrap());
+    /// ```
+    fn into_ucstring() -> {}
+
+    /// Returns an object that implements [`Display`][std::fmt::Display] for printing
+    /// strings that may contain non-Unicode data.
+    ///
+    /// A wide C string might data of any encoding. This function assumes the string is encoded in
+    /// UTF-32, and returns a struct implements the
+    /// [`Display`][std::fmt::Display] trait in a way that decoding the string is lossy but
+    /// no heap allocations are performed, such as by
+    /// [`to_string_lossy`][Self::to_string_lossy].
+    ///
+    /// By default, invalid Unicode data is replaced with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). If you wish
+    /// to simply skip any invalid Uncode data and forego the replacement, you may use the
+    /// [alternate formatting][std::fmt#sign0] with `{:#}`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use widestring::U32CStr;
+    ///
+    /// // 𝄞mus<invalid>ic<invalid>
+    /// let s = U32CStr::from_slice(&[
+    ///     0x1d11e, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834, 0x0000,
+    /// ]).unwrap();
+    ///
+    /// assert_eq!(format!("{}", s.display()),
+    /// "𝄞mus�ic�"
+    /// );
+    /// ```
+    ///
+    /// Using alternate formatting style to skip invalid values entirely:
+    ///
+    /// ```
+    /// use widestring::U32CStr;
+    ///
+    /// // 𝄞mus<invalid>ic<invalid>
+    /// let s = U32CStr::from_slice(&[
+    ///     0x1d11e, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834, 0x0000,
+    /// ]).unwrap();
+    ///
+    /// assert_eq!(format!("{:#}", s.display()),
+    /// "𝄞music"
+    /// );
+    /// ```
+    fn display() -> {}
+}
 
 impl U16CStr {
-    /// Decodes a string reference to an owned [`OsString`][std::ffi::OsString].
+    /// Copys a string to an owned [`OsString`][std::ffi::OsString].
     ///
     /// This makes a string copy of the [`U16CStr`]. Since [`U16CStr`] makes no guarantees that it
     /// is valid UTF-16, there is no guarantee that the resulting [`OsString`][std::ffi::OsString]
@@ -882,7 +1140,10 @@ impl U16CStr {
         crate::platform::os_from_wide(self.as_slice())
     }
 
-    /// Decodes the string reference to a [`String`] if it contains valid UTF-16 data.
+    /// Copies the string to a [`String`] if it contains valid UTF-16 data.
+    ///
+    /// This method assumes this string is encoded as UTF-16 and attempts to decode it as such. It
+    /// will **not* have a nul terminator.
     ///
     /// # Errors
     ///
@@ -909,7 +1170,10 @@ impl U16CStr {
 
     /// Decodes the string reference to a [`String`] even if it is invalid UTF-16 data.
     ///
-    /// Any non-Unicode sequences are replaced with `U+FFFD REPLACEMENT CHARACTER`.
+    /// This method assumes this string is encoded as UTF-16 and attempts to decode it as such. Any
+    /// invalid sequences are replaced with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][core::char::REPLACEMENT_CHARACTER], which looks like this:
+    /// �. It will **not* have a nul terminator.
     ///
     /// # Examples
     ///
@@ -932,7 +1196,8 @@ impl U16CStr {
 
     /// Returns an iterator over the [`char`][prim@char]s of a string slice.
     ///
-    /// As this string slice may consist of invalid UTF-16, the iterator returned by this method
+    /// As this string has no defined encoding, this method assumes the string is UTF-16. Since it
+    /// may consist of invalid UTF-16, the iterator returned by this method
     /// is an iterator over `Result<char, DecodeUtf16Error>` instead of [`char`][prim@char]s
     /// directly. If you would like a lossy iterator over [`chars`][prim@char]s directly, instead
     /// use [`chars_lossy`][Self::chars_lossy].
@@ -947,8 +1212,9 @@ impl U16CStr {
 
     /// Returns a lossy iterator over the [`char`][prim@char]s of a string slice.
     ///
-    /// As this string slice may consist of invalid UTF-16, the iterator returned by this method
-    /// will replace unpaired surrogates with
+    /// As this string has no defined encoding, this method assumes the string is UTF-16. Since it
+    /// may consist of invalid UTF-16, the iterator returned by this method will replace unpaired
+    /// surrogates with
     /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). This is a lossy
     /// version of [`chars`][Self::chars].
     ///
@@ -962,7 +1228,8 @@ impl U16CStr {
 
     /// Returns an iterator over the chars of a string slice, and their positions.
     ///
-    /// As this string slice may consist of invalid UTF-16, the iterator returned by this method
+    /// As this string has no defined encoding, this method assumes the string is UTF-16. Since it
+    /// may consist of invalid UTF-16, the iterator returned by this method is an iterator over
     /// is an iterator over `Result<char, DecodeUtf16Error>` as well as their positions, instead of
     /// [`char`][prim@char]s directly. If you would like a lossy indices iterator over
     /// [`chars`][prim@char]s directly, instead use
@@ -1382,6 +1649,9 @@ impl U32CStr {
 
     /// Decodes the string reference to a [`String`] if it contains valid UTF-32 data.
     ///
+    /// This method assumes this string is encoded as UTF-32 and attempts to decode it as such. It
+    /// will **not* have a nul terminator.
+    ///
     /// # Errors
     ///
     /// Returns an error if the string contains any invalid UTF-32 data.
@@ -1407,7 +1677,10 @@ impl U32CStr {
 
     /// Decodes the string reference to a [`String`] even if it is invalid UTF-32 data.
     ///
-    /// Any non-Unicode sequences are replaced with `U+FFFD REPLACEMENT CHARACTER`.
+    /// This method assumes this string is encoded as UTF-16 and attempts to decode it as such. Any
+    /// invalid sequences are replaced with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][core::char::REPLACEMENT_CHARACTER], which looks like this:
+    /// �. It will **not* have a nul terminator.
     ///
     /// # Examples
     ///
@@ -1430,7 +1703,8 @@ impl U32CStr {
 
     /// Returns an iterator over the [`char`][prim@char]s of a string slice.
     ///
-    /// As this string slice may consist of invalid UTF-32, the iterator returned by this method
+    /// As this string has no defined encoding, this method assumes the string is UTF-32. Since it
+    /// may consist of invalid UTF-32, the iterator returned by this method
     /// is an iterator over `Result<char, DecodeUtf32Error>` instead of [`char`][prim@char]s
     /// directly. If you would like a lossy iterator over [`chars`][prim@char]s directly, instead
     /// use [`chars_lossy`][Self::chars_lossy].
@@ -1445,8 +1719,9 @@ impl U32CStr {
 
     /// Returns a lossy iterator over the [`char`][prim@char]s of a string slice.
     ///
-    /// As this string slice may consist of invalid UTF-32, the iterator returned by this method
-    /// will replace surrogate values or invalid code points with
+    /// As this string has no defined encoding, this method assumes the string is UTF-32. Since it
+    /// may consist of invalid UTF-32, the iterator returned by this method will replace invalid
+    /// data with
     /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). This is a lossy
     /// version of [`chars`][Self::chars].
     ///

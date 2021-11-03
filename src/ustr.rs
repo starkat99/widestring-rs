@@ -1,4 +1,4 @@
-//! Wide string slices.
+//! Wide string slices with undefined encoding.
 //!
 //! This module contains wide string slices and related types.
 
@@ -18,44 +18,22 @@ use core::{
     slice::{self, SliceIndex},
 };
 
-/// 16-bit wide string slice for [`U16String`][crate::U16String].
-///
-/// [`U16Str`] is to [`U16String`][crate::U16String] as [`str`] is to [`String`].
-///
-/// [`U16Str`] is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-16 data. These strings are intended to be used
-/// with FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
-///
-/// [`U16CStr`][crate::U16CStr] should be used instead if nul-aware strings are required.
-///
-/// [`U16Str`] can be converted to many other string types, including
-/// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct U16Str {
-    pub(crate) inner: [u16],
-}
-
-/// 32-bit wide string slice for [`U32String`][crate::U32String].
-///
-/// [`U32Str`] is to [`U32String`][crate::U32String] as [`str`] is to [`String`].
-///
-/// [`U32Str`] is not aware of nul values. Strings may or may not be nul-terminated, and may
-/// contain invalid and ill-formed UTF-32 data. These strings are intended to be used
-/// with FFI functions that directly use string length, where the strings are known to have proper
-/// nul-termination already, or where strings are merely being passed through without modification.
-///
-/// [`U32CStr`][crate::U32CStr] should be used instead if nul-aware strings are required.
-///
-/// [`U32Str`] can be converted to many other string types, including
-/// [`OsString`][std::ffi::OsString] and [`String`], making proper Unicode FFI safe and easy.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct U32Str {
-    pub(crate) inner: [u32],
-}
-
 macro_rules! ustr_common_impl {
-    ($ustr:ident $uchar:ty => $ustring:ident $ucstr:ident) => {
+    {
+        $(#[$ustr_meta:meta])*
+        struct $ustr:ident([$uchar:ty]);
+        type UString = $ustring:ident;
+        type UCStr = $ucstr:ident;
+        $(#[$display_meta:meta])*
+        fn display() -> {}
+    } => {
+        $(#[$ustr_meta])*
+        #[allow(clippy::derive_hash_xor_eq)]
+        #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+        pub struct $ustr {
+            pub(crate) inner: [$uchar],
+        }
+
         impl $ustr {
             /// Coerces a value into a wide string slice.
             #[inline]
@@ -129,7 +107,8 @@ macro_rules! ustr_common_impl {
 
             /// Constructs a wide string slice from a slice of character data.
             ///
-            /// No checks are performed on the slice. It may or may not be valid for its encoding.
+            /// No checks are performed on the slice. It may be of any encoding and may contain
+            /// invalid or malformed data for that encoding.
             #[inline]
             pub const fn from_slice(slice: &[$uchar]) -> &Self {
                 unsafe { core::mem::transmute(slice) }
@@ -137,7 +116,8 @@ macro_rules! ustr_common_impl {
 
             /// Constructs a mutable wide string slice from a mutable slice of character data.
             ///
-            /// No checks are performed on the slice. It may or may not be valid for its encoding.
+            /// No checks are performed on the slice. It may be of any encoding and may contain
+            /// invalid or malformed data for that encoding.
             #[inline]
             pub fn from_slice_mut(slice: &mut [$uchar]) -> &mut Self {
                 let ptr: *mut [$uchar] = slice;
@@ -152,13 +132,13 @@ macro_rules! ustr_common_impl {
                 $ustring::from_vec(&self.inner)
             }
 
-            /// Converts to a slice of the string.
+            /// Converts to a slice of the underlying elements of the string.
             #[inline]
             pub const fn as_slice(&self) -> &[$uchar] {
                 &self.inner
             }
 
-            /// Converts to a mutable slice of the string.
+            /// Converts to a mutable slice of the underlying elements of the string.
             pub fn as_mut_slice(&mut self) -> &mut [$uchar] {
                 &mut self.inner
             }
@@ -250,50 +230,7 @@ macro_rules! ustr_common_impl {
                 }
             }
 
-            /// Returns an object that implements [`Display`][std::fmt::Display] for printing
-            /// strings that may contain non-Unicode data.
-            ///
-            /// A wide string slice might contain ill-formed UTF encoding. This struct implements
-            /// the [`Display`][std::fmt::Display] trait in a way that decoding the string is lossy
-            /// but no heap allocations are performed, such as by
-            /// [`to_string_lossy`][Self::to_string_lossy].
-            ///
-            /// By default, invalid Unicode data is replaced with
-            /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). If you wish
-            /// to simply skip any invalid Uncode data and forego the replacement, you may use the
-            /// [alternate formatting][std::fmt#sign0] with `{:#}`.
-            ///
-            /// # Examples
-            ///
-            /// Basic usage:
-            ///
-            /// ```
-            /// use widestring::U16Str;
-            ///
-            /// // 𝄞mus<invalid>ic<invalid>
-            /// let s = U16Str::from_slice(&[
-            ///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
-            /// ]);
-            ///
-            /// assert_eq!(format!("{}", s.display()),
-            /// "𝄞mus�ic�"
-            /// );
-            /// ```
-            ///
-            /// Using alternate formatting style to skip invalid values entirely:
-            ///
-            /// ```
-            /// use widestring::U16Str;
-            ///
-            /// // 𝄞mus<invalid>ic<invalid>
-            /// let s = U16Str::from_slice(&[
-            ///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
-            /// ]);
-            ///
-            /// assert_eq!(format!("{:#}", s.display()),
-            /// "𝄞music"
-            /// );
-            /// ```
+            $(#[$display_meta])*
             #[inline]
             pub fn display(&self) -> Display<'_, $ustr> {
                 Display { str: self }
@@ -478,9 +415,37 @@ macro_rules! ustr_common_impl {
             }
         }
 
+        impl PartialEq<$ustr> for &$ustr {
+            #[inline]
+            fn eq(&self, other: &$ustr) -> bool {
+                self.as_slice() == other.as_slice()
+            }
+        }
+
+        impl PartialEq<&$ustr> for $ustr {
+            #[inline]
+            fn eq(&self, other: &&$ustr) -> bool {
+                self.as_slice() == other.as_slice()
+            }
+        }
+
         impl PartialEq<crate::$ucstr> for $ustr {
             #[inline]
             fn eq(&self, other: &crate::$ucstr) -> bool {
+                self.as_slice() == other.as_slice()
+            }
+        }
+
+        impl PartialEq<crate::$ucstr> for &$ustr {
+            #[inline]
+            fn eq(&self, other: &crate::$ucstr) -> bool {
+                self.as_slice() == other.as_slice()
+            }
+        }
+
+        impl PartialEq<&crate::$ucstr> for $ustr {
+            #[inline]
+            fn eq(&self, other: &&crate::$ucstr) -> bool {
                 self.as_slice() == other.as_slice()
             }
         }
@@ -494,15 +459,246 @@ macro_rules! ustr_common_impl {
     };
 }
 
-ustr_common_impl!(U16Str u16 => U16String U16CStr);
-ustr_common_impl!(U32Str u32 => U32String U32CStr);
+ustr_common_impl! {
+    /// 16-bit wide string slice with undefined encoding.
+    ///
+    /// [`U16Str`] is to [`U16String`][crate::U16String] as [`OsStr`][std::ffi::OsStr] is to
+    /// [`OsString`][std::ffi::OsString].
+    ///
+    /// [`U16Str`] are string slices that do not have a defined encoding. While it is sometimes
+    /// assumed that they contain possibly invalid or ill-formed UTF-16 data, they may be used for
+    /// any wide encoded string. This is because [`U16Str`] is intended to be used with FFI
+    /// functions, where proper encoding cannot be guaranteed. If you need string slices that are
+    /// always valid UTF-16 strings, use [`Utf16Str`][crate::Utf16Str] instead.
+    ///
+    /// Because [`U16Str`] does not have a defined encoding, no restrictions are placed on mutating
+    /// or indexing the slice. This means that even if the string contained properly encoded UTF-16
+    /// or other encoding data, mutationing or indexing may result in malformed data. Convert to a
+    /// [`Utf16Str`][crate::Utf16Str] if retaining proper UTF-16 encoding is desired.
+    ///
+    /// # FFI considerations
+    ///
+    /// [`U16Str`] is not aware of nul values and may or may not be nul-terminated. It is intended
+    /// to be used with FFI functions that directly use string length, where the strings are known
+    /// to have proper nul-termination already, or where strings are merely being passed through
+    /// without modification.
+    ///
+    /// [`U16CStr`][crate::U16CStr] should be used instead if nul-aware strings are required.
+    ///
+    /// # Examples
+    ///
+    /// The easiest way to use [`U16Str`] outside of FFI is with the [`u16str!`][crate::u16str]
+    /// macro to convert string literals into UTF-16 string slices at compile time:
+    ///
+    /// ```
+    /// use widestring::u16str;
+    /// let hello = u16str!("Hello, world!");
+    /// ```
+    ///
+    /// You can also convert any [`u16`] slice directly:
+    ///
+    /// ```
+    /// use widestring::{u16str, U16Str};
+    ///
+    /// let sparkle_heart = [0xd83d, 0xdc96];
+    /// let sparkle_heart = U16Str::from_slice(&sparkle_heart);
+    ///
+    /// assert_eq!(u16str!("💖"), sparkle_heart);
+    ///
+    /// // This unpaired UTf-16 surrogate is invalid UTF-16, but is perfectly valid in U16Str
+    /// let malformed_utf16 = [0x0, 0xd83d]; // Note that nul values are also valid an untouched
+    /// let s = U16Str::from_slice(&malformed_utf16);
+    ///
+    /// assert_eq!(s.len(), 2);
+    /// ```
+    ///
+    /// When working with a FFI, it is useful to create a [`U16Str`] from a pointer and a length:
+    ///
+    /// ```
+    /// use widestring::{u16str, U16Str};
+    ///
+    /// let sparkle_heart = [0xd83d, 0xdc96];
+    /// let sparkle_heart = unsafe {
+    ///     U16Str::from_ptr(sparkle_heart.as_ptr(), sparkle_heart.len())
+    /// };
+    /// assert_eq!(u16str!("💖"), sparkle_heart);
+    /// ```
+    struct U16Str([u16]);
+
+    type UString = U16String;
+    type UCStr = U16CStr;
+
+    /// Returns an object that implements [`Display`][std::fmt::Display] for printing
+    /// strings that may contain non-Unicode data.
+    ///
+    /// This method assumes this string is intended to be UTF-16 encoding, but handles
+    /// ill-formed UTF-16 sequences lossily. The returned struct implements
+    /// the [`Display`][std::fmt::Display] trait in a way that decoding the string is lossy
+    /// UTF-16 decoding but no heap allocations are performed, such as by
+    /// [`to_string_lossy`][Self::to_string_lossy].
+    ///
+    /// By default, invalid Unicode data is replaced with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). If you wish
+    /// to simply skip any invalid Uncode data and forego the replacement, you may use the
+    /// [alternate formatting][std::fmt#sign0] with `{:#}`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use widestring::U16Str;
+    ///
+    /// // 𝄞mus<invalid>ic<invalid>
+    /// let s = U16Str::from_slice(&[
+    ///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
+    /// ]);
+    ///
+    /// assert_eq!(format!("{}", s.display()),
+    /// "𝄞mus�ic�"
+    /// );
+    /// ```
+    ///
+    /// Using alternate formatting style to skip invalid values entirely:
+    ///
+    /// ```
+    /// use widestring::U16Str;
+    ///
+    /// // 𝄞mus<invalid>ic<invalid>
+    /// let s = U16Str::from_slice(&[
+    ///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
+    /// ]);
+    ///
+    /// assert_eq!(format!("{:#}", s.display()),
+    /// "𝄞music"
+    /// );
+    /// ```
+    fn display() -> {}
+}
+
+ustr_common_impl! {
+    /// 32-bit wide string slice with undefined encoding.
+    ///
+    /// [`U32Str`] is to [`U32String`][crate::U32String] as [`OsStr`][std::ffi::OsStr] is to
+    /// [`OsString`][std::ffi::OsString].
+    ///
+    /// [`U32Str`] are string slices that do not have a defined encoding. While it is sometimes
+    /// assumed that they contain possibly invalid or ill-formed UTF-32 data, they may be used for
+    /// any wide encoded string. This is because [`U32Str`] is intended to be used with FFI
+    /// functions, where proper encoding cannot be guaranteed. If you need string slices that are
+    /// always valid UTF-32 strings, use [`Utf32Str`][crate::Utf32Str] instead.
+    ///
+    /// Because [`U32Str`] does not have a defined encoding, no restrictions are placed on mutating
+    /// or indexing the slice. This means that even if the string contained properly encoded UTF-32
+    /// or other encoding data, mutationing or indexing may result in malformed data. Convert to a
+    /// [`Utf32Str`][crate::Utf32Str] if retaining proper UTF-32 encoding is desired.
+    ///
+    /// # FFI considerations
+    ///
+    /// [`U32Str`] is not aware of nul values and may or may not be nul-terminated. It is intended
+    /// to be used with FFI functions that directly use string length, where the strings are known
+    /// to have proper nul-termination already, or where strings are merely being passed through
+    /// without modification.
+    ///
+    /// [`U32CStr`][crate::U32CStr] should be used instead if nul-aware strings are required.
+    ///
+    /// # Examples
+    ///
+    /// The easiest way to use [`U32Str`] outside of FFI is with the [`u32str!`][crate::u32str]
+    /// macro to convert string literals into UTF-32 string slices at compile time:
+    ///
+    /// ```
+    /// use widestring::u32str;
+    /// let hello = u32str!("Hello, world!");
+    /// ```
+    ///
+    /// You can also convert any [`u32`] slice directly:
+    ///
+    /// ```
+    /// use widestring::{u32str, U32Str};
+    ///
+    /// let sparkle_heart = [0x1f496];
+    /// let sparkle_heart = U32Str::from_slice(&sparkle_heart);
+    ///
+    /// assert_eq!(u32str!("💖"), sparkle_heart);
+    ///
+    /// // This UTf-16 surrogate is invalid UTF-32, but is perfectly valid in U32Str
+    /// let malformed_utf32 = [0x0, 0xd83d]; // Note that nul values are also valid an untouched
+    /// let s = U32Str::from_slice(&malformed_utf32);
+    ///
+    /// assert_eq!(s.len(), 2);
+    /// ```
+    ///
+    /// When working with a FFI, it is useful to create a [`U32Str`] from a pointer and a length:
+    ///
+    /// ```
+    /// use widestring::{u32str, U32Str};
+    ///
+    /// let sparkle_heart = [0x1f496];
+    /// let sparkle_heart = unsafe {
+    ///     U32Str::from_ptr(sparkle_heart.as_ptr(), sparkle_heart.len())
+    /// };
+    /// assert_eq!(u32str!("💖"), sparkle_heart);
+    /// ```
+    struct U32Str([u32]);
+
+    type UString = U32String;
+    type UCStr = U32CStr;
+
+    /// Returns an object that implements [`Display`][std::fmt::Display] for printing
+    /// strings that may contain non-Unicode data.
+    ///
+    /// This method assumes this string is intended to be UTF-32 encoding, but handles
+    /// ill-formed UTF-32 sequences lossily. The returned struct implements
+    /// the [`Display`][std::fmt::Display] trait in a way that decoding the string is lossy
+    /// UTF-32 decoding but no heap allocations are performed, such as by
+    /// [`to_string_lossy`][Self::to_string_lossy].
+    ///
+    /// By default, invalid Unicode data is replaced with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). If you wish
+    /// to simply skip any invalid Uncode data and forego the replacement, you may use the
+    /// [alternate formatting][std::fmt#sign0] with `{:#}`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use widestring::U32Str;
+    ///
+    /// // 𝄞mus<invalid>ic<invalid>
+    /// let s = U32Str::from_slice(&[
+    ///     0x1d11e, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
+    /// ]);
+    ///
+    /// assert_eq!(format!("{}", s.display()),
+    /// "𝄞mus�ic�"
+    /// );
+    /// ```
+    ///
+    /// Using alternate formatting style to skip invalid values entirely:
+    ///
+    /// ```
+    /// use widestring::U32Str;
+    ///
+    /// // 𝄞mus<invalid>ic<invalid>
+    /// let s = U32Str::from_slice(&[
+    ///     0x1d11e, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
+    /// ]);
+    ///
+    /// assert_eq!(format!("{:#}", s.display()),
+    /// "𝄞music"
+    /// );
+    /// ```
+    fn display() -> {}
+}
 
 impl U16Str {
     /// Decodes a string reference to an owned [`OsString`][std::ffi::OsString].
     ///
-    /// This makes a string copy of the [`U16Str`]. Since [`U16Str`] makes no guarantees that it is
-    /// valid UTF-16, there is no guarantee that the resulting [`OsString`][std::ffi::OsString] will
-    /// be valid encoding either.
+    /// This makes a string copy of the [`U16Str`]. Since [`U16Str`] makes no guarantees that its
+    /// encoding is UTF-16 or that the data valid UTF-16, there is no guarantee that the resulting
+    /// [`OsString`][std::ffi::OsString] will have a valid underlying encoding either.
     ///
     /// Note that the encoding of [`OsString`][std::ffi::OsString] is platform-dependent, so on
     /// some platforms this may make an encoding conversions, while on other platforms (such as
@@ -528,7 +724,9 @@ impl U16Str {
         crate::platform::os_from_wide(&self.inner)
     }
 
-    /// Decodes the string reference to a [`String`] if it contains valid UTF-16 data.
+    /// Decodes this string to a [`String`] if it contains valid UTF-16 data.
+    ///
+    /// This method assumes this string is encoded as UTF-16 and attempts to decode it as such.
     ///
     /// # Failures
     ///
@@ -553,9 +751,12 @@ impl U16Str {
         String::from_utf16(&self.inner)
     }
 
-    /// Decodes the string reference to a [`String`] even if it is invalid UTF-16 data.
+    /// Decodes the string to a [`String`] even if it is invalid UTF-16 data.
     ///
-    /// Any non-Unicode sequences are replaced with `U+FFFD REPLACEMENT CHARACTER`.
+    /// This method assumes this string is encoded as UTF-16 and attempts to decode it as such. Any
+    /// invalid sequences are replaced with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][core::char::REPLACEMENT_CHARACTER], which looks like this:
+    /// �
     ///
     /// # Examples
     ///
@@ -578,7 +779,8 @@ impl U16Str {
 
     /// Returns an iterator over the [`char`][prim@char]s of a string slice.
     ///
-    /// As this string slice may consist of invalid UTF-16, the iterator returned by this method
+    /// As this string has no defined encoding, this method assumes the string is UTF-16. Since it
+    /// may consist of invalid UTF-16, the iterator returned by this method
     /// is an iterator over `Result<char, DecodeUtf16Error>` instead of [`char`][prim@char]s
     /// directly. If you would like a lossy iterator over [`chars`][prim@char]s directly, instead
     /// use [`chars_lossy`][Self::chars_lossy].
@@ -593,8 +795,9 @@ impl U16Str {
 
     /// Returns a lossy iterator over the [`char`][prim@char]s of a string slice.
     ///
-    /// As this string slice may consist of invalid UTF-16, the iterator returned by this method
-    /// will replace unpaired surrogates with
+    /// As this string has no defined encoding, this method assumes the string is UTF-16. Since it
+    /// may consist of invalid UTF-16, the iterator returned by this method will replace unpaired
+    /// surrogates with
     /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). This is a lossy
     /// version of [`chars`][Self::chars].
     ///
@@ -608,8 +811,9 @@ impl U16Str {
 
     /// Returns an iterator over the chars of a string slice, and their positions.
     ///
-    /// As this string slice may consist of invalid UTF-16, the iterator returned by this method
-    /// is an iterator over `Result<char, DecodeUtf16Error>` as well as their positions, instead of
+    /// As this string has no defined encoding, this method assumes the string is UTF-16. Since it
+    /// may consist of invalid UTF-16, the iterator returned by this method is an iterator over
+    /// `Result<char, DecodeUtf16Error>` as well as their positions, instead of
     /// [`char`][prim@char]s directly. If you would like a lossy indices iterator over
     /// [`chars`][prim@char]s directly, instead use
     /// [`char_indices_lossy`][Self::char_indices_lossy].
@@ -712,9 +916,9 @@ impl U32Str {
 
     /// Decodes a string to an owned [`OsString`][std::ffi::OsString].
     ///
-    /// This makes a string copy of the [`U32Str`]. Since [`U32Str`] makes no guarantees that it is
-    /// valid UTF-32, there is no guarantee that the resulting [`OsString`][std::ffi::OsString] will
-    /// be valid data.
+    /// This makes a string copy of the [`U16Str`]. Since [`U16Str`] makes no guarantees that its
+    /// encoding is UTF-16 or that the data valid UTF-16, there is no guarantee that the resulting
+    /// [`OsString`][std::ffi::OsString] will have a valid underlying encoding either.
     ///
     /// Note that the encoding of [`OsString`][std::ffi::OsString] is platform-dependent, so on
     /// some platforms this may make an encoding conversions, while on other platforms no changes to
@@ -741,6 +945,8 @@ impl U32Str {
     }
 
     /// Decodes the string to a [`String`] if it contains valid UTF-32 data.
+    ///
+    /// This method assumes this string is encoded as UTF-32 and attempts to decode it as such.
     ///
     /// # Failures
     ///
@@ -777,7 +983,10 @@ impl U32Str {
 
     /// Decodes the string reference to a [`String`] even if it is invalid UTF-32 data.
     ///
-    /// Any non-Unicode sequences are replaced with `U+FFFD REPLACEMENT CHARACTER`.
+    /// This method assumes this string is encoded as UTF-16 and attempts to decode it as such. Any
+    /// invalid sequences are replaced with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][core::char::REPLACEMENT_CHARACTER], which looks like this:
+    /// �
     ///
     /// # Examples
     ///
@@ -811,7 +1020,8 @@ impl U32Str {
 
     /// Returns an iterator over the [`char`][prim@char]s of a string slice.
     ///
-    /// As this string slice may consist of invalid UTF-32, the iterator returned by this method
+    /// As this string has no defined encoding, this method assumes the string is UTF-32. Since it
+    /// may consist of invalid UTF-32, the iterator returned by this method
     /// is an iterator over `Result<char, DecodeUtf32Error>` instead of [`char`][prim@char]s
     /// directly. If you would like a lossy iterator over [`chars`][prim@char]s directly, instead
     /// use [`chars_lossy`][Self::chars_lossy].
@@ -826,8 +1036,9 @@ impl U32Str {
 
     /// Returns a lossy iterator over the [`char`][prim@char]s of a string slice.
     ///
-    /// As this string slice may consist of invalid UTF-32, the iterator returned by this method
-    /// will replace surrogate values or invalid code points with
+    /// As this string has no defined encoding, this method assumes the string is UTF-32. Since it
+    /// may consist of invalid UTF-32, the iterator returned by this method will replace unpaired
+    /// surrogates with
     /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�). This is a lossy
     /// version of [`chars`][Self::chars].
     ///
