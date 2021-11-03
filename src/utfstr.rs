@@ -30,14 +30,18 @@ macro_rules! utfstr_common_impl {
         type UStr = $ustr:ident;
         type UCStr = $ucstr:ident;
         type UtfError = $utferror:ident;
+        $(#[$from_slice_unchecked_meta:meta])*
+        fn from_slice_unchecked() -> {}
+        $(#[$from_slice_unchecked_mut_meta:meta])*
+        fn from_slice_unchecked_mut() -> {}
+        $(#[$from_boxed_slice_unchecked_meta:meta])*
+        fn from_boxed_slice_unchecked() -> {}
         $(#[$get_unchecked_meta:meta])*
-        fn get_unchecked() {}
+        fn get_unchecked() -> {}
         $(#[$get_unchecked_mut_meta:meta])*
-        fn get_unchecked_mut() {}
+        fn get_unchecked_mut() -> {}
         $(#[$len_meta:meta])*
-        fn len() {}
-        $(#[$as_slice_meta:meta])*
-        fn as_slice() {}
+        fn len() -> {}
     } => {
         $(#[$utfstr_meta])*
         #[allow(clippy::derive_hash_xor_eq)]
@@ -47,18 +51,25 @@ macro_rules! utfstr_common_impl {
         }
 
         impl $utfstr {
+            $(#[$from_slice_unchecked_meta])*
             #[allow(trivial_casts)]
-            pub(crate) const unsafe fn from_slice_unchecked(s: &[$uchar]) -> &Self {
+            #[inline]
+            pub const unsafe fn from_slice_unchecked(s: &[$uchar]) -> &Self {
                 mem::transmute(s)
             }
 
+            $(#[$from_slice_unchecked_mut_meta])*
             #[allow(trivial_casts)]
-            pub(crate) unsafe fn from_slice_unchecked_mut(s: &mut [$uchar]) -> &mut Self {
+            #[inline]
+            pub unsafe fn from_slice_unchecked_mut(s: &mut [$uchar]) -> &mut Self {
                 &mut *(s as *mut [$uchar] as *mut Self)
             }
 
+            $(#[$from_boxed_slice_unchecked_meta])*
+            #[inline]
             #[cfg(feature = "alloc")]
-            pub(crate) unsafe fn from_boxed_slice_unchecked(s: Box<[$uchar]>) -> Box<Self> {
+            #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+            pub unsafe fn from_boxed_slice_unchecked(s: Box<[$uchar]>) -> Box<Self> {
                 Box::from_raw(Box::into_raw(s) as *mut Self)
             }
 
@@ -92,7 +103,10 @@ macro_rules! utfstr_common_impl {
                 self.inner.is_empty()
             }
 
-            $(#[$as_slice_meta])*
+            /// Converts a string to a slice of its underlying elements.
+            ///
+            /// To convert the slice back into a string slice, use the
+            /// [`from_slice`][Self::from_slice] function.
             #[inline]
             pub const fn as_slice(&self) -> &[$uchar] {
                 &self.inner
@@ -162,7 +176,7 @@ macro_rules! utfstr_common_impl {
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
             pub fn into_utfstring(self: Box<Self>) -> $utfstring {
-                unsafe { $utfstring::from_slice_unchecked(self.into_boxed_slice().into_vec()) }
+                unsafe { $utfstring::from_vec_unchecked(self.into_boxed_slice().into_vec()) }
             }
 
             /// Creates a new owned string by repeating this string `n` times.
@@ -174,7 +188,7 @@ macro_rules! utfstr_common_impl {
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
             pub fn repeat(&self, n: usize) -> $utfstring {
-                unsafe { $utfstring::from_slice_unchecked(self.as_slice().repeat(n)) }
+                unsafe { $utfstring::from_vec_unchecked(self.as_slice().repeat(n)) }
             }
         }
 
@@ -424,7 +438,7 @@ utfstr_common_impl! {
     /// use widestring::Utf16Str;
     ///
     /// let sparkle_heart = [0xd83d, 0xdc96];
-    /// let sparkle_heart = Utf16Str::from_utf16(&sparkle_heart).unwrap();
+    /// let sparkle_heart = Utf16Str::from_slice(&sparkle_heart).unwrap();
     ///
     /// assert_eq!("💖", sparkle_heart);
     /// ```
@@ -434,6 +448,60 @@ utfstr_common_impl! {
     type UStr = U16Str;
     type UCStr = U16CStr;
     type UtfError = Utf16Error;
+
+    /// Converts a slice to a string slice without checking that the string contains valid UTF-16.
+    ///
+    /// See the safe version, [`from_slice`][Self::from_slice], for more information.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it does not check that the slice passed to it is valid
+    /// UTF-16. If this constraint is violated, undefined behavior results as it is assumed the
+    /// [`Utf16Str`] is always valid UTF-16.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::Utf16Str;
+    ///
+    /// let sparkle_heart = vec![0xd83d, 0xdc96]; // Raw surrogate pair
+    /// let sparkle_heart = unsafe { Utf16Str::from_slice_unchecked(&sparkle_heart) };
+    ///
+    /// assert_eq!("💖", sparkle_heart);
+    /// ```
+    fn from_slice_unchecked() -> {}
+
+    /// Converts a mutable slice to a mutable string slice without checking that the string contains
+    /// valid UTF-16.
+    ///
+    /// See the safe version, [`from_slice_mut`][Self::from_slice_mut], for more information.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it does not check that the slice passed to it is valid
+    /// UTF-16. If this constraint is violated, undefined behavior results as it is assumed the
+    /// [`Utf16Str`] is always valid UTF-16.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::Utf16Str;
+    ///
+    /// let mut sparkle_heart = vec![0xd83d, 0xdc96]; // Raw surrogate pair
+    /// let sparkle_heart = unsafe { Utf16Str::from_slice_unchecked_mut(&mut sparkle_heart) };
+    ///
+    /// assert_eq!("💖", sparkle_heart);
+    /// ```
+    fn from_slice_unchecked_mut() -> {}
+
+    /// Converts a boxed slice to a boxed string slice without checking that the string contains
+    /// valid UTF-16.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it does not check if the string slice is valid UTF-16, and
+    /// [`Utf16Str`] must always be valid UTF-16.
+    fn from_boxed_slice_unchecked() -> {}
 
     /// Returns an unchecked subslice of this string slice.
     ///
@@ -462,7 +530,7 @@ utfstr_common_impl! {
     ///     assert_eq!(utf16str!("s"), v.get_unchecked(10..));
     /// }
     /// ```
-    fn get_unchecked() {}
+    fn get_unchecked() -> {}
 
     /// Returns a mutable, unchecked subslice of this string slice
     ///
@@ -493,7 +561,7 @@ utfstr_common_impl! {
     /// }
     /// # }
     /// ```
-    fn get_unchecked_mut() {}
+    fn get_unchecked_mut() -> {}
 
     /// Returns the length of `self`.
     ///
@@ -510,13 +578,7 @@ utfstr_common_impl! {
     /// assert_eq!(complex.len(), 11);
     /// assert_eq!(complex.chars().count(), 10);
     /// ```
-    fn len() {}
-
-    /// Converts a string to a slice of its underlying elements.
-    ///
-    /// To convert the slice back into a string slice, use the [`from_utf16`][Self::from_utf16]
-    /// function.
-    fn as_slice() {}
+    fn len() -> {}
 }
 
 utfstr_common_impl! {
@@ -545,7 +607,7 @@ utfstr_common_impl! {
     /// use widestring::Utf32Str;
     ///
     /// let sparkle_heart = [0x1f496];
-    /// let sparkle_heart = Utf32Str::from_utf32(&sparkle_heart).unwrap();
+    /// let sparkle_heart = Utf32Str::from_slice(&sparkle_heart).unwrap();
     ///
     /// assert_eq!("💖", sparkle_heart);
     /// ```
@@ -567,6 +629,60 @@ utfstr_common_impl! {
     type UStr = U32Str;
     type UCStr = U32CStr;
     type UtfError = Utf32Error;
+
+    /// Converts a slice to a string slice without checking that the string contains valid UTF-32.
+    ///
+    /// See the safe version, [`from_slice`][Self::from_slice], for more information.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it does not check that the slice passed to it is valid
+    /// UTF-32. If this constraint is violated, undefined behavior results as it is assumed the
+    /// [`Utf32Str`] is always valid UTF-32.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::Utf32Str;
+    ///
+    /// let sparkle_heart = vec![0x1f496];
+    /// let sparkle_heart = unsafe { Utf32Str::from_slice_unchecked(&sparkle_heart) };
+    ///
+    /// assert_eq!("💖", sparkle_heart);
+    /// ```
+    fn from_slice_unchecked() -> {}
+
+    /// Converts a mutable slice to a mutable string slice without checking that the string contains
+    /// valid UTF-32.
+    ///
+    /// See the safe version, [`from_slice_mut`][Self::from_slice_mut], for more information.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it does not check that the slice passed to it is valid
+    /// UTF-32. If this constraint is violated, undefined behavior results as it is assumed the
+    /// [`Utf32Str`] is always valid UTF-32.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::Utf32Str;
+    ///
+    /// let mut sparkle_heart = vec![0x1f496];
+    /// let sparkle_heart = unsafe { Utf32Str::from_slice_unchecked_mut(&mut sparkle_heart) };
+    ///
+    /// assert_eq!("💖", sparkle_heart);
+    /// ```
+    fn from_slice_unchecked_mut() -> {}
+
+    /// Converts a boxed slice to a boxed string slice without checking that the string contains
+    /// valid UTF-32.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it does not check if the string slice is valid UTF-32, and
+    /// [`Utf32Str`] must always be valid UTF-32.
+    fn from_boxed_slice_unchecked() -> {}
 
     /// Returns an unchecked subslice of this string slice.
     ///
@@ -594,7 +710,7 @@ utfstr_common_impl! {
     ///     assert_eq!(utf32str!("s"), v.get_unchecked(9..))
     /// }
     /// ```
-    fn get_unchecked() {}
+    fn get_unchecked() -> {}
 
     /// Returns a mutable, unchecked subslice of this string slice
     ///
@@ -624,7 +740,7 @@ utfstr_common_impl! {
     /// }
     /// # }
     /// ```
-    fn get_unchecked_mut() {}
+    fn get_unchecked_mut() -> {}
 
     /// Returns the length of `self`.
     ///
@@ -641,81 +757,10 @@ utfstr_common_impl! {
     /// assert_eq!(complex.len(), 10);
     /// assert_eq!(complex.chars().count(), 10);
     /// ```
-    fn len() {}
-
-    /// Converts a string to a slice of its underlying elements.
-    ///
-    /// To convert the slice back into a string slice, use the [`from_utf32`][Self::from_utf32]
-    /// function.
-    fn as_slice() {}
+    fn len() -> {}
 }
 
 impl Utf16Str {
-    /// Converts a slice to a string slice without checking that the string contains valid UTF-16.
-    ///
-    /// See the safe version, [`from_utf16`][Self::from_utf16], for more information.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because it does not check that the slice passed to it is valid
-    /// UTF-16. If this constraint is violated, undefined behavior results as it is assumed the
-    /// [`Utf16Str`] is always valid UTF-16.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use widestring::Utf16Str;
-    ///
-    /// let sparkle_heart = vec![0xd83d, 0xdc96]; // Raw surrogate pair
-    /// let sparkle_heart = unsafe { Utf16Str::from_utf16_unchecked(&sparkle_heart) };
-    ///
-    /// assert_eq!("💖", sparkle_heart);
-    /// ```
-    #[inline]
-    pub const unsafe fn from_utf16_unchecked(s: &[u16]) -> &Self {
-        Self::from_slice_unchecked(s)
-    }
-
-    /// Converts a mutable slice to a mutable string slice without checking that the string contains
-    /// valid UTF-16.
-    ///
-    /// See the safe version, [`from_utf16_mut`][Self::from_utf16_mut], for more information.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because it does not check that the slice passed to it is valid
-    /// UTF-16. If this constraint is violated, undefined behavior results as it is assumed the
-    /// [`Utf16Str`] is always valid UTF-16.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use widestring::Utf16Str;
-    ///
-    /// let mut sparkle_heart = vec![0xd83d, 0xdc96]; // Raw surrogate pair
-    /// let sparkle_heart = unsafe { Utf16Str::from_utf16_unchecked_mut(&mut sparkle_heart) };
-    ///
-    /// assert_eq!("💖", sparkle_heart);
-    /// ```
-    #[inline]
-    pub unsafe fn from_utf16_unchecked_mut(s: &mut [u16]) -> &mut Self {
-        Self::from_slice_unchecked_mut(s)
-    }
-
-    /// Converts a boxed slice to a boxed string slice without checking that the string contains
-    /// valid UTF-16.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because it does not check if the string slice is valid UTF-16, and
-    /// [`Utf16Str`] must always be valid UTF-16.
-    #[inline]
-    #[cfg(feature = "alloc")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-    pub unsafe fn from_boxed_utf16_unchecked(s: Box<[u16]>) -> Box<Self> {
-        Self::from_boxed_slice_unchecked(s)
-    }
-
     /// Converts a slice of UTF-16 data to a string slice.
     ///
     /// Not all slices of [`u16`] values are valid to convert, since [`Utf16Str`] requires that it
@@ -724,10 +769,10 @@ impl Utf16Str {
     ///
     /// If you are sure that the slice is valid UTF-16, and you don't want to incur the overhead of
     /// the validity check, there is an unsafe version of this function,
-    /// [`from_utf16_unchecked`][Self::from_utf16_unchecked], which has the same behavior but skips
+    /// [`from_slice_unchecked`][Self::from_slice_unchecked], which has the same behavior but skips
     /// the check.
     ///
-    /// If you need an owned string, consider using [`Utf16String::from_utf16`] instead.
+    /// If you need an owned string, consider using [`Utf16String::from_slice`] instead.
     ///
     /// Because you can stack-allocate a `[u16; N]`, this function is one way to have a
     /// stack-allocated string. Indeed, the [`utf16str!`][crate::utf16str] macro does exactly this
@@ -744,7 +789,7 @@ impl Utf16Str {
     /// use widestring::Utf16Str;
     ///
     /// let sparkle_heart = vec![0xd83d, 0xdc96]; // Raw surrogate pair
-    /// let sparkle_heart = Utf16Str::from_utf16(&sparkle_heart).unwrap();
+    /// let sparkle_heart = Utf16Str::from_slice(&sparkle_heart).unwrap();
     ///
     /// assert_eq!("💖", sparkle_heart);
     /// ```
@@ -756,12 +801,12 @@ impl Utf16Str {
     ///
     /// let sparkle_heart = vec![0xd83d, 0x0]; // This is an invalid unpaired surrogate
     ///
-    /// assert!(Utf16Str::from_utf16(&sparkle_heart).is_err());
+    /// assert!(Utf16Str::from_slice(&sparkle_heart).is_err());
     /// ```
-    pub fn from_utf16(s: &[u16]) -> Result<&Self, Utf16Error> {
+    pub fn from_slice(s: &[u16]) -> Result<&Self, Utf16Error> {
         validate_utf16(s)?;
         // SAFETY: Just validated
-        Ok(unsafe { Self::from_utf16_unchecked(s) })
+        Ok(unsafe { Self::from_slice_unchecked(s) })
     }
 
     /// Converts a mutable slice of UTF-16 data to a mutable string slice.
@@ -772,10 +817,10 @@ impl Utf16Str {
     ///
     /// If you are sure that the slice is valid UTF-16, and you don't want to incur the overhead of
     /// the validity check, there is an unsafe version of this function,
-    /// [`from_utf16_unchecked_mut`][Self::from_utf16_unchecked_mut], which has the same behavior
+    /// [`from_slice_unchecked_mut`][Self::from_slice_unchecked_mut], which has the same behavior
     /// but skips the check.
     ///
-    /// If you need an owned string, consider using [`Utf16String::from_utf16`] instead.
+    /// If you need an owned string, consider using [`Utf16String::from_slice`] instead.
     ///
     /// Because you can stack-allocate a `[u16; N]`, this function is one way to have a
     /// stack-allocated string. Indeed, the [`utf16str!`][crate::utf16str] macro does exactly this
@@ -792,7 +837,7 @@ impl Utf16Str {
     /// use widestring::Utf16Str;
     ///
     /// let mut sparkle_heart = vec![0xd83d, 0xdc96]; // Raw surrogate pair
-    /// let sparkle_heart = Utf16Str::from_utf16_mut(&mut sparkle_heart).unwrap();
+    /// let sparkle_heart = Utf16Str::from_slice_mut(&mut sparkle_heart).unwrap();
     ///
     /// assert_eq!("💖", sparkle_heart);
     /// ```
@@ -804,12 +849,12 @@ impl Utf16Str {
     ///
     /// let mut sparkle_heart = vec![0xd83d, 0x0]; // This is an invalid unpaired surrogate
     ///
-    /// assert!(Utf16Str::from_utf16_mut(&mut sparkle_heart).is_err());
+    /// assert!(Utf16Str::from_slice_mut(&mut sparkle_heart).is_err());
     /// ```
-    pub fn from_utf16_mut(s: &mut [u16]) -> Result<&mut Self, Utf16Error> {
+    pub fn from_slice_mut(s: &mut [u16]) -> Result<&mut Self, Utf16Error> {
         validate_utf16(s)?;
         // SAFETY: Just validated
-        Ok(unsafe { Self::from_utf16_unchecked_mut(s) })
+        Ok(unsafe { Self::from_slice_unchecked_mut(s) })
     }
 
     /// Converts an unencoded string slice to a UTF-16 string slice without checking if the string
@@ -834,7 +879,7 @@ impl Utf16Str {
     /// assert_eq!("💖", sparkle_heart);
     /// ```
     pub const unsafe fn from_ustr_unchecked(s: &U16Str) -> &Self {
-        Self::from_utf16_unchecked(s.as_slice())
+        Self::from_slice_unchecked(s.as_slice())
     }
 
     /// Converts a mutable unencoded string slice to a mutable UTF-16 string slice without
@@ -848,7 +893,7 @@ impl Utf16Str {
     /// valid UTF-16. If this constraint is violated, undefined behavior results as it is assumed
     /// the [`Utf16Str`] is always valid UTF-16.
     pub unsafe fn from_ustr_unchecked_mut(s: &mut U16Str) -> &mut Self {
-        Self::from_utf16_unchecked_mut(s.as_mut_slice())
+        Self::from_slice_unchecked_mut(s.as_mut_slice())
     }
 
     /// Converts an unencoded string slice to a UTF-16 string slice.
@@ -878,7 +923,7 @@ impl Utf16Str {
     /// ```
     #[inline]
     pub fn from_ustr(s: &U16Str) -> Result<&Self, Utf16Error> {
-        Self::from_utf16(s.as_slice())
+        Self::from_slice(s.as_slice())
     }
 
     /// Converts a mutable unencoded string slice to a mutable UTF-16 string slice.
@@ -897,7 +942,7 @@ impl Utf16Str {
     /// provided string slice is not UTF-16.
     #[inline]
     pub fn from_ustr_mut(s: &mut U16Str) -> Result<&mut Self, Utf16Error> {
-        Self::from_utf16_mut(s.as_mut_slice())
+        Self::from_slice_mut(s.as_mut_slice())
     }
 
     /// Converts a wide C string slice to a UTF-16 string slice without checking if the
@@ -925,7 +970,7 @@ impl Utf16Str {
     /// ```
     #[inline]
     pub unsafe fn from_ucstr_unchecked(s: &crate::U16CStr) -> &Self {
-        Self::from_utf16_unchecked(s.as_slice())
+        Self::from_slice_unchecked(s.as_slice())
     }
 
     /// Converts a mutable wide C string slice to a mutable UTF-16 string slice without
@@ -942,7 +987,7 @@ impl Utf16Str {
     /// the [`Utf16Str`] is always valid UTF-16.
     #[inline]
     pub unsafe fn from_ucstr_unchecked_mut(s: &mut crate::U16CStr) -> &mut Self {
-        Self::from_utf16_unchecked_mut(s.as_mut_slice())
+        Self::from_slice_unchecked_mut(s.as_mut_slice())
     }
 
     /// Converts a wide C string slice to a UTF-16 string slice.
@@ -974,7 +1019,7 @@ impl Utf16Str {
     /// ```
     #[inline]
     pub fn from_ucstr(s: &crate::U16CStr) -> Result<&Self, Utf16Error> {
-        Self::from_utf16(s.as_slice())
+        Self::from_slice(s.as_slice())
     }
 
     /// Converts a mutable wide C string slice to a mutable UTF-16 string slice.
@@ -1000,7 +1045,7 @@ impl Utf16Str {
     /// provided string slice is not UTF-16.
     #[inline]
     pub unsafe fn from_ucstr_mut(s: &mut crate::U16CStr) -> Result<&mut Self, Utf16Error> {
-        Self::from_utf16_mut(s.as_mut_slice())
+        Self::from_slice_mut(s.as_mut_slice())
     }
 
     /// Converts to a standard UTF-8 [`String`].
@@ -1163,7 +1208,7 @@ impl Utf16Str {
     pub fn split_at(&self, mid: usize) -> (&Self, &Self) {
         assert!(self.is_char_boundary(mid));
         let (a, b) = self.inner.split_at(mid);
-        unsafe { (Self::from_utf16_unchecked(a), Self::from_utf16_unchecked(b)) }
+        unsafe { (Self::from_slice_unchecked(a), Self::from_slice_unchecked(b)) }
     }
 
     /// Divide one mutable string slice into two at an index.
@@ -1200,8 +1245,8 @@ impl Utf16Str {
         let (a, b) = self.inner.split_at_mut(mid);
         unsafe {
             (
-                Self::from_utf16_unchecked_mut(a),
-                Self::from_utf16_unchecked_mut(b),
+                Self::from_slice_unchecked_mut(a),
+                Self::from_slice_unchecked_mut(b),
             )
         }
     }
@@ -1290,71 +1335,6 @@ impl Utf16Str {
 }
 
 impl Utf32Str {
-    /// Converts a slice to a string slice without checking that the string contains valid UTF-32.
-    ///
-    /// See the safe version, [`from_utf32`][Self::from_utf32], for more information.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because it does not check that the slice passed to it is valid
-    /// UTF-32. If this constraint is violated, undefined behavior results as it is assumed the
-    /// [`Utf32Str`] is always valid UTF-32.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use widestring::Utf32Str;
-    ///
-    /// let sparkle_heart = vec![0x1f496];
-    /// let sparkle_heart = unsafe { Utf32Str::from_utf32_unchecked(&sparkle_heart) };
-    ///
-    /// assert_eq!("💖", sparkle_heart);
-    /// ```
-    #[inline]
-    pub const unsafe fn from_utf32_unchecked(s: &[u32]) -> &Self {
-        Self::from_slice_unchecked(s)
-    }
-
-    /// Converts a mutable slice to a mutable string slice without checking that the string contains
-    /// valid UTF-32.
-    ///
-    /// See the safe version, [`from_utf32_mut`][Self::from_utf32_mut], for more information.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because it does not check that the slice passed to it is valid
-    /// UTF-32. If this constraint is violated, undefined behavior results as it is assumed the
-    /// [`Utf32Str`] is always valid UTF-32.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use widestring::Utf32Str;
-    ///
-    /// let mut sparkle_heart = vec![0x1f496];
-    /// let sparkle_heart = unsafe { Utf32Str::from_utf32_unchecked_mut(&mut sparkle_heart) };
-    ///
-    /// assert_eq!("💖", sparkle_heart);
-    /// ```
-    #[inline]
-    pub unsafe fn from_utf32_unchecked_mut(s: &mut [u32]) -> &mut Self {
-        Self::from_slice_unchecked_mut(s)
-    }
-
-    /// Converts a boxed slice to a boxed string slice without checking that the string contains
-    /// valid UTF-32.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because it does not check if the string slice is valid UTF-32, and
-    /// [`Utf32Str`] must always be valid UTF-32.
-    #[inline]
-    #[cfg(feature = "alloc")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-    pub unsafe fn from_boxed_utf32_unchecked(s: Box<[u32]>) -> Box<Self> {
-        Self::from_boxed_slice_unchecked(s)
-    }
-
     /// Converts a slice of UTF-32 data to a string slice.
     ///
     /// Not all slices of [`u32`] values are valid to convert, since [`Utf32Str`] requires that it
@@ -1363,10 +1343,10 @@ impl Utf32Str {
     ///
     /// If you are sure that the slice is valid UTF-32, and you don't want to incur the overhead of
     /// the validity check, there is an unsafe version of this function,
-    /// [`from_utf32_unchecked`][Self::from_utf32_unchecked], which has the same behavior but skips
+    /// [`from_slice_unchecked`][Self::from_slice_unchecked], which has the same behavior but skips
     /// the check.
     ///
-    /// If you need an owned string, consider using [`Utf32String::from_utf32`] instead.
+    /// If you need an owned string, consider using [`Utf32String::from_slice`] instead.
     ///
     /// Because you can stack-allocate a `[u32; N]`, this function is one way to have a
     /// stack-allocated string. Indeed, the [`utf32str!`][crate::utf32str] macro does exactly this
@@ -1383,7 +1363,7 @@ impl Utf32Str {
     /// use widestring::Utf32Str;
     ///
     /// let sparkle_heart = vec![0x1f496];
-    /// let sparkle_heart = Utf32Str::from_utf32(&sparkle_heart).unwrap();
+    /// let sparkle_heart = Utf32Str::from_slice(&sparkle_heart).unwrap();
     ///
     /// assert_eq!("💖", sparkle_heart);
     /// ```
@@ -1395,12 +1375,12 @@ impl Utf32Str {
     ///
     /// let sparkle_heart = vec![0xd83d, 0xdc96]; // UTF-16 surrogates are invalid
     ///
-    /// assert!(Utf32Str::from_utf32(&sparkle_heart).is_err());
+    /// assert!(Utf32Str::from_slice(&sparkle_heart).is_err());
     /// ```
-    pub fn from_utf32(s: &[u32]) -> Result<&Self, Utf32Error> {
+    pub fn from_slice(s: &[u32]) -> Result<&Self, Utf32Error> {
         validate_utf32(s)?;
         // SAFETY: Just validated
-        Ok(unsafe { Self::from_utf32_unchecked(s) })
+        Ok(unsafe { Self::from_slice_unchecked(s) })
     }
 
     /// Converts a mutable slice of UTF-32 data to a mutable string slice.
@@ -1411,10 +1391,10 @@ impl Utf32Str {
     ///
     /// If you are sure that the slice is valid UTF-32, and you don't want to incur the overhead of
     /// the validity check, there is an unsafe version of this function,
-    /// [`from_utf32_unchecked_mut`][Self::from_utf32_unchecked_mut], which has the same behavior
+    /// [`from_slice_unchecked_mut`][Self::from_slice_unchecked_mut], which has the same behavior
     /// but skips the check.
     ///
-    /// If you need an owned string, consider using [`Utf32String::from_utf32`] instead.
+    /// If you need an owned string, consider using [`Utf32String::from_slice`] instead.
     ///
     /// Because you can stack-allocate a `[u32; N]`, this function is one way to have a
     /// stack-allocated string. Indeed, the [`utf32str!`][crate::utf32str] macro does exactly this
@@ -1431,7 +1411,7 @@ impl Utf32Str {
     /// use widestring::Utf32Str;
     ///
     /// let mut sparkle_heart = vec![0x1f496];
-    /// let sparkle_heart = Utf32Str::from_utf32_mut(&mut sparkle_heart).unwrap();
+    /// let sparkle_heart = Utf32Str::from_slice_mut(&mut sparkle_heart).unwrap();
     ///
     /// assert_eq!("💖", sparkle_heart);
     /// ```
@@ -1443,12 +1423,12 @@ impl Utf32Str {
     ///
     /// let mut sparkle_heart = vec![0xd83d, 0xdc96]; // UTF-16 surrogates are invalid
     ///
-    /// assert!(Utf32Str::from_utf32_mut(&mut sparkle_heart).is_err());
+    /// assert!(Utf32Str::from_slice_mut(&mut sparkle_heart).is_err());
     /// ```
-    pub fn from_utf32_mut(s: &mut [u32]) -> Result<&mut Self, Utf32Error> {
+    pub fn from_slice_mut(s: &mut [u32]) -> Result<&mut Self, Utf32Error> {
         validate_utf32(s)?;
         // SAFETY: Just validated
-        Ok(unsafe { Self::from_utf32_unchecked_mut(s) })
+        Ok(unsafe { Self::from_slice_unchecked_mut(s) })
     }
 
     /// Converts an unencoded string slice to a UTF-32 string slice without checking if the string
@@ -1474,7 +1454,7 @@ impl Utf32Str {
     /// ```
     #[inline]
     pub const unsafe fn from_ustr_unchecked(s: &crate::U32Str) -> &Self {
-        Self::from_utf32_unchecked(s.as_slice())
+        Self::from_slice_unchecked(s.as_slice())
     }
 
     /// Converts a mutable unencoded string slice to a mutable UTF-32 string slice without
@@ -1489,7 +1469,7 @@ impl Utf32Str {
     /// the [`Utf32Str`] is always valid UTF-32.
     #[inline]
     pub unsafe fn from_ustr_unchecked_mut(s: &mut crate::U32Str) -> &mut Self {
-        Self::from_utf32_unchecked_mut(s.as_mut_slice())
+        Self::from_slice_unchecked_mut(s.as_mut_slice())
     }
 
     /// Converts an unencoded string slice to a UTF-32 string slice.
@@ -1519,7 +1499,7 @@ impl Utf32Str {
     /// ```
     #[inline]
     pub fn from_ustr(s: &crate::U32Str) -> Result<&Self, Utf32Error> {
-        Self::from_utf32(s.as_slice())
+        Self::from_slice(s.as_slice())
     }
 
     /// Converts a mutable unencoded string slice to a mutable UTF-32 string slice.
@@ -1538,7 +1518,7 @@ impl Utf32Str {
     /// provided string slice is not UTF-32.
     #[inline]
     pub fn from_ustr_mut(s: &mut crate::U32Str) -> Result<&mut Self, Utf32Error> {
-        Self::from_utf32_mut(s.as_mut_slice())
+        Self::from_slice_mut(s.as_mut_slice())
     }
 
     /// Converts a wide C string slice to a UTF-32 string slice without checking if the
@@ -1566,7 +1546,7 @@ impl Utf32Str {
     /// ```
     #[inline]
     pub unsafe fn from_ucstr_unchecked(s: &crate::U32CStr) -> &Self {
-        Self::from_utf32_unchecked(s.as_slice())
+        Self::from_slice_unchecked(s.as_slice())
     }
 
     /// Converts a mutable wide C string slice to a mutable UTF-32 string slice without
@@ -1583,7 +1563,7 @@ impl Utf32Str {
     /// the [`Utf32Str`] is always valid UTF-32.
     #[inline]
     pub unsafe fn from_ucstr_unchecked_mut(s: &mut crate::U32CStr) -> &mut Self {
-        Self::from_utf32_unchecked_mut(s.as_mut_slice())
+        Self::from_slice_unchecked_mut(s.as_mut_slice())
     }
 
     /// Converts a wide C string slice to a UTF-32 string slice.
@@ -1615,7 +1595,7 @@ impl Utf32Str {
     /// ```
     #[inline]
     pub fn from_ucstr(s: &crate::U32CStr) -> Result<&Self, Utf32Error> {
-        Self::from_utf32(s.as_slice())
+        Self::from_slice(s.as_slice())
     }
 
     /// Converts a mutable wide C string slice to a mutable UTF-32 string slice.
@@ -1641,7 +1621,7 @@ impl Utf32Str {
     /// provided string slice is not UTF-32.
     #[inline]
     pub unsafe fn from_ucstr_mut(s: &mut crate::U32CStr) -> Result<&mut Self, Utf32Error> {
-        Self::from_utf32_mut(s.as_mut_slice())
+        Self::from_slice_mut(s.as_mut_slice())
     }
 
     /// Converts a slice of [`char`]s to a string slice.
@@ -1664,7 +1644,7 @@ impl Utf32Str {
     #[inline]
     pub const fn from_char_slice(s: &[char]) -> &Self {
         // SAFETY: char slice is always valid UTF-32
-        unsafe { Self::from_utf32_unchecked(mem::transmute(s)) }
+        unsafe { Self::from_slice_unchecked(mem::transmute(s)) }
     }
 
     /// Converts a mutable slice of [`char`]s to a string slice.
@@ -1687,7 +1667,7 @@ impl Utf32Str {
     #[inline]
     pub fn from_char_slice_mut(s: &mut [char]) -> &mut Self {
         // SAFETY: char slice is always valid UTF-32
-        unsafe { Self::from_utf32_unchecked_mut(&mut *(s as *mut [char] as *mut [u32])) }
+        unsafe { Self::from_slice_unchecked_mut(&mut *(s as *mut [char] as *mut [u32])) }
     }
 
     /// Converts a string slice into a slice of [`char`]s.
@@ -1744,7 +1724,7 @@ impl Utf32Str {
         // SAFETY: subslice has already been verified
         self.inner
             .get(index)
-            .map(|s| unsafe { Self::from_utf32_unchecked(s) })
+            .map(|s| unsafe { Self::from_slice_unchecked(s) })
     }
 
     /// Returns a mutable subslice of this string.
@@ -1774,7 +1754,7 @@ impl Utf32Str {
         // SAFETY: subslice has already been verified
         self.inner
             .get_mut(index)
-            .map(|s| unsafe { Self::from_utf32_unchecked_mut(s) })
+            .map(|s| unsafe { Self::from_slice_unchecked_mut(s) })
     }
 
     /// Get the [`char`] at `index` offset in the string.
@@ -1828,7 +1808,7 @@ impl Utf32Str {
     #[inline]
     pub fn split_at(&self, mid: usize) -> (&Self, &Self) {
         let (a, b) = self.inner.split_at(mid);
-        unsafe { (Self::from_utf32_unchecked(a), Self::from_utf32_unchecked(b)) }
+        unsafe { (Self::from_slice_unchecked(a), Self::from_slice_unchecked(b)) }
     }
 
     /// Divide one mutable string slice into two at an index.
@@ -1862,8 +1842,8 @@ impl Utf32Str {
         let (a, b) = self.inner.split_at_mut(mid);
         unsafe {
             (
-                Self::from_utf32_unchecked_mut(a),
-                Self::from_utf32_unchecked_mut(b),
+                Self::from_slice_unchecked_mut(a),
+                Self::from_slice_unchecked_mut(b),
             )
         }
     }
@@ -2094,7 +2074,7 @@ impl<'a> TryFrom<&'a [u16]> for &'a Utf16Str {
 
     #[inline]
     fn try_from(value: &'a [u16]) -> Result<Self, Self::Error> {
-        Utf16Str::from_utf16(value)
+        Utf16Str::from_slice(value)
     }
 }
 
@@ -2103,7 +2083,7 @@ impl<'a> TryFrom<&'a mut [u16]> for &'a mut Utf16Str {
 
     #[inline]
     fn try_from(value: &'a mut [u16]) -> Result<Self, Self::Error> {
-        Utf16Str::from_utf16_mut(value)
+        Utf16Str::from_slice_mut(value)
     }
 }
 
@@ -2112,7 +2092,7 @@ impl<'a> TryFrom<&'a [u32]> for &'a Utf32Str {
 
     #[inline]
     fn try_from(value: &'a [u32]) -> Result<Self, Self::Error> {
-        Utf32Str::from_utf32(value)
+        Utf32Str::from_slice(value)
     }
 }
 
@@ -2121,6 +2101,6 @@ impl<'a> TryFrom<&'a mut [u32]> for &'a mut Utf32Str {
 
     #[inline]
     fn try_from(value: &'a mut [u32]) -> Result<Self, Self::Error> {
-        Utf32Str::from_utf32_mut(value)
+        Utf32Str::from_slice_mut(value)
     }
 }

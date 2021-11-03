@@ -48,7 +48,7 @@ implement_utf16_macro! {
     /// assert_eq!(Utf16String::from_str("My string"), STRING);
     /// # }
     /// ```
-    utf16str 0 Utf16Str from_utf16_unchecked
+    utf16str 0 Utf16Str from_slice_unchecked
 }
 
 implement_utf16_macro! {
@@ -131,7 +131,7 @@ implement_utf32_macro! {
     /// assert_eq!(Utf32String::from_str("My string"), STRING);
     /// # }
     /// ```
-    utf32str 0 Utf32Str from_utf32_unchecked
+    utf32str 0 Utf32Str from_slice_unchecked
 }
 
 implement_utf32_macro! {

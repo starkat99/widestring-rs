@@ -35,12 +35,14 @@ macro_rules! utfstring_common_impl {
         type UString = $ustring:ident;
         type UCString = $ucstring:ident;
         type UtfError = $utferror:ident;
+        $(#[$from_vec_unchecked_meta:meta])*
+        fn from_vec_unchecked() -> {}
         $(#[$from_str_meta:meta])*
-        fn from_str() {}
+        fn from_str() -> {}
         $(#[$push_utfstr_meta:meta])*
-        fn push_utfstr() {}
+        fn push_utfstr() -> {}
         $(#[$as_mut_vec_meta:meta])*
-        fn as_mut_vec() {}
+        fn as_mut_vec() -> {}
     } => {
         $(#[$utfstring_meta])*
         #[derive(Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -78,7 +80,9 @@ macro_rules! utfstring_common_impl {
                 }
             }
 
-            pub(crate) unsafe fn from_slice_unchecked(v: impl Into<Vec<$uchar>>) -> Self {
+            $(#[$from_vec_unchecked_meta])*
+            #[inline]
+            pub unsafe fn from_vec_unchecked(v: impl Into<Vec<$uchar>>) -> Self {
                 Self { inner: v.into() }
             }
 
@@ -800,7 +804,7 @@ macro_rules! utfstring_common_impl {
 
             #[inline]
             fn to_owned(&self) -> Self::Owned {
-                unsafe { $utfstring::from_slice_unchecked(&self.inner) }
+                unsafe { $utfstring::from_vec_unchecked(&self.inner) }
             }
         }
 
@@ -905,6 +909,29 @@ utfstring_common_impl! {
     type UCString = U16CString;
     type UtfError = Utf16Error;
 
+    /// Converts a [`u16`] vector to a string without checking that the string contains valid
+    /// UTF-16.
+    ///
+    /// See the safe version, [`from_vec`][Self::from_vec], for more information.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it does not check that the vector passed to it is valid
+    /// UTF-16. If this constraint is violated, undefined behavior results as it is assumed the
+    /// [`Utf16String`] is always valid UTF-16.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::Utf16String;
+    ///
+    /// let sparkle_heart = vec![0xd83d, 0xdc96]; // Raw surrogate pair
+    /// let sparkle_heart = unsafe { Utf16String::from_vec_unchecked(sparkle_heart) };
+    ///
+    /// assert_eq!("💖", sparkle_heart);
+    /// ```
+    fn from_vec_unchecked() -> {}
+
     /// Re-encodes a UTF-8--encoded string slice into a UTF-16--encoded string.
     ///
     /// This operation is lossless and infallible, but requires a memory allocation.
@@ -917,7 +944,7 @@ utfstring_common_impl! {
     /// let music = Utf16String::from_str("𝄞music");
     /// assert_eq!(utf16str!("𝄞music"), music);
     /// ```
-    fn from_str() {}
+    fn from_str() -> {}
 
     /// Appends a given string slice onto the end of this string.
     ///
@@ -930,7 +957,7 @@ utfstring_common_impl! {
     /// s.push_utfstr(utf16str!("bar"));
     /// assert_eq!(utf16str!("foobar"), s);
     /// ```
-    fn push_utfstr() {}
+    fn push_utfstr() -> {}
 
     /// Returns a mutable reference to the contents of this string.
     ///
@@ -939,7 +966,7 @@ utfstring_common_impl! {
     /// This function is unsafe because it does not check that the values in the vector are valid
     /// UTF-16. If this constraint is violated, it may cause undefined beahvior with future
     /// users of the string, as it is assumed that this string is always valid UTF-16.
-    fn as_mut_vec() {}
+    fn as_mut_vec() -> {}
 }
 
 utfstring_common_impl! {
@@ -992,6 +1019,29 @@ utfstring_common_impl! {
     type UCString = U32CString;
     type UtfError = Utf32Error;
 
+    /// Converts a [`u32`] vector to a string without checking that the string contains valid
+    /// UTF-32.
+    ///
+    /// See the safe version, [`from_vec`][Self::from_vec], for more information.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it does not check that the vector passed to it is valid
+    /// UTF-32. If this constraint is violated, undefined behavior results as it is assumed the
+    /// [`Utf32String`] is always valid UTF-32.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::Utf32String;
+    ///
+    /// let sparkle_heart = vec![0x1f496];
+    /// let sparkle_heart = unsafe { Utf32String::from_vec_unchecked(sparkle_heart) };
+    ///
+    /// assert_eq!("💖", sparkle_heart);
+    /// ```
+    fn from_vec_unchecked() -> {}
+
     /// Re-encodes a UTF-8--encoded string slice into a UTF-32--encoded string.
     ///
     /// This operation is lossless and infallible, but requires a memory allocation.
@@ -1004,7 +1054,7 @@ utfstring_common_impl! {
     /// let music = Utf32String::from_str("𝄞music");
     /// assert_eq!(utf32str!("𝄞music"), music);
     /// ```
-    fn from_str() {}
+    fn from_str() -> {}
 
     /// Appends a given string slice onto the end of this string.
     ///
@@ -1017,7 +1067,7 @@ utfstring_common_impl! {
     /// s.push_utfstr(utf32str!("bar"));
     /// assert_eq!(utf32str!("foobar"), s);
     /// ```
-    fn push_utfstr() {}
+    fn push_utfstr() -> {}
 
     /// Returns a mutable reference to the contents of this string.
     ///
@@ -1026,36 +1076,10 @@ utfstring_common_impl! {
     /// This function is unsafe because it does not check that the values in the vector are valid
     /// UTF-16. If this constraint is violated, it may cause undefined beahvior with future
     /// users of the string, as it is assumed that this string is always valid UTF-16.
-    fn as_mut_vec() {}
+    fn as_mut_vec() -> {}
 }
 
 impl Utf16String {
-    /// Converts a [`u16`] vector to a string without checking that the string contains valid
-    /// UTF-16.
-    ///
-    /// See the safe version, [`from_utf16`][Self::from_utf16], for more information.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because it does not check that the vector passed to it is valid
-    /// UTF-16. If this constraint is violated, undefined behavior results as it is assumed the
-    /// [`Utf16String`] is always valid UTF-16.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use widestring::Utf16String;
-    ///
-    /// let sparkle_heart = vec![0xd83d, 0xdc96]; // Raw surrogate pair
-    /// let sparkle_heart = unsafe { Utf16String::from_utf16_unchecked(sparkle_heart) };
-    ///
-    /// assert_eq!("💖", sparkle_heart);
-    /// ```
-    #[inline]
-    pub unsafe fn from_utf16_unchecked(v: impl Into<Vec<u16>>) -> Self {
-        Self::from_slice_unchecked(v)
-    }
-
     /// Converts a [`u16`] vector of UTF-16 data to a string.
     ///
     /// Not all slices of [`u16`] values are valid to convert, since [`Utf16String`] requires that
@@ -1064,10 +1088,10 @@ impl Utf16String {
     ///
     /// If you are sure that the slice is valid UTF-16, and you don't want to incur the overhead of
     /// the validity check, there is an unsafe version of this function,
-    /// [`from_utf16_unchecked`][Self::from_utf16_unchecked], which has the same behavior but skips
+    /// [`from_vec_unchecked`][Self::from_vec_unchecked], which has the same behavior but skips
     /// the check.
     ///
-    /// If you need a string slice, consider using [`Utf16Str::from_utf16`] instead.
+    /// If you need a string slice, consider using [`Utf16Str::from_slice`] instead.
     ///
     /// The inverse of this method is [`into_vec`][Self::into_vec].
     ///
@@ -1082,7 +1106,7 @@ impl Utf16String {
     /// use widestring::Utf16String;
     ///
     /// let sparkle_heart = vec![0xd83d, 0xdc96]; // Raw surrogate pair
-    /// let sparkle_heart = Utf16String::from_utf16(sparkle_heart).unwrap();
+    /// let sparkle_heart = Utf16String::from_vec(sparkle_heart).unwrap();
     ///
     /// assert_eq!("💖", sparkle_heart);
     /// ```
@@ -1094,12 +1118,12 @@ impl Utf16String {
     ///
     /// let sparkle_heart = vec![0xd83d, 0x0]; // This is an invalid unpaired surrogate
     ///
-    /// assert!(Utf16String::from_utf16(sparkle_heart).is_err());
+    /// assert!(Utf16String::from_vec(sparkle_heart).is_err());
     /// ```
-    pub fn from_utf16(v: impl Into<Vec<u16>>) -> Result<Self, Utf16Error> {
+    pub fn from_vec(v: impl Into<Vec<u16>>) -> Result<Self, Utf16Error> {
         let v = v.into();
         validate_utf16(&v)?;
-        Ok(unsafe { Self::from_utf16_unchecked(v) })
+        Ok(unsafe { Self::from_vec_unchecked(v) })
     }
 
     /// Converts a slice of [`u16`] data to a string, including invalid characters.
@@ -1111,7 +1135,7 @@ impl Utf16String {
     ///
     /// If you are sure that the slice is valid UTF-16, and you don't want to incur the overhead of
     /// the conversion, there is an unsafe version of this function,
-    /// [`from_utf16_unchecked`][Self::from_utf16_unchecked], which has the same behavior but skips
+    /// [`from_vec_unchecked`][Self::from_vec_unchecked], which has the same behavior but skips
     /// the checks.
     ///
     /// This function returns a [`Cow<'_, Utf16Str>`][std::borrow::Cow]. If the given slice is
@@ -1126,7 +1150,7 @@ impl Utf16String {
     /// use widestring::Utf16String;
     ///
     /// let sparkle_heart = vec![0xd83d, 0xdc96]; // Raw surrogate pair
-    /// let sparkle_heart = Utf16String::from_utf16_lossy(&sparkle_heart);
+    /// let sparkle_heart = Utf16String::from_slice_lossy(&sparkle_heart);
     ///
     /// assert_eq!(utf16str!("💖"), sparkle_heart);
     /// ```
@@ -1138,14 +1162,14 @@ impl Utf16String {
     /// use widestring::Utf16String;
     ///
     /// let sparkle_heart = vec![0xd83d, 0x0]; // This is an invalid unpaired surrogate
-    /// let sparkle_heart = Utf16String::from_utf16_lossy(&sparkle_heart);
+    /// let sparkle_heart = Utf16String::from_slice_lossy(&sparkle_heart);
     ///
     /// assert_eq!(utf16str!("\u{fffd}\u{0000}"), sparkle_heart);
     /// ```
-    pub fn from_utf16_lossy(s: &[u16]) -> Cow<'_, Utf16Str> {
+    pub fn from_slice_lossy(s: &[u16]) -> Cow<'_, Utf16Str> {
         match validate_utf16(s) {
             // SAFETY: validated as UTF-16
-            Ok(()) => Cow::Borrowed(unsafe { Utf16Str::from_utf16_unchecked(s) }),
+            Ok(()) => Cow::Borrowed(unsafe { Utf16Str::from_slice_unchecked(s) }),
             Err(e) => {
                 let mut v = Vec::with_capacity(s.len());
                 // Valid up until index
@@ -1176,7 +1200,7 @@ impl Utf16String {
                     index += 1;
                 }
                 // SATEFY: Is now valid UTF-16 with replacement chars
-                Cow::Owned(unsafe { Self::from_utf16_unchecked(v) })
+                Cow::Owned(unsafe { Self::from_vec_unchecked(v) })
             }
         }
     }
@@ -1205,7 +1229,7 @@ impl Utf16String {
     /// ```
     #[inline]
     pub unsafe fn from_ustring_unchecked(s: impl Into<crate::U16String>) -> Self {
-        Self::from_utf16_unchecked(s.into().into_vec())
+        Self::from_vec_unchecked(s.into().into_vec())
     }
 
     /// Converts an unencoded string into a UTF-16 string.
@@ -1250,7 +1274,7 @@ impl Utf16String {
     /// ```
     #[inline]
     pub fn from_ustring(s: impl Into<crate::U16String>) -> Result<Self, Utf16Error> {
-        Self::from_utf16(s.into().into_vec())
+        Self::from_vec(s.into().into_vec())
     }
 
     /// Converts an unencoded string slice of to a UTF-16 string, including invalid characters.
@@ -1297,7 +1321,7 @@ impl Utf16String {
     /// ```
     #[inline]
     pub fn from_ustr_lossy(s: &crate::U16Str) -> Cow<'_, Utf16Str> {
-        Self::from_utf16_lossy(s.as_slice())
+        Self::from_slice_lossy(s.as_slice())
     }
 
     /// Converts a wide C string to a UTF-16 string without checking that the string contains
@@ -1326,7 +1350,7 @@ impl Utf16String {
     /// ```
     #[inline]
     pub unsafe fn from_ucstring_unchecked(s: impl Into<crate::U16CString>) -> Self {
-        Self::from_utf16_unchecked(s.into().into_vec())
+        Self::from_vec_unchecked(s.into().into_vec())
     }
 
     /// Converts a wide C string into a UTF-16 string.
@@ -1373,7 +1397,7 @@ impl Utf16String {
     /// ```
     #[inline]
     pub fn from_ucstring(s: impl Into<crate::U16CString>) -> Result<Self, Utf16Error> {
-        Self::from_utf16(s.into().into_vec())
+        Self::from_vec(s.into().into_vec())
     }
 
     /// Converts a wide C string slice of to a UTF-16 string, including invalid characters.
@@ -1422,7 +1446,7 @@ impl Utf16String {
     /// ```
     #[inline]
     pub fn from_ucstr_lossy(s: &crate::U16CStr) -> Cow<'_, Utf16Str> {
-        Self::from_utf16_lossy(s.as_slice())
+        Self::from_slice_lossy(s.as_slice())
     }
 
     /// Appends the given [`char`] to the end of this string.
@@ -1625,37 +1649,11 @@ impl Utf16String {
     #[inline]
     pub fn split_off(&mut self, at: usize) -> Self {
         assert!(self.is_char_boundary(at));
-        unsafe { Self::from_utf16_unchecked(self.inner.split_off(at)) }
+        unsafe { Self::from_vec_unchecked(self.inner.split_off(at)) }
     }
 }
 
 impl Utf32String {
-    /// Converts a [`u32`] vector to a string without checking that the string contains valid
-    /// UTF-32.
-    ///
-    /// See the safe version, [`from_utf32`][Self::from_utf32], for more information.
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe because it does not check that the vector passed to it is valid
-    /// UTF-32. If this constraint is violated, undefined behavior results as it is assumed the
-    /// [`Utf32String`] is always valid UTF-32.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use widestring::Utf32String;
-    ///
-    /// let sparkle_heart = vec![0x1f496];
-    /// let sparkle_heart = unsafe { Utf32String::from_utf32_unchecked(sparkle_heart) };
-    ///
-    /// assert_eq!("💖", sparkle_heart);
-    /// ```
-    #[inline]
-    pub unsafe fn from_utf32_unchecked(v: impl Into<Vec<u32>>) -> Self {
-        Self::from_slice_unchecked(v)
-    }
-
     /// Converts a [`u32`] vector of UTF-32 data to a string.
     ///
     /// Not all slices of [`u32`] values are valid to convert, since [`Utf32String`] requires that
@@ -1664,10 +1662,10 @@ impl Utf32String {
     ///
     /// If you are sure that the slice is valid UTF-32, and you don't want to incur the overhead of
     /// the validity check, there is an unsafe version of this function,
-    /// [`from_utf32_unchecked`][Self::from_utf32_unchecked], which has the same behavior but skips
+    /// [`from_vec_unchecked`][Self::from_vec_unchecked], which has the same behavior but skips
     /// the check.
     ///
-    /// If you need a string slice, consider using [`Utf32Str::from_utf32`] instead.
+    /// If you need a string slice, consider using [`Utf32Str::from_vec`] instead.
     ///
     /// The inverse of this method is [`into_vec`][Self::into_vec].
     ///
@@ -1682,7 +1680,7 @@ impl Utf32String {
     /// use widestring::Utf32String;
     ///
     /// let sparkle_heart = vec![0x1f496];
-    /// let sparkle_heart = Utf32String::from_utf32(sparkle_heart).unwrap();
+    /// let sparkle_heart = Utf32String::from_vec(sparkle_heart).unwrap();
     ///
     /// assert_eq!("💖", sparkle_heart);
     /// ```
@@ -1694,12 +1692,12 @@ impl Utf32String {
     ///
     /// let sparkle_heart = vec![0xd83d, 0xdc96]; // UTF-16 surrogates are invalid
     ///
-    /// assert!(Utf32String::from_utf32(sparkle_heart).is_err());
+    /// assert!(Utf32String::from_vec(sparkle_heart).is_err());
     /// ```
-    pub fn from_utf32(v: impl Into<Vec<u32>>) -> Result<Self, Utf32Error> {
+    pub fn from_vec(v: impl Into<Vec<u32>>) -> Result<Self, Utf32Error> {
         let v = v.into();
         validate_utf32(&v)?;
-        Ok(unsafe { Self::from_utf32_unchecked(v) })
+        Ok(unsafe { Self::from_vec_unchecked(v) })
     }
 
     /// Converts a slice of [`u32`] data to a string, including invalid characters.
@@ -1711,7 +1709,7 @@ impl Utf32String {
     ///
     /// If you are sure that the slice is valid UTF-32, and you don't want to incur the overhead of
     /// the conversion, there is an unsafe version of this function,
-    /// [`from_utf32_unchecked`][Self::from_utf32_unchecked], which has the same behavior but skips
+    /// [`from_vec_unchecked`][Self::from_vec_unchecked], which has the same behavior but skips
     /// the checks.
     ///
     /// This function returns a [`Cow<'_, Utf32Str>`][std::borrow::Cow]. If the given slice is
@@ -1726,7 +1724,7 @@ impl Utf32String {
     /// use widestring::Utf32String;
     ///
     /// let sparkle_heart = vec![0x1f496];
-    /// let sparkle_heart = Utf32String::from_utf32_lossy(&sparkle_heart);
+    /// let sparkle_heart = Utf32String::from_slice_lossy(&sparkle_heart);
     ///
     /// assert_eq!(utf32str!("💖"), sparkle_heart);
     /// ```
@@ -1738,14 +1736,14 @@ impl Utf32String {
     /// use widestring::Utf32String;
     ///
     /// let sparkle_heart = vec![0xd83d, 0xdc96]; // UTF-16 surrogates are invalid
-    /// let sparkle_heart = Utf32String::from_utf32_lossy(&sparkle_heart);
+    /// let sparkle_heart = Utf32String::from_slice_lossy(&sparkle_heart);
     ///
     /// assert_eq!(utf32str!("\u{fffd}\u{fffd}"), sparkle_heart);
     /// ```
-    pub fn from_utf32_lossy(s: &[u32]) -> Cow<'_, Utf32Str> {
+    pub fn from_slice_lossy(s: &[u32]) -> Cow<'_, Utf32Str> {
         match validate_utf32(s) {
             // SAFETY: validated as UTF-32
-            Ok(()) => Cow::Borrowed(unsafe { Utf32Str::from_utf32_unchecked(s) }),
+            Ok(()) => Cow::Borrowed(unsafe { Utf32Str::from_slice_unchecked(s) }),
             Err(e) => {
                 let mut v = Vec::with_capacity(s.len());
                 // Valid up until index
@@ -1758,7 +1756,7 @@ impl Utf32String {
                     }
                 }
                 // SATEFY: Is now valid UTF-32 with replacement chars
-                Cow::Owned(unsafe { Self::from_utf32_unchecked(v) })
+                Cow::Owned(unsafe { Self::from_vec_unchecked(v) })
             }
         }
     }
@@ -1787,7 +1785,7 @@ impl Utf32String {
     /// ```
     #[inline]
     pub unsafe fn from_ustring_unchecked(s: impl Into<crate::U32String>) -> Self {
-        Self::from_utf32_unchecked(s.into().into_vec())
+        Self::from_vec_unchecked(s.into().into_vec())
     }
 
     /// Converts an unencoded string into a UTF-32 string.
@@ -1832,7 +1830,7 @@ impl Utf32String {
     /// ```
     #[inline]
     pub fn from_ustring(s: impl Into<crate::U32String>) -> Result<Self, Utf32Error> {
-        Self::from_utf32(s.into().into_vec())
+        Self::from_vec(s.into().into_vec())
     }
 
     /// Converts an unencoded string slice of to a UTF-32 string, including invalid characters.
@@ -1879,7 +1877,7 @@ impl Utf32String {
     /// ```
     #[inline]
     pub fn from_ustr_lossy(s: &crate::U32Str) -> Cow<'_, Utf32Str> {
-        Self::from_utf32_lossy(s.as_slice())
+        Self::from_slice_lossy(s.as_slice())
     }
 
     /// Converts a wide C string to a UTF-32 string without checking that the string contains
@@ -1908,7 +1906,7 @@ impl Utf32String {
     /// ```
     #[inline]
     pub unsafe fn from_ucstring_unchecked(s: impl Into<crate::U32CString>) -> Self {
-        Self::from_utf32_unchecked(s.into().into_vec())
+        Self::from_vec_unchecked(s.into().into_vec())
     }
 
     /// Converts a wide C string into a UTF-32 string.
@@ -1955,7 +1953,7 @@ impl Utf32String {
     /// ```
     #[inline]
     pub fn from_ucstring(s: impl Into<crate::U32CString>) -> Result<Self, Utf32Error> {
-        Self::from_utf32(s.into().into_vec())
+        Self::from_vec(s.into().into_vec())
     }
 
     /// Converts a wide C string slice of to a UTF-32 string, including invalid characters.
@@ -2004,7 +2002,7 @@ impl Utf32String {
     /// ```
     #[inline]
     pub fn from_ucstr_lossy(s: &crate::U32CStr) -> Cow<'_, Utf32Str> {
-        Self::from_utf32_lossy(s.as_slice())
+        Self::from_slice_lossy(s.as_slice())
     }
 
     /// Converts a vector of [`char`]s into a UTF-32 string.
@@ -2032,7 +2030,7 @@ impl Utf32String {
         #[allow(clippy::unsound_collection_transmute)]
         unsafe {
             let vec: Vec<u32> = mem::transmute(s.into());
-            Self::from_utf32_unchecked(vec)
+            Self::from_vec_unchecked(vec)
         }
     }
 
@@ -2207,7 +2205,7 @@ impl Utf32String {
     /// ```
     #[inline]
     pub fn split_off(&mut self, at: usize) -> Self {
-        unsafe { Self::from_utf32_unchecked(self.inner.split_off(at)) }
+        unsafe { Self::from_vec_unchecked(self.inner.split_off(at)) }
     }
 }
 
@@ -2293,7 +2291,7 @@ impl TryFrom<Vec<u16>> for Utf16String {
 
     #[inline]
     fn try_from(value: Vec<u16>) -> Result<Self, Self::Error> {
-        Utf16String::from_utf16(value)
+        Utf16String::from_vec(value)
     }
 }
 
@@ -2302,7 +2300,7 @@ impl TryFrom<Vec<u32>> for Utf32String {
 
     #[inline]
     fn try_from(value: Vec<u32>) -> Result<Self, Self::Error> {
-        Utf32String::from_utf32(value)
+        Utf32String::from_vec(value)
     }
 }
 
@@ -2311,7 +2309,7 @@ impl TryFrom<&[u16]> for Utf16String {
 
     #[inline]
     fn try_from(value: &[u16]) -> Result<Self, Self::Error> {
-        Utf16String::from_utf16(value)
+        Utf16String::from_vec(value)
     }
 }
 
@@ -2320,6 +2318,6 @@ impl TryFrom<&[u32]> for Utf32String {
 
     #[inline]
     fn try_from(value: &[u32]) -> Result<Self, Self::Error> {
-        Utf32String::from_utf32(value)
+        Utf32String::from_vec(value)
     }
 }
