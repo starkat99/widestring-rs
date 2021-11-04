@@ -7,8 +7,6 @@ use alloc::vec::Vec;
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 #[doc(no_inline)]
 pub use alloc::string::FromUtf16Error;
-#[doc(no_inline)]
-pub use core::char::DecodeUtf16Error;
 
 /// An error returned to indicate a problem with nul values occurred.
 ///
@@ -220,14 +218,14 @@ impl std::error::Error for DecodeUtf32Error {}
 #[derive(Debug, Clone)]
 pub struct Utf16Error {
     index: usize,
-    source: core::char::DecodeUtf16Error,
+    source: DecodeUtf16Error,
     #[cfg(feature = "alloc")]
     inner: Option<Vec<u16>>,
 }
 
 impl Utf16Error {
     #[cfg(feature = "alloc")]
-    pub(crate) fn new(inner: Vec<u16>, index: usize, source: core::char::DecodeUtf16Error) -> Self {
+    pub(crate) fn new(inner: Vec<u16>, index: usize, source: DecodeUtf16Error) -> Self {
         Self {
             inner: Some(inner),
             index,
@@ -236,7 +234,7 @@ impl Utf16Error {
     }
 
     #[cfg(feature = "alloc")]
-    pub(crate) fn empty(index: usize, source: core::char::DecodeUtf16Error) -> Self {
+    pub(crate) fn empty(index: usize, source: DecodeUtf16Error) -> Self {
         Self {
             index,
             source,
@@ -245,7 +243,7 @@ impl Utf16Error {
     }
 
     #[cfg(not(feature = "alloc"))]
-    pub(crate) fn empty(index: usize, source: core::char::DecodeUtf16Error) -> Self {
+    pub(crate) fn empty(index: usize, source: DecodeUtf16Error) -> Self {
         Self { index, source }
     }
 
@@ -353,3 +351,31 @@ impl std::error::Error for Utf32Error {
         Some(&self.source)
     }
 }
+
+/// An error that can be returned when decoding UTF-16 code points.
+///
+/// This struct is created when using the [`DecodeUtf16`][crate::iter::DecodeUtf16] iterator.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DecodeUtf16Error {
+    unpaired_surrogate: u16,
+}
+
+impl DecodeUtf16Error {
+    pub(crate) fn new(unpaired_surrogate: u16) -> Self {
+        Self { unpaired_surrogate }
+    }
+
+    /// Returns the unpaired surrogate which caused this error.
+    pub fn unpaired_surrogate(&self) -> u16 {
+        self.unpaired_surrogate
+    }
+}
+
+impl core::fmt::Display for DecodeUtf16Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "unpaired surrogate found: {:x}", self.unpaired_surrogate)
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for DecodeUtf16Error {}

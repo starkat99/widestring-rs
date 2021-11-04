@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Changed
 - **Breaking Change** Minimum supported Rust version is now 1.56.
+- **Breaking Change** The following methods on `U16String` and `U32String` have been renamed and
+  replaced by functions with different semantics:
+  - `pop` is now `pop_char`
+  - `remove` is now `remove_char`
+  - `insert` is now `insert_char`
+- **Breaking Change** Moved and renamed the following iterator types:
+  - `iter::Utf16Chars` renamed to `CharsUtf16` and moved to `ustr` and `ucstr`
+  - `iter::Utf32Chars` renamed to `CharsUtf32` and moved to `ustr` and `ucstr`
+  - `iter::CharsLossy` split and renamed to `CharsLossyUtf16` and `CharsLossyUtf32` and moved to
+    `ustr` and `ucstr`
+  - `iter::Utf16CharIndices` renamed to `CharIndicesUtf16` and moved to `ustr` and `ucstr`
+  - `iter::Utf16CharIndicesLossy` renamed to `CharIndicesLossyUtf16` and moved to `ustr` and `ucstr`
 - Migrated crate to Rust 2021 edition.
 - The following methods on `U16Str` and `U32Str` are now `const`:
   - `from_slice`
@@ -21,11 +33,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - `is_empty`
 - The following methods on `U16String` and `U32String` are now `const`:
   - `new`
-- **Breaking Change** The following methods on `U16String` and `U32String` have been renamed and
-  replaced by functions with different semantics:
-  - `pop` is now `pop_char`
-  - `remove` is now `remove_char`
-  - `insert` is now `insert_char`
 
 ## Added
 - Added new UTF-encoded string types and associated types:
@@ -44,6 +51,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - `utf32str!`
 - Added `NUL_TERMINATOR` associated constant to `U16CStr`, `U32CStr`, `U16CString`, and 
   `U32CString`.
+- Added `DoubleEndedIterator` and `ExactSizeIterator` implementations to a number of iterator types.
 
 ### Removed
 - **Breaking Change** Functions and types deprecated in 0.5 have been removed.
@@ -54,6 +62,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - `UCStr`
   - `UString`
   - `UCString`
+
+## Fixed
+- **Breaking Change** The iterator returned by `U16Str::char_indices` and `U16CStr::char_indices`
+  is now over `(usize, Result<char, DecodeUtf16Error>)` tuples instead of the reverse order, to
+  better match standard library string iterators. The same is true of `U16Str::char_indices_lossy`
+  and `U16CStr::char_indices_lossy`. This matches what was stated in original documentation.
 
 ## [0.5.1] - 2021-10-23 <a name="0.5.1"></a>
 ### Fixed

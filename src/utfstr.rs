@@ -1260,8 +1260,8 @@ impl Utf16Str {
     /// match your idea of what a 'character' is. Iteration over grapheme clusters may be what you
     /// actually want. This functionality is not provided by this crate.
     #[inline]
-    pub fn chars(&self) -> Utf16Chars<'_> {
-        Utf16Chars::new(self)
+    pub fn chars(&self) -> CharsUtf16<'_> {
+        CharsUtf16::new(self.as_slice())
     }
 
     /// Returns an iterator over the [`char`]s of a string slice and their positions.
@@ -1271,26 +1271,26 @@ impl Utf16Str {
     ///
     /// The iterator yields tuples. The position is first, the [`char`] is second.
     #[inline]
-    pub fn char_indices(&self) -> CharIndices<Utf16Chars<'_>> {
-        CharIndices::<Utf16Chars>::new(self)
+    pub fn char_indices(&self) -> CharIndicesUtf16<'_> {
+        CharIndicesUtf16::new(self.as_slice())
     }
 
     /// Returns an iterator that escapes each [`char`] in `self` with [`char::escape_debug`].
     #[inline]
-    pub fn escape_debug(&self) -> EscapeDebug<Utf16Chars<'_>> {
-        EscapeDebug::<Utf16Chars>::new(self)
+    pub fn escape_debug(&self) -> EscapeDebug<CharsUtf16<'_>> {
+        EscapeDebug::<CharsUtf16>::new(self.as_slice())
     }
 
     /// Returns an iterator that escapes each [`char`] in `self` with [`char::escape_default`].
     #[inline]
-    pub fn escape_default(&self) -> EscapeDefault<Utf16Chars<'_>> {
-        EscapeDefault::<Utf16Chars>::new(self)
+    pub fn escape_default(&self) -> EscapeDefault<CharsUtf16<'_>> {
+        EscapeDefault::<CharsUtf16>::new(self.as_slice())
     }
 
     /// Returns an iterator that escapes each [`char`] in `self` with [`char::escape_unicode`].
     #[inline]
-    pub fn escape_unicode(&self) -> EscapeUnicode<Utf16Chars<'_>> {
-        EscapeUnicode::<Utf16Chars>::new(self)
+    pub fn escape_unicode(&self) -> EscapeUnicode<CharsUtf16<'_>> {
+        EscapeUnicode::<CharsUtf16>::new(self.as_slice())
     }
 
     /// Returns the lowercase equivalent of this string slice, as a new [`Utf16String`].
@@ -1857,8 +1857,8 @@ impl Utf32Str {
     /// match your idea of what a 'character' is. Iteration over grapheme clusters may be what you
     /// actually want. This functionality is not provided by this crate.
     #[inline]
-    pub fn chars(&self) -> Utf32Chars<'_> {
-        Utf32Chars::new(self)
+    pub fn chars(&self) -> CharsUtf32<'_> {
+        CharsUtf32::new(self.as_slice())
     }
 
     /// Returns an iterator over the [`char`]s of a string slice and their positions.
@@ -1868,26 +1868,26 @@ impl Utf32Str {
     ///
     /// The iterator yields tuples. The position is first, the [`char`] is second.
     #[inline]
-    pub fn char_indices(&self) -> CharIndices<Utf32Chars<'_>> {
-        CharIndices::<Utf32Chars>::new(self)
+    pub fn char_indices(&self) -> CharIndicesUtf32<'_> {
+        CharIndicesUtf32::new(self.as_slice())
     }
 
     /// Returns an iterator that escapes each [`char`] in `self` with [`char::escape_debug`].
     #[inline]
-    pub fn escape_debug(&self) -> EscapeDebug<Utf32Chars<'_>> {
-        EscapeDebug::<Utf32Chars>::new(self)
+    pub fn escape_debug(&self) -> EscapeDebug<CharsUtf32<'_>> {
+        EscapeDebug::<CharsUtf32>::new(self.as_slice())
     }
 
     /// Returns an iterator that escapes each [`char`] in `self` with [`char::escape_default`].
     #[inline]
-    pub fn escape_default(&self) -> EscapeDefault<Utf32Chars<'_>> {
-        EscapeDefault::<Utf32Chars>::new(self)
+    pub fn escape_default(&self) -> EscapeDefault<CharsUtf32<'_>> {
+        EscapeDefault::<CharsUtf32>::new(self.as_slice())
     }
 
     /// Returns an iterator that escapes each [`char`] in `self` with [`char::escape_unicode`].
     #[inline]
-    pub fn escape_unicode(&self) -> EscapeUnicode<Utf32Chars<'_>> {
-        EscapeUnicode::<Utf32Chars>::new(self)
+    pub fn escape_unicode(&self) -> EscapeUnicode<CharsUtf32<'_>> {
+        EscapeUnicode::<CharsUtf32>::new(self.as_slice())
     }
 
     /// Returns the lowercase equivalent of this string slice, as a new [`Utf32String`].

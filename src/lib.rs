@@ -228,10 +228,10 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-use crate::error::DecodeUtf32Error;
+use crate::error::{DecodeUtf16Error, DecodeUtf32Error};
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
-use core::{char::DecodeUtf16Error, fmt::Write};
+use core::fmt::Write;
 
 pub mod error;
 pub mod iter;
@@ -277,8 +277,55 @@ pub type WideChar = u32;
 /// on platform.
 pub type WideChar = u16;
 
-#[doc(no_inline)]
-pub use core::char::decode_utf16;
+/// Creates an iterator over the UTF-16 encoded code points in `iter`, returning unpaired surrogates
+/// as `Err`s.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// use std::char::decode_utf16;
+///
+/// // 𝄞mus<invalid>ic<invalid>
+/// let v = [
+///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
+/// ];
+///
+/// assert_eq!(
+///     decode_utf16(v.iter().cloned())
+///         .map(|r| r.map_err(|e| e.unpaired_surrogate()))
+///         .collect::<Vec<_>>(),
+///     vec![
+///         Ok('𝄞'),
+///         Ok('m'), Ok('u'), Ok('s'),
+///         Err(0xDD1E),
+///         Ok('i'), Ok('c'),
+///         Err(0xD834)
+///     ]
+/// );
+/// ```
+///
+/// A lossy decoder can be obtained by replacing Err results with the replacement character:
+///
+/// ```
+/// use std::char::{decode_utf16, REPLACEMENT_CHARACTER};
+///
+/// // 𝄞mus<invalid>ic<invalid>
+/// let v = [
+///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0xDD1E, 0x0069, 0x0063, 0xD834,
+/// ];
+///
+/// assert_eq!(
+///     decode_utf16(v.iter().cloned())
+///        .map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
+///        .collect::<String>(),
+///     "𝄞mus�ic�"
+/// );
+/// ```
+pub fn decode_utf16<I: IntoIterator<Item = u16>>(iter: I) -> iter::DecodeUtf16<I::IntoIter> {
+    iter::DecodeUtf16::new(iter.into_iter())
+}
 
 /// Creates a lossy decoder iterator over the possibly ill-formed UTF-16 encoded code points in
 /// `iter`.
@@ -304,12 +351,11 @@ pub use core::char::decode_utf16;
 /// );
 /// ```
 #[inline]
-pub fn decode_utf16_lossy<I>(iter: I) -> iter::DecodeUtf16Lossy<<I as IntoIterator>::IntoIter>
-where
-    I: IntoIterator<Item = u16>,
-{
+pub fn decode_utf16_lossy<I: IntoIterator<Item = u16>>(
+    iter: I,
+) -> iter::DecodeUtf16Lossy<I::IntoIter> {
     iter::DecodeUtf16Lossy {
-        iter: core::char::decode_utf16(iter),
+        iter: decode_utf16(iter),
     }
 }
 
@@ -340,10 +386,7 @@ where
 /// );
 /// ```
 #[inline]
-pub fn decode_utf32<I>(iter: I) -> iter::DecodeUtf32<<I as IntoIterator>::IntoIter>
-where
-    I: IntoIterator<Item = u32>,
-{
+pub fn decode_utf32<I: IntoIterator<Item = u32>>(iter: I) -> iter::DecodeUtf32<I::IntoIter> {
     iter::DecodeUtf32 {
         iter: iter.into_iter(),
     }
@@ -372,10 +415,9 @@ where
 /// );
 /// ```
 #[inline]
-pub fn decode_utf32_lossy<I>(iter: I) -> iter::DecodeUtf32Lossy<<I as IntoIterator>::IntoIter>
-where
-    I: IntoIterator<Item = u32>,
-{
+pub fn decode_utf32_lossy<I: IntoIterator<Item = u32>>(
+    iter: I,
+) -> iter::DecodeUtf32Lossy<I::IntoIter> {
     iter::DecodeUtf32Lossy {
         iter: decode_utf32(iter),
     }
@@ -387,7 +429,7 @@ where
 /// encoding will purposefully output any unpaired surrogate as \<XXXX> which is not a valid escape
 /// sequence. This is intentional, as debug output is not meant to be parsed but read by humans.
 fn debug_fmt_u16(s: &[u16], fmt: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-    debug_fmt_utf16_iter(core::char::decode_utf16(s.iter().copied()), fmt)
+    debug_fmt_utf16_iter(decode_utf16(s.iter().copied()), fmt)
 }
 
 /// Debug implementation for any U16 string iterator.
@@ -480,12 +522,12 @@ const fn is_utf16_low_surrogate(u: u16) -> bool {
     u >= 0xDC00 && u <= 0xDFFF
 }
 
-/// Convert a code unit or a UTF-16 surrogate pair to a `char`. Does not validate if the surrogates
-/// are valid.
+/// Convert a UTF-16 surrogate pair to a `char`. Does not validate if the surrogates are valid.
 #[inline(always)]
-#[allow(dead_code)]
-unsafe fn utf16_to_char_unchecked(s: &[u16; 2]) -> char {
-    decode_utf16(s.iter().copied()).next().unwrap().unwrap()
+unsafe fn decode_utf16_surrogate_pair(high: u16, low: u16) -> char {
+    let c: u32 = (((high - 0xD800) as u32) << 10 | ((low) - 0xDC00) as u32) + 0x1_0000;
+    // SAFETY: we checked that it's a legal unicode value
+    core::char::from_u32_unchecked(c)
 }
 
 /// Validates whether a slice of 16-bit values is valid UTF-16, returning an error if it is not.

@@ -4,7 +4,6 @@
 
 use crate::{
     error::{ContainsNul, MissingNulTerminator, NulError},
-    iter::{CharsLossy, Utf16CharIndices, Utf16CharIndicesLossy, Utf16Chars, Utf32Chars},
     U16Str, U32Str,
 };
 #[cfg(feature = "alloc")]
@@ -14,6 +13,12 @@ use alloc::{
     string::{FromUtf16Error, String},
 };
 use core::{fmt::Write, ops::Range, slice};
+
+#[doc(inline)]
+pub use crate::ustr::{
+    CharIndicesLossyUtf16, CharIndicesLossyUtf32, CharIndicesUtf16, CharIndicesUtf32,
+    CharsLossyUtf16, CharsLossyUtf32, CharsUtf16, CharsUtf32,
+};
 
 macro_rules! ucstr_common_impl {
     {
@@ -1206,8 +1211,8 @@ impl U16CStr {
     /// may not match your idea of what a 'character' is. Iteration over grapheme clusters may be
     /// what you actually want. That functionality is not provided by by this crate.
     #[inline]
-    pub fn chars(&self) -> Utf16Chars<'_> {
-        Utf16Chars::from_ucstr(self)
+    pub fn chars(&self) -> CharsUtf16<'_> {
+        CharsUtf16::new(self.as_slice())
     }
 
     /// Returns a lossy iterator over the [`char`][prim@char]s of a string slice.
@@ -1222,8 +1227,8 @@ impl U16CStr {
     /// may not match your idea of what a 'character' is. Iteration over grapheme clusters may be
     /// what you actually want. That functionality is not provided by by this crate.
     #[inline]
-    pub fn chars_lossy(&self) -> CharsLossy<'_> {
-        CharsLossy::from_u16cstr(self)
+    pub fn chars_lossy(&self) -> CharsLossyUtf16<'_> {
+        CharsLossyUtf16::new(self.as_slice())
     }
 
     /// Returns an iterator over the chars of a string slice, and their positions.
@@ -1237,8 +1242,8 @@ impl U16CStr {
     ///
     /// The iterator yields tuples. The position is first, the [`char`][prim@char] is second.
     #[inline]
-    pub fn char_indices(&self) -> Utf16CharIndices<'_> {
-        Utf16CharIndices::from_ucstr(self)
+    pub fn char_indices(&self) -> CharIndicesUtf16<'_> {
+        CharIndicesUtf16::new(self.as_slice())
     }
 
     /// Returns a lossy iterator over the chars of a string slice, and their positions.
@@ -1251,8 +1256,8 @@ impl U16CStr {
     ///
     /// The iterator yields tuples. The position is first, the [`char`][prim@char] is second.
     #[inline]
-    pub fn char_indices_lossy(&self) -> Utf16CharIndicesLossy<'_> {
-        Utf16CharIndicesLossy::from_ucstr(self)
+    pub fn char_indices_lossy(&self) -> CharIndicesLossyUtf16<'_> {
+        CharIndicesLossyUtf16::new(self.as_slice())
     }
 }
 
@@ -1713,8 +1718,8 @@ impl U32CStr {
     /// may not match your idea of what a 'character' is. Iteration over grapheme clusters may be
     /// what you actually want. That functionality is not provided by by this crate.
     #[inline]
-    pub fn chars(&self) -> Utf32Chars<'_> {
-        Utf32Chars::from_ucstr(self)
+    pub fn chars(&self) -> CharsUtf32<'_> {
+        CharsUtf32::new(self.as_slice())
     }
 
     /// Returns a lossy iterator over the [`char`][prim@char]s of a string slice.
@@ -1729,8 +1734,37 @@ impl U32CStr {
     /// may not match your idea of what a 'character' is. Iteration over grapheme clusters may be
     /// what you actually want. That functionality is not provided by by this crate.
     #[inline]
-    pub fn chars_lossy(&self) -> CharsLossy<'_> {
-        CharsLossy::from_u32cstr(self)
+    pub fn chars_lossy(&self) -> CharsLossyUtf32<'_> {
+        CharsLossyUtf32::new(self.as_slice())
+    }
+
+    /// Returns an iterator over the chars of a string slice, and their positions.
+    ///
+    /// As this string has no defined encoding, this method assumes the string is UTF-32. Since it
+    /// may consist of invalid UTF-32, the iterator returned by this method is an iterator over
+    /// `Result<char, DecodeUtf32Error>` as well as their positions, instead of
+    /// [`char`][prim@char]s directly. If you would like a lossy indices iterator over
+    /// [`chars`][prim@char]s directly, instead use
+    /// [`char_indices_lossy`][Self::char_indices_lossy].
+    ///
+    /// The iterator yields tuples. The position is first, the [`char`][prim@char] is second.
+    #[inline]
+    pub fn char_indices(&self) -> CharIndicesUtf32<'_> {
+        CharIndicesUtf32::new(self.as_slice())
+    }
+
+    /// Returns a lossy iterator over the chars of a string slice, and their positions.
+    ///
+    /// As this string slice may consist of invalid UTF-32, the iterator returned by this method
+    /// will replace invalid values with
+    /// [`U+FFFD REPLACEMENT CHARACTER`][std::char::REPLACEMENT_CHARACTER] (�), as well as the
+    /// positions of all characters. This is a lossy version of
+    /// [`char_indices`][Self::char_indices].
+    ///
+    /// The iterator yields tuples. The position is first, the [`char`][prim@char] is second.
+    #[inline]
+    pub fn char_indices_lossy(&self) -> CharIndicesLossyUtf32<'_> {
+        CharIndicesLossyUtf32::new(self.as_slice())
     }
 }
 

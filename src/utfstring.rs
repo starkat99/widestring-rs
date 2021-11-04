@@ -3,9 +3,10 @@
 //! This module contains UTF strings and related types.
 
 use crate::{
+    decode_utf16_surrogate_pair,
     error::{Utf16Error, Utf32Error},
-    is_utf16_low_surrogate, is_utf16_surrogate, utf16_to_char_unchecked, validate_utf16,
-    validate_utf16_vec, validate_utf32, validate_utf32_vec, Utf16Str, Utf32Str,
+    is_utf16_low_surrogate, is_utf16_surrogate, validate_utf16, validate_utf16_vec, validate_utf32,
+    validate_utf32_vec, Utf16Str, Utf32Str,
 };
 use alloc::{
     borrow::{Cow, ToOwned},
@@ -1515,15 +1516,14 @@ impl Utf16String {
     pub fn pop(&mut self) -> Option<char> {
         let c = self.inner.pop();
         if let Some(c) = c {
-            let mut buf = [0; 2];
             if is_utf16_low_surrogate(c) {
-                buf[1] = c;
-                buf[0] = self.inner.pop().unwrap();
+                let high = self.inner.pop().unwrap();
+                // SAFETY: string is always valid UTF-16, so pair is valid
+                Some(unsafe { decode_utf16_surrogate_pair(high, c) })
             } else {
-                buf[0] = c;
+                // SAFETY: not a surrogate
+                Some(unsafe { char::from_u32_unchecked(c as u32) })
             }
-            // SAFETY: string is already valid UTF-16, and we assembled surrogate pair if necessary
-            Some(unsafe { utf16_to_char_unchecked(&buf) })
         } else {
             None
         }

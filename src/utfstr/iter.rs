@@ -1,32 +1,31 @@
-use super::{Utf16Str, Utf32Str};
 use crate::{
     debug_fmt_char_iter, decode_utf16, decode_utf32,
     iter::{DecodeUtf16, DecodeUtf32},
 };
 use core::{
     fmt::Write,
-    iter::{Copied, FlatMap, FusedIterator},
+    iter::{Copied, DoubleEndedIterator, ExactSizeIterator, FlatMap, FusedIterator},
     slice::Iter,
 };
 
-/// An iterator over the [`char`]s of a string slice
+/// An iterator over the [`char`]s of a UTF-16 string slice
 ///
-/// This struct is created by the [`chars`][Utf16Str::chars] method on [`Utf16Str`]. See its
-/// documentation for more.
+/// This struct is created by the [`chars`][crate::Utf16Str::chars] method on
+/// [`Utf16Str`][crate::Utf16Str]. See its documentation for more.
 #[derive(Clone)]
-pub struct Utf16Chars<'a> {
+pub struct CharsUtf16<'a> {
     iter: DecodeUtf16<Copied<Iter<'a, u16>>>,
 }
 
-impl<'a> Utf16Chars<'a> {
-    pub(super) fn new(s: &'a Utf16Str) -> Self {
+impl<'a> CharsUtf16<'a> {
+    pub(super) fn new(s: &'a [u16]) -> Self {
         Self {
-            iter: decode_utf16(s.as_slice().iter().copied()),
+            iter: decode_utf16(s.iter().copied()),
         }
     }
 }
 
-impl<'a> Iterator for Utf16Chars<'a> {
+impl<'a> Iterator for CharsUtf16<'a> {
     type Item = char;
 
     #[inline]
@@ -41,40 +40,47 @@ impl<'a> Iterator for Utf16Chars<'a> {
     }
 }
 
-impl<'a> FusedIterator for Utf16Chars<'a> {}
+impl<'a> FusedIterator for CharsUtf16<'a> {}
 
-impl<'a> core::fmt::Debug for Utf16Chars<'a> {
+impl<'a> DoubleEndedIterator for CharsUtf16<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter.next_back().map(|r| r.unwrap())
+    }
+}
+
+impl<'a> core::fmt::Debug for CharsUtf16<'a> {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         debug_fmt_char_iter(self.clone(), f)
     }
 }
 
-impl<'a> core::fmt::Display for Utf16Chars<'a> {
+impl<'a> core::fmt::Display for CharsUtf16<'a> {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         self.clone().try_for_each(|c| f.write_char(c))
     }
 }
 
-/// An iterator over the [`char`]s of a string slice
+/// An iterator over the [`char`]s of a UTF-32 string slice
 ///
-/// This struct is created by the [`chars`][Utf32Str::chars] method on [`Utf32Str`]. See its
-/// documentation for more.
+/// This struct is created by the [`chars`][crate::Utf32Str::chars] method on
+/// [`Utf32Str`][crate::Utf32Str]. See its documentation for more.
 #[derive(Clone)]
-pub struct Utf32Chars<'a> {
+pub struct CharsUtf32<'a> {
     iter: DecodeUtf32<Copied<Iter<'a, u32>>>,
 }
 
-impl<'a> Utf32Chars<'a> {
-    pub(super) fn new(s: &'a Utf32Str) -> Self {
+impl<'a> CharsUtf32<'a> {
+    pub(super) fn new(s: &'a [u32]) -> Self {
         Self {
-            iter: decode_utf32(s.as_slice().iter().copied()),
+            iter: decode_utf32(s.iter().copied()),
         }
     }
 }
 
-impl<'a> Iterator for Utf32Chars<'a> {
+impl<'a> Iterator for CharsUtf32<'a> {
     type Item = char;
 
     #[inline]
@@ -89,7 +95,7 @@ impl<'a> Iterator for Utf32Chars<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator for Utf32Chars<'a> {
+impl<'a> DoubleEndedIterator for CharsUtf32<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         // Utf32Str already ensures valid code points
@@ -97,23 +103,23 @@ impl<'a> DoubleEndedIterator for Utf32Chars<'a> {
     }
 }
 
-impl<'a> FusedIterator for Utf32Chars<'a> {}
+impl<'a> FusedIterator for CharsUtf32<'a> {}
 
-impl<'a> ExactSizeIterator for Utf32Chars<'a> {
+impl<'a> ExactSizeIterator for CharsUtf32<'a> {
     #[inline]
     fn len(&self) -> usize {
         self.iter.len()
     }
 }
 
-impl<'a> core::fmt::Debug for Utf32Chars<'a> {
+impl<'a> core::fmt::Debug for CharsUtf32<'a> {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         debug_fmt_char_iter(self.clone(), f)
     }
 }
 
-impl<'a> core::fmt::Display for Utf32Chars<'a> {
+impl<'a> core::fmt::Display for CharsUtf32<'a> {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         self.clone().try_for_each(|c| f.write_char(c))
@@ -123,51 +129,42 @@ impl<'a> core::fmt::Display for Utf32Chars<'a> {
 /// An iterator over the [`char`]s of a string slice, and their positions
 ///
 /// This struct is created by the [`char_indices`][crate::Utf16Str::char_indices] method on
-/// [`Utf16Str`][crate::Utf16Str] and [`Utf32Str`][crate::Utf32Str]. See its documentation for more.
+/// [`Utf16Str`][crate::Utf16Str]. See its documentation for more.
 #[derive(Debug, Clone)]
-pub struct CharIndices<I> {
-    offset: usize,
-    iter: I,
+pub struct CharIndicesUtf16<'a> {
+    forward_offset: usize,
+    back_offset: usize,
+    iter: CharsUtf16<'a>,
 }
 
-impl<I> CharIndices<I> {
-    /// Returns the byte position of the next character, or the length of the underlying string if
+impl<'a> CharIndicesUtf16<'a> {
+    /// Returns the position of the next character, or the length of the underlying string if
     /// there are no more characters.
     #[inline]
     pub fn offset(&self) -> usize {
-        self.offset
+        self.forward_offset
     }
 }
 
-impl<'a> CharIndices<Utf16Chars<'a>> {
-    pub(super) fn new(s: &'a Utf16Str) -> Self {
+impl<'a> CharIndicesUtf16<'a> {
+    pub(super) fn new(s: &'a [u16]) -> Self {
         Self {
-            offset: 0,
-            iter: Utf16Chars::new(s),
+            forward_offset: 0,
+            back_offset: s.len(),
+            iter: CharsUtf16::new(s),
         }
     }
 }
 
-impl<'a> CharIndices<Utf32Chars<'a>> {
-    pub(super) fn new(s: &'a Utf32Str) -> Self {
-        Self {
-            offset: 0,
-            iter: Utf32Chars::new(s),
-        }
-    }
-}
-
-impl<I> Iterator for CharIndices<I>
-where
-    I: Iterator<Item = char>,
-{
+impl<'a> Iterator for CharIndicesUtf16<'a> {
     type Item = (usize, char);
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let result = self.iter.next();
         if let Some(c) = result {
-            let offset = self.offset;
-            self.offset += c.len_utf16();
+            let offset = self.forward_offset;
+            self.forward_offset += c.len_utf16();
             Some((offset, c))
         } else {
             None
@@ -180,7 +177,93 @@ where
     }
 }
 
-impl<I> FusedIterator for CharIndices<I> where I: Iterator<Item = char> {}
+impl<'a> FusedIterator for CharIndicesUtf16<'a> {}
+
+impl<'a> DoubleEndedIterator for CharIndicesUtf16<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let result = self.iter.next_back();
+        if let Some(c) = result {
+            self.back_offset -= c.len_utf16();
+            Some((self.back_offset, c))
+        } else {
+            None
+        }
+    }
+}
+
+/// An iterator over the [`char`]s of a string slice, and their positions
+///
+/// This struct is created by the [`char_indices`][crate::Utf32Str::char_indices] method on
+/// [`Utf32Str`][crate::Utf32Str]. See its documentation for more.
+#[derive(Debug, Clone)]
+pub struct CharIndicesUtf32<'a> {
+    forward_offset: usize,
+    back_offset: usize,
+    iter: CharsUtf32<'a>,
+}
+
+impl<'a> CharIndicesUtf32<'a> {
+    /// Returns the position of the next character, or the length of the underlying string if
+    /// there are no more characters.
+    #[inline]
+    pub fn offset(&self) -> usize {
+        self.forward_offset
+    }
+}
+
+impl<'a> CharIndicesUtf32<'a> {
+    pub(super) fn new(s: &'a [u32]) -> Self {
+        Self {
+            forward_offset: 0,
+            back_offset: s.len(),
+            iter: CharsUtf32::new(s),
+        }
+    }
+}
+
+impl<'a> Iterator for CharIndicesUtf32<'a> {
+    type Item = (usize, char);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = self.iter.next();
+        if let Some(c) = result {
+            let offset = self.forward_offset;
+            self.forward_offset += 1;
+            Some((offset, c))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl<'a> FusedIterator for CharIndicesUtf32<'a> {}
+
+impl<'a> DoubleEndedIterator for CharIndicesUtf32<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let result = self.iter.next_back();
+        if let Some(c) = result {
+            self.back_offset -= 1;
+            Some((self.back_offset, c))
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> ExactSizeIterator for CharIndicesUtf32<'a> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+}
 
 /// The return type of [`Utf16Str::escape_debug`][crate::Utf16Str::escape_debug].
 #[derive(Debug, Clone)]
@@ -188,18 +271,18 @@ pub struct EscapeDebug<I> {
     iter: FlatMap<I, core::char::EscapeDebug, fn(char) -> core::char::EscapeDebug>,
 }
 
-impl<'a> EscapeDebug<Utf16Chars<'a>> {
-    pub(super) fn new(s: &'a Utf16Str) -> Self {
+impl<'a> EscapeDebug<CharsUtf16<'a>> {
+    pub(super) fn new(s: &'a [u16]) -> Self {
         Self {
-            iter: Utf16Chars::new(s).flat_map(|c| c.escape_debug()),
+            iter: CharsUtf16::new(s).flat_map(|c| c.escape_debug()),
         }
     }
 }
 
-impl<'a> EscapeDebug<Utf32Chars<'a>> {
-    pub(super) fn new(s: &'a Utf32Str) -> Self {
+impl<'a> EscapeDebug<CharsUtf32<'a>> {
+    pub(super) fn new(s: &'a [u32]) -> Self {
         Self {
-            iter: Utf32Chars::new(s).flat_map(|c| c.escape_debug()),
+            iter: CharsUtf32::new(s).flat_map(|c| c.escape_debug()),
         }
     }
 }
@@ -210,18 +293,18 @@ pub struct EscapeDefault<I> {
     iter: FlatMap<I, core::char::EscapeDefault, fn(char) -> core::char::EscapeDefault>,
 }
 
-impl<'a> EscapeDefault<Utf16Chars<'a>> {
-    pub(super) fn new(s: &'a Utf16Str) -> Self {
+impl<'a> EscapeDefault<CharsUtf16<'a>> {
+    pub(super) fn new(s: &'a [u16]) -> Self {
         Self {
-            iter: Utf16Chars::new(s).flat_map(|c| c.escape_default()),
+            iter: CharsUtf16::new(s).flat_map(|c| c.escape_default()),
         }
     }
 }
 
-impl<'a> EscapeDefault<Utf32Chars<'a>> {
-    pub(super) fn new(s: &'a Utf32Str) -> Self {
+impl<'a> EscapeDefault<CharsUtf32<'a>> {
+    pub(super) fn new(s: &'a [u32]) -> Self {
         Self {
-            iter: Utf32Chars::new(s).flat_map(|c| c.escape_default()),
+            iter: CharsUtf32::new(s).flat_map(|c| c.escape_default()),
         }
     }
 }
@@ -232,18 +315,18 @@ pub struct EscapeUnicode<I> {
     iter: FlatMap<I, core::char::EscapeUnicode, fn(char) -> core::char::EscapeUnicode>,
 }
 
-impl<'a> EscapeUnicode<Utf16Chars<'a>> {
-    pub(super) fn new(s: &'a Utf16Str) -> Self {
+impl<'a> EscapeUnicode<CharsUtf16<'a>> {
+    pub(super) fn new(s: &'a [u16]) -> Self {
         Self {
-            iter: Utf16Chars::new(s).flat_map(|c| c.escape_unicode()),
+            iter: CharsUtf16::new(s).flat_map(|c| c.escape_unicode()),
         }
     }
 }
 
-impl<'a> EscapeUnicode<Utf32Chars<'a>> {
-    pub(super) fn new(s: &'a Utf32Str) -> Self {
+impl<'a> EscapeUnicode<CharsUtf32<'a>> {
+    pub(super) fn new(s: &'a [u32]) -> Self {
         Self {
-            iter: Utf32Chars::new(s).flat_map(|c| c.escape_unicode()),
+            iter: CharsUtf32::new(s).flat_map(|c| c.escape_unicode()),
         }
     }
 }
@@ -271,7 +354,7 @@ macro_rules! escape_impls {
             }
         }
 
-        impl<I> FusedIterator for $name<I> where I: Iterator<Item = char> {}
+        impl<I> FusedIterator for $name<I> where I: Iterator<Item = char> + FusedIterator {}
     )+}
 }
 
