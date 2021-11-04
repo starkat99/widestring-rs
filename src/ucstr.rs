@@ -7,11 +7,7 @@ use crate::{
     U16Str, U32Str,
 };
 #[cfg(feature = "alloc")]
-use alloc::{
-    borrow::ToOwned,
-    boxed::Box,
-    string::{FromUtf16Error, String},
-};
+use alloc::{borrow::ToOwned, boxed::Box, string::String};
 use core::{fmt::Write, ops::Range, slice};
 
 #[doc(inline)]
@@ -1169,8 +1165,8 @@ impl U16CStr {
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-    pub fn to_string(&self) -> Result<String, FromUtf16Error> {
-        String::from_utf16(self.as_slice())
+    pub fn to_string(&self) -> Result<String, crate::error::Utf16Error> {
+        self.as_ustr().to_string()
     }
 
     /// Decodes the string reference to a [`String`] even if it is invalid UTF-16 data.
@@ -1676,7 +1672,7 @@ impl U32CStr {
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-    pub fn to_string(&self) -> Result<String, crate::error::FromUtf32Error> {
+    pub fn to_string(&self) -> Result<String, crate::error::Utf32Error> {
         self.as_ustr().to_string()
     }
 

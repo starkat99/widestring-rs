@@ -3,11 +3,6 @@
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-#[cfg(feature = "alloc")]
-#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-#[doc(no_inline)]
-pub use alloc::string::FromUtf16Error;
-
 /// An error returned to indicate a problem with nul values occurred.
 ///
 /// The error will either being a [`MissingNulTerminator`] or [`ContainsNul`].
@@ -157,33 +152,33 @@ impl<C> core::fmt::Display for ContainsNul<C> {
 #[cfg(feature = "std")]
 impl<C> std::error::Error for ContainsNul<C> where C: core::fmt::Debug {}
 
-/// A possible error value when converting a [`String`] from a [`u32`] string.
+/// An error that can be returned when decoding UTF-16 code points.
 ///
-/// This error occurs when a [`u32`] value is outside the 21-bit Unicode code point range
-/// (>`U+10FFFF`) or is a UTF-16 surrogate value.
-#[derive(Debug, Clone)]
-pub struct FromUtf32Error {
-    _unused: (),
+/// This struct is created when using the [`DecodeUtf16`][crate::iter::DecodeUtf16] iterator.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DecodeUtf16Error {
+    unpaired_surrogate: u16,
 }
 
-impl FromUtf32Error {
-    #[allow(dead_code)]
-    pub(crate) fn new() -> Self {
-        Self { _unused: () }
+impl DecodeUtf16Error {
+    pub(crate) fn new(unpaired_surrogate: u16) -> Self {
+        Self { unpaired_surrogate }
+    }
+
+    /// Returns the unpaired surrogate which caused this error.
+    pub fn unpaired_surrogate(&self) -> u16 {
+        self.unpaired_surrogate
     }
 }
 
-impl core::fmt::Display for FromUtf32Error {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(
-            f,
-            "error converting from UTF-32 to UTF-8, the UTF-32 value is invalid"
-        )
+impl core::fmt::Display for DecodeUtf16Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "unpaired surrogate found: {:x}", self.unpaired_surrogate)
     }
 }
 
 #[cfg(feature = "std")]
-impl std::error::Error for FromUtf32Error {}
+impl std::error::Error for DecodeUtf16Error {}
 
 /// An error that can be returned when decoding UTF-32 code points.
 ///
@@ -351,31 +346,3 @@ impl std::error::Error for Utf32Error {
         Some(&self.source)
     }
 }
-
-/// An error that can be returned when decoding UTF-16 code points.
-///
-/// This struct is created when using the [`DecodeUtf16`][crate::iter::DecodeUtf16] iterator.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DecodeUtf16Error {
-    unpaired_surrogate: u16,
-}
-
-impl DecodeUtf16Error {
-    pub(crate) fn new(unpaired_surrogate: u16) -> Self {
-        Self { unpaired_surrogate }
-    }
-
-    /// Returns the unpaired surrogate which caused this error.
-    pub fn unpaired_surrogate(&self) -> u16 {
-        self.unpaired_surrogate
-    }
-}
-
-impl core::fmt::Display for DecodeUtf16Error {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "unpaired surrogate found: {:x}", self.unpaired_surrogate)
-    }
-}
-
-#[cfg(feature = "std")]
-impl std::error::Error for DecodeUtf16Error {}

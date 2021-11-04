@@ -3,13 +3,12 @@
 //! This module contains wide string slices and related types.
 
 #[cfg(feature = "alloc")]
-use crate::{U16String, U32String};
-#[cfg(feature = "alloc")]
-use alloc::{
-    boxed::Box,
-    string::{FromUtf16Error, String},
-    vec::Vec,
+use crate::{
+    error::{Utf16Error, Utf32Error},
+    U16String, U32String,
 };
+#[cfg(feature = "alloc")]
+use alloc::{boxed::Box, string::String, vec::Vec};
 use core::{
     char,
     fmt::Write,
@@ -750,8 +749,14 @@ impl U16Str {
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     #[inline]
-    pub fn to_string(&self) -> Result<String, FromUtf16Error> {
-        String::from_utf16(&self.inner)
+    pub fn to_string(&self) -> Result<String, Utf16Error> {
+        // Perform conversion ourselves to use our own error types with additional info
+        let mut s = String::with_capacity(self.len());
+        for (index, result) in self.chars().enumerate() {
+            let c = result.map_err(|e| Utf16Error::empty(index, e))?;
+            s.push(c);
+        }
+        Ok(s)
     }
 
     /// Decodes the string to a [`String`] even if it is invalid UTF-16 data.
@@ -969,19 +974,13 @@ impl U32Str {
     /// ```
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-    pub fn to_string(&self) -> Result<String, crate::error::FromUtf32Error> {
-        let chars: Vec<Option<char>> = self.inner.iter().map(|c| char::from_u32(*c)).collect();
-        if chars.iter().any(|c| c.is_none()) {
-            return Err(crate::error::FromUtf32Error::new());
+    pub fn to_string(&self) -> Result<String, Utf32Error> {
+        let mut s = String::with_capacity(self.len());
+        for (index, result) in self.chars().enumerate() {
+            let c = result.map_err(|e| Utf32Error::empty(index, e))?;
+            s.push(c);
         }
-        let size = chars.iter().filter_map(|o| o.map(|c| c.len_utf8())).sum();
-        let mut vec = alloc::vec![0; size];
-        let mut i = 0;
-        for c in chars.iter().filter_map(|&o| o) {
-            c.encode_utf8(&mut vec[i..]);
-            i += c.len_utf8();
-        }
-        Ok(unsafe { String::from_utf8_unchecked(vec) })
+        Ok(s)
     }
 
     /// Decodes the string reference to a [`String`] even if it is invalid UTF-32 data.

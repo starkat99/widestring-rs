@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
     `ustr` and `ucstr`
   - `iter::Utf16CharIndices` renamed to `CharIndicesUtf16` and moved to `ustr` and `ucstr`
   - `iter::Utf16CharIndicesLossy` renamed to `CharIndicesLossyUtf16` and moved to `ustr` and `ucstr`
+- **Breaking Change** `error::FromUtf16Error` and `error::FromUtf32Error` has been renamed to
+  `Utf16Error` and `Utf32Error` respectively and expanded with more details about the error.
 - Migrated crate to Rust 2021 edition.
 - The following methods on `U16Str` and `U32Str` are now `const`:
   - `from_slice`
@@ -68,6 +70,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   is now over `(usize, Result<char, DecodeUtf16Error>)` tuples instead of the reverse order, to
   better match standard library string iterators. The same is true of `U16Str::char_indices_lossy`
   and `U16CStr::char_indices_lossy`. This matches what was stated in original documentation.
+- `U32Str::to_string` and `U32CStr::to_string` now only allocate once instead of twice.
 
 ## [0.5.1] - 2021-10-23 <a name="0.5.1"></a>
 ### Fixed

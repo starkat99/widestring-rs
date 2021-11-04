@@ -1,4 +1,4 @@
-//! Iterators for working with wide string data.
+//! Iterators for working with slices of UTF-16 and UTF-32 data.
 
 use crate::{
     decode_utf16_surrogate_pair,
