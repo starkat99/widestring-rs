@@ -54,6 +54,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added `NUL_TERMINATOR` associated constant to `U16CStr`, `U32CStr`, `U16CString`, and 
   `U32CString`.
 - Added `DoubleEndedIterator` and `ExactSizeIterator` implementations to a number of iterator types.
+- Added new UTF encoding functions alongside existing decode functions:
+  - `encode_utf8`
+  - `encode_utf16`
+  - `encode_utf32`
 
 ### Removed
 - **Breaking Change** Functions and types deprecated in 0.5 have been removed.

@@ -423,6 +423,64 @@ pub fn decode_utf32_lossy<I: IntoIterator<Item = u32>>(
     }
 }
 
+/// Creates an iterator that encodes an iterator over [`char`]s into UTF-8 bytes.
+///
+/// # Examples
+///
+/// ```
+/// use widestring::encode_utf8;
+///
+/// let music = "𝄞music";
+///
+/// let encoded: Vec<u8> = encode_utf8(music.chars()).collect();
+///
+/// assert_eq!(encoded, music.as_bytes());
+/// ```
+pub fn encode_utf8<I: IntoIterator<Item = char>>(iter: I) -> iter::EncodeUtf8<I::IntoIter> {
+    iter::EncodeUtf8::new(iter.into_iter())
+}
+
+/// Creates an iterator that encodes an iterator over [`char`]s into UTF-16 [`u16`] code units.
+///
+/// # Examples
+///
+/// ```
+/// use widestring::encode_utf16;
+///
+/// let encoded: Vec<u16> = encode_utf16("𝄞music".chars()).collect();
+///
+/// let v = [
+///     0xD834, 0xDD1E, 0x006d, 0x0075, 0x0073, 0x0069, 0x0063,
+/// ];
+///
+/// assert_eq!(encoded, v);
+/// ```
+pub fn encode_utf16<I: IntoIterator<Item = char>>(iter: I) -> iter::EncodeUtf16<I::IntoIter> {
+    iter::EncodeUtf16::new(iter.into_iter())
+}
+
+/// Creates an iterator that encodes an iterator over [`char`]s into UTF-32 [`u32`] values.
+///
+/// This iterator is a simple type cast from [`char`] to [`u32`], as any sequence of [`char`]s is
+/// valid UTF-32.
+///
+/// # Examples
+///
+/// ```
+/// use widestring::encode_utf32;
+///
+/// let encoded: Vec<u32> = encode_utf32("𝄞music".chars()).collect();
+///
+/// let v = [
+///     0x1D11E, 0x006d, 0x0075, 0x0073, 0x0069, 0x0063,
+/// ];
+///
+/// assert_eq!(encoded, v);
+/// ```
+pub fn encode_utf32<I: IntoIterator<Item = char>>(iter: I) -> iter::EncodeUtf32<I::IntoIter> {
+    iter::EncodeUtf32::new(iter.into_iter())
+}
+
 /// Debug implementation for any U16 string slice.
 ///
 /// Properly encoded input data will output valid strings with escape sequences, however invalid
@@ -574,4 +632,103 @@ fn validate_utf32_vec(v: Vec<u32>) -> Result<Vec<u32>, crate::error::Utf32Error>
         }
     }
     Ok(v)
+}
+
+/// Copy of unstable core::slice::range to soundly handle ranges
+/// TODO: Replace with core::slice::range when it is stabilized
+#[track_caller]
+fn range<R>(range: R, bounds: core::ops::RangeTo<usize>) -> core::ops::Range<usize>
+where
+    R: core::ops::RangeBounds<usize>,
+{
+    #[inline(never)]
+    #[cold]
+    #[track_caller]
+    fn slice_end_index_len_fail(index: usize, len: usize) -> ! {
+        panic!(
+            "range end index {} out of range for slice of length {}",
+            index, len
+        );
+    }
+
+    #[inline(never)]
+    #[cold]
+    #[track_caller]
+    fn slice_index_order_fail(index: usize, end: usize) -> ! {
+        panic!("slice index starts at {} but ends at {}", index, end);
+    }
+
+    #[inline(never)]
+    #[cold]
+    #[track_caller]
+    fn slice_start_index_overflow_fail() -> ! {
+        panic!("attempted to index slice from after maximum usize");
+    }
+
+    #[inline(never)]
+    #[cold]
+    #[track_caller]
+    fn slice_end_index_overflow_fail() -> ! {
+        panic!("attempted to index slice up to maximum usize");
+    }
+
+    use core::ops::Bound::*;
+
+    let len = bounds.end;
+
+    let start = range.start_bound();
+    let start = match start {
+        Included(&start) => start,
+        Excluded(start) => start
+            .checked_add(1)
+            .unwrap_or_else(|| slice_start_index_overflow_fail()),
+        Unbounded => 0,
+    };
+
+    let end = range.end_bound();
+    let end = match end {
+        Included(end) => end
+            .checked_add(1)
+            .unwrap_or_else(|| slice_end_index_overflow_fail()),
+        Excluded(&end) => end,
+        Unbounded => len,
+    };
+
+    if start > end {
+        slice_index_order_fail(start, end);
+    }
+    if end > len {
+        slice_end_index_len_fail(end, len);
+    }
+
+    core::ops::Range { start, end }
+}
+
+/// Similar to core::slice::range, but returns [`None`] instead of panicking.
+fn range_check<R>(range: R, bounds: core::ops::RangeTo<usize>) -> Option<core::ops::Range<usize>>
+where
+    R: core::ops::RangeBounds<usize>,
+{
+    use core::ops::Bound::*;
+
+    let len = bounds.end;
+
+    let start = range.start_bound();
+    let start = match start {
+        Included(&start) => start,
+        Excluded(start) => start.checked_add(1)?,
+        Unbounded => 0,
+    };
+
+    let end = range.end_bound();
+    let end = match end {
+        Included(end) => end.checked_add(1)?,
+        Excluded(&end) => end,
+        Unbounded => len,
+    };
+
+    if start > end || end > len {
+        return None;
+    }
+    Some(core::ops::Range { start, end })
 }

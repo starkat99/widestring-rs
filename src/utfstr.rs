@@ -4,7 +4,9 @@
 
 use crate::{
     error::{Utf16Error, Utf32Error},
-    is_utf16_low_surrogate, validate_utf16, validate_utf32, U16Str, U32Str,
+    is_utf16_low_surrogate,
+    iter::{EncodeUtf16, EncodeUtf32, EncodeUtf8},
+    validate_utf16, validate_utf32, U16Str, U32Str,
 };
 #[cfg(feature = "alloc")]
 use crate::{Utf16String, Utf32String};
@@ -159,6 +161,52 @@ macro_rules! utfstr_common_impl {
             #[inline]
             pub const fn as_ustr(&self) -> &$ustr {
                 $ustr::from_slice(self.as_slice())
+            }
+
+            /// Returns a string slice with leading and trailing whitespace removed.
+            ///
+            /// 'Whitespace' is defined according to the terms of the Unicode Derived Core Property
+            /// `White_Space`.
+            pub fn trim(&self) -> &Self {
+                self.trim_start().trim_end()
+            }
+
+            /// Returns a string slice with leading whitespace removed.
+            ///
+            /// 'Whitespace' is defined according to the terms of the Unicode Derived Core Property
+            /// `White_Space`.
+            ///
+            /// # Text directionality
+            ///
+            /// A string is a sequence of elements. `start` in this context means the first position
+            /// of that sequence; for a left-to-right language like English or Russian, this will be
+            /// left side, and for right-to-left languages like Arabic or Hebrew, this will be the
+            /// right side.
+            pub fn trim_start(&self) -> &Self {
+                if let Some((index, _)) = self.char_indices().find(|(_, c)| !c.is_whitespace()) {
+                    &self[index..]
+                } else {
+                    <&Self as Default>::default()
+                }
+            }
+
+            /// Returns a string slice with trailing whitespace removed.
+            ///
+            /// 'Whitespace' is defined according to the terms of the Unicode Derived Core Property
+            /// `White_Space`.
+            ///
+            /// # Text directionality
+            ///
+            /// A string is a sequence of elements. `end` in this context means the last position of
+            /// that sequence; for a left-to-right language like English or Russian, this will be
+            /// right side, and for right-to-left languages like Arabic or Hebrew, this will be the
+            /// left side.
+            pub fn trim_end(&self) -> &Self {
+                if let Some((index, _)) = self.char_indices().rfind(|(_, c)| !c.is_whitespace()) {
+                    &self[..=index]
+                } else {
+                    <&Self as Default>::default()
+                }
             }
 
             /// Converts a boxed string into a boxed slice without copying or allocating.
@@ -1096,22 +1144,6 @@ impl Utf16Str {
         }
     }
 
-    /// Performs bounds checking on a range
-    fn is_valid_bounds<R: RangeBounds<usize>>(&self, range: &R) -> bool {
-        use core::ops::Bound::*;
-        match range.start_bound() {
-            Included(&c) if c >= self.len() || !self.is_char_boundary(c) => return false,
-            Excluded(&c) if c + 1 >= self.len() || !self.is_char_boundary(c + 1) => return false,
-            _ => {}
-        }
-        match range.end_bound() {
-            Excluded(&c) if c > self.len() || !self.is_char_boundary(c) => return false,
-            Included(&c) if c >= self.len() || !self.is_char_boundary(c + 1) => return false,
-            _ => {}
-        }
-        true
-    }
-
     /// Returns a subslice of this string.
     ///
     /// This is the non-panicking alternative to indexing the string. Returns [`None`] whenever
@@ -1136,12 +1168,13 @@ impl Utf16Str {
         I: RangeBounds<usize> + SliceIndex<[u16], Output = [u16]>,
     {
         // TODO: Use SliceIndex directly when it is stabilized
-        if self.is_valid_bounds(&index) {
-            // SAFETY: just verified bounds
-            Some(unsafe { self.get_unchecked(index) })
-        } else {
-            None
+        let range = crate::range_check(index, ..self.len())?;
+        if !self.is_char_boundary(range.start) || !self.is_char_boundary(range.end) {
+            return None;
         }
+
+        // SAFETY: range_check verified bounds, and we just verified char boundaries
+        Some(unsafe { self.get_unchecked(range) })
     }
 
     /// Returns a mutable subslice of this string.
@@ -1170,12 +1203,13 @@ impl Utf16Str {
         I: RangeBounds<usize> + SliceIndex<[u16], Output = [u16]>,
     {
         // TODO: Use SliceIndex directly when it is stabilized
-        if self.is_valid_bounds(&index) {
-            // SAFETY: just verified bounds
-            Some(unsafe { self.get_unchecked_mut(index) })
-        } else {
-            None
+        let range = crate::range_check(index, ..self.len())?;
+        if !self.is_char_boundary(range.start) || !self.is_char_boundary(range.end) {
+            return None;
         }
+
+        // SAFETY: range_check verified bounds, and we just verified char boundaries
+        Some(unsafe { self.get_unchecked_mut(range) })
     }
 
     /// Divide one string slice into two at an index.
@@ -1273,6 +1307,24 @@ impl Utf16Str {
     #[inline]
     pub fn char_indices(&self) -> CharIndicesUtf16<'_> {
         CharIndicesUtf16::new(self.as_slice())
+    }
+
+    /// An iterator over the [`u16`] code units of a string slice.
+    ///
+    /// As a UTF-16 string slice consists of a sequence of [`u16`] code units, we can iterate
+    /// through a string slice by each code unit. This method returns such an iterator.
+    pub fn code_units(&self) -> CodeUnits<'_> {
+        CodeUnits::new(self.as_slice())
+    }
+
+    /// Returns an iterator of bytes over the string encoded as UTF-8.
+    pub fn encode_utf8(&self) -> EncodeUtf8<CharsUtf16<'_>> {
+        crate::encode_utf8(self.chars())
+    }
+
+    /// Returns an iterator of [`u32`] over the sting encoded as UTF-32.
+    pub fn encode_utf32(&self) -> EncodeUtf32<CharsUtf16<'_>> {
+        crate::encode_utf32(self.chars())
     }
 
     /// Returns an iterator that escapes each [`char`] in `self` with [`char::escape_debug`].
@@ -1757,30 +1809,6 @@ impl Utf32Str {
             .map(|s| unsafe { Self::from_slice_unchecked_mut(s) })
     }
 
-    /// Get the [`char`] at `index` offset in the string.
-    ///
-    /// Returns [`None`] if `index` is past the end of string slice.
-    #[inline]
-    #[allow(trivial_casts)]
-    pub fn get_char(&self, index: usize) -> Option<&char> {
-        // TODO: Deprecate when SliceIndex is stabilized
-        self.inner
-            .get(index)
-            .map(|c| unsafe { &*(c as *const u32 as *const char) })
-    }
-
-    /// Get a mutable [`char`] at `index` offset in the string.
-    ///
-    /// Returns [`None`] if `index` is past the end of string slice.
-    #[inline]
-    #[allow(trivial_casts)]
-    pub fn get_char_mut(&mut self, index: usize) -> Option<&mut char> {
-        // TODO: Deprecate when SliceIndex is stabilized
-        self.inner
-            .get_mut(index)
-            .map(|c| unsafe { &mut *(c as *mut u32 as *mut char) })
-    }
-
     /// Divide one string slice into two at an index.
     ///
     /// The argument, `mid`, should be an offset from the start of the string.
@@ -1870,6 +1898,16 @@ impl Utf32Str {
     #[inline]
     pub fn char_indices(&self) -> CharIndicesUtf32<'_> {
         CharIndicesUtf32::new(self.as_slice())
+    }
+
+    /// Returns an iterator of bytes over the string encoded as UTF-8.
+    pub fn encode_utf8(&self) -> EncodeUtf8<CharsUtf32<'_>> {
+        crate::encode_utf8(self.chars())
+    }
+
+    /// Returns an iterator of [`u16`] over the sting encoded as UTF-16.
+    pub fn encode_utf16(&self) -> EncodeUtf16<CharsUtf32<'_>> {
+        crate::encode_utf16(self.chars())
     }
 
     /// Returns an iterator that escapes each [`char`] in `self` with [`char::escape_debug`].
@@ -2114,3 +2152,32 @@ pub type WideUtfStr = Utf32Str;
 /// `wchar_t` size on platform.
 #[cfg(windows)]
 pub type WideUtfStr = Utf16Str;
+
+#[cfg(test)]
+mod test {
+    use crate::*;
+
+    #[test]
+    fn utf16_trim() {
+        let s = utf16str!(" Hello\tworld\t");
+        assert_eq!(utf16str!("Hello\tworld\t"), s.trim_start());
+
+        let s = utf16str!("  English  ");
+        assert!(Some('E') == s.trim_start().chars().next());
+
+        let s = utf16str!("  עברית  ");
+        assert!(Some('ע') == s.trim_start().chars().next());
+    }
+
+    #[test]
+    fn utf32_trim() {
+        let s = utf32str!(" Hello\tworld\t");
+        assert_eq!(utf32str!("Hello\tworld\t"), s.trim_start());
+
+        let s = utf32str!("  English  ");
+        assert!(Some('E') == s.trim_start().chars().next());
+
+        let s = utf32str!("  עברית  ");
+        assert!(Some('ע') == s.trim_start().chars().next());
+    }
+}

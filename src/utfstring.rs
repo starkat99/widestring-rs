@@ -26,6 +26,9 @@ use core::{
     str::FromStr,
 };
 
+mod iter;
+pub use iter::*;
+
 macro_rules! utfstring_common_impl {
     {
         $(#[$utfstring_meta:meta])*
@@ -1565,6 +1568,53 @@ impl Utf16String {
         c
     }
 
+    /// Retains only the characters specified by the predicate.
+    ///
+    /// In other words, remove all characters `c` such that `f(c)` returns `false`. This method
+    /// operates in place, visiting each character exactly once in the original order, and preserves
+    /// the order of the retained characters.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::Utf16String;
+    /// let mut s = Utf16String::from_str("f_o_ob_ar");
+    ///
+    /// s.retain(|c| c != '_');
+    ///
+    /// assert_eq!(s, "foobar");
+    /// ```
+    ///
+    /// Because the elements are visited exactly once in the original order, external state may be
+    /// used to decide which elements to keep.
+    ///
+    /// ```
+    /// use widestring::Utf16String;
+    /// let mut s = Utf16String::from_str("abcde");
+    /// let keep = [false, true, true, false, true];
+    /// let mut iter = keep.iter();
+    /// s.retain(|_| *iter.next().unwrap());
+    /// assert_eq!(s, "bce");
+    /// ```
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(char) -> bool,
+    {
+        let mut index = 0;
+        while index < self.len() {
+            // SAFETY: always in bounds and incremented by len_utf16 only
+            let c = unsafe { self.get_unchecked(index..) }
+                .chars()
+                .next()
+                .unwrap();
+            if !f(c) {
+                self.inner.drain(index..index + c.len_utf16());
+            } else {
+                index += c.len_utf16();
+            }
+        }
+    }
+
     /// Inserts a character into this string at an offset.
     ///
     /// This is an _O(n)_ operation as it requires copying every element in the buffer.
@@ -1652,6 +1702,108 @@ impl Utf16String {
     pub fn split_off(&mut self, at: usize) -> Self {
         assert!(self.is_char_boundary(at));
         unsafe { Self::from_vec_unchecked(self.inner.split_off(at)) }
+    }
+
+    /// Creates a draining iterator that removes the specified range in the string and yields the
+    /// removed [`char`]s.
+    ///
+    /// Note: The element range is removed even if the iterator is not consumed until the end.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the starting point or end point do not lie on a [`char`] boundary, or if they're
+    /// out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use widestring::Utf16String;
+    /// let mut s = Utf16String::from_str("α is alpha, β is beta");
+    /// let beta_offset = 12;
+    ///
+    /// // Remove the range up until the β from the string
+    /// let t: Utf16String = s.drain(..beta_offset).collect();
+    /// assert_eq!(t, "α is alpha, ");
+    /// assert_eq!(s, "β is beta");
+    ///
+    /// // A full range clears the string
+    /// s.drain(..);
+    /// assert_eq!(s, "");
+    /// ```
+    pub fn drain<R>(&mut self, range: R) -> DrainUtf16<'_>
+    where
+        R: RangeBounds<usize>,
+    {
+        // WARNING: Using range again would be unsound
+        // TODO: replace with core::slice::range when it is stabilized
+        let core::ops::Range { start, end } = crate::range(range, ..self.len());
+        assert!(self.is_char_boundary(start));
+        assert!(self.is_char_boundary(end));
+
+        // Take out two simultaneous borrows. The self_ptr won't be accessed
+        // until iteration is over, in Drop.
+        let self_ptr: *mut _ = self;
+        // SAFETY: `slice::range` and `is_char_boundary` do the appropriate bounds checks.
+        let chars_iter = unsafe { self.get_unchecked(start..end) }.chars();
+
+        DrainUtf16 {
+            start,
+            end,
+            iter: chars_iter,
+            string: self_ptr,
+        }
+    }
+
+    /// Removes the specified range in the string, and replaces it with the given string.
+    ///
+    /// The given string doesn't need to be the same length as the range.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the starting point or end point do not lie on a [`char`] boundary, or if they're
+    /// out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use widestring::{utf16str, Utf16String};
+    /// let mut s = Utf16String::from_str("α is alpha, β is beta");
+    /// let beta_offset = 12;
+    ///
+    /// // Replace the range up until the β from the string
+    /// s.replace_range(..beta_offset, utf16str!("Α is capital alpha; "));
+    /// assert_eq!(s, "Α is capital alpha; β is beta");
+    /// ```
+    pub fn replace_range<R>(&mut self, range: R, replace_with: &Utf16Str)
+    where
+        R: RangeBounds<usize>,
+    {
+        use core::ops::Bound::*;
+
+        // WARNING: Using range again would be unsound
+        let start = range.start_bound();
+        match start {
+            Included(&n) => assert!(self.is_char_boundary(n)),
+            Excluded(&n) => assert!(self.is_char_boundary(n + 1)),
+            Unbounded => {}
+        };
+        // WARNING: Inlining this variable would be unsound
+        let end = range.end_bound();
+        match end {
+            Included(&n) => assert!(self.is_char_boundary(n + 1)),
+            Excluded(&n) => assert!(self.is_char_boundary(n)),
+            Unbounded => {}
+        };
+
+        // Using `range` again would be unsound
+        // We assume the bounds reported by `range` remain the same, but
+        // an adversarial implementation could change between calls
+        self.inner
+            .splice((start, end), replace_with.as_slice().iter().copied());
     }
 }
 
@@ -2133,6 +2285,53 @@ impl Utf32String {
         }
     }
 
+    /// Retains only the characters specified by the predicate.
+    ///
+    /// In other words, remove all characters `c` such that `f(c)` returns `false`. This method
+    /// operates in place, visiting each character exactly once in the original order, and preserves
+    /// the order of the retained characters.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use widestring::Utf32String;
+    /// let mut s = Utf32String::from_str("f_o_ob_ar");
+    ///
+    /// s.retain(|c| c != '_');
+    ///
+    /// assert_eq!(s, "foobar");
+    /// ```
+    ///
+    /// Because the elements are visited exactly once in the original order, external state may be
+    /// used to decide which elements to keep.
+    ///
+    /// ```
+    /// use widestring::Utf32String;
+    /// let mut s = Utf32String::from_str("abcde");
+    /// let keep = [false, true, true, false, true];
+    /// let mut iter = keep.iter();
+    /// s.retain(|_| *iter.next().unwrap());
+    /// assert_eq!(s, "bce");
+    /// ```
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(char) -> bool,
+    {
+        let mut index = 0;
+        while index < self.len() {
+            // SAFETY: always in bounds
+            let c = unsafe { self.get_unchecked(index..) }
+                .chars()
+                .next()
+                .unwrap();
+            if !f(c) {
+                self.inner.remove(index);
+            } else {
+                index += 1;
+            }
+        }
+    }
+
     /// Inserts a character into this string at an offset.
     ///
     /// This is an _O(n)_ operation as it requires copying every element in the buffer.
@@ -2209,6 +2408,87 @@ impl Utf32String {
     #[inline]
     pub fn split_off(&mut self, at: usize) -> Self {
         unsafe { Self::from_vec_unchecked(self.inner.split_off(at)) }
+    }
+
+    /// Creates a draining iterator that removes the specified range in the string and yields the
+    /// removed [`char`]s.
+    ///
+    /// Note: The element range is removed even if the iterator is not consumed until the end.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the starting point or end point are out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use widestring::Utf32String;
+    /// let mut s = Utf32String::from_str("α is alpha, β is beta");
+    /// let beta_offset = 12;
+    ///
+    /// // Remove the range up until the β from the string
+    /// let t: Utf32String = s.drain(..beta_offset).collect();
+    /// assert_eq!(t, "α is alpha, ");
+    /// assert_eq!(s, "β is beta");
+    ///
+    /// // A full range clears the string
+    /// s.drain(..);
+    /// assert_eq!(s, "");
+    /// ```
+    pub fn drain<R>(&mut self, range: R) -> DrainUtf32<'_>
+    where
+        R: RangeBounds<usize>,
+    {
+        // WARNING: Using range again would be unsound
+        // TODO: replace with core::slice::range when it is stabilized
+        let core::ops::Range { start, end } = crate::range(range, ..self.len());
+
+        // Take out two simultaneous borrows. The self_ptr won't be accessed
+        // until iteration is over, in Drop.
+        let self_ptr: *mut _ = self;
+        // SAFETY: `slice::range` and `is_char_boundary` do the appropriate bounds checks.
+        let chars_iter = unsafe { self.get_unchecked(start..end) }.chars();
+
+        DrainUtf32 {
+            start,
+            end,
+            iter: chars_iter,
+            string: self_ptr,
+        }
+    }
+
+    /// Removes the specified range in the string, and replaces it with the given string.
+    ///
+    /// The given string doesn't need to be the same length as the range.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the starting point or end point are out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use widestring::{utf32str, Utf32String};
+    /// let mut s = Utf32String::from_str("α is alpha, β is beta");
+    /// let beta_offset = 12;
+    ///
+    /// // Replace the range up until the β from the string
+    /// s.replace_range(..beta_offset, utf32str!("Α is capital alpha; "));
+    /// assert_eq!(s, "Α is capital alpha; β is beta");
+    /// ```
+    #[inline]
+    pub fn replace_range<R>(&mut self, range: R, replace_with: &Utf32Str)
+    where
+        R: RangeBounds<usize>,
+    {
+        self.inner.splice(
+            (range.start_bound(), range.end_bound()),
+            replace_with.as_slice().iter().copied(),
+        );
     }
 }
 

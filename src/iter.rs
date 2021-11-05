@@ -1,4 +1,4 @@
-//! Iterators for working with slices of UTF-16 and UTF-32 data.
+//! Iterators for encoding and decoding slices of string data.
 
 use crate::{
     decode_utf16_surrogate_pair,
@@ -275,5 +275,168 @@ where
     #[inline]
     fn len(&self) -> usize {
         self.iter.len()
+    }
+}
+
+/// An iterator that encodes an iterator of [`char`][prim@char]s into UTF-8 bytes.
+///
+/// This struct is created by [`encode_utf8`][crate::encode_utf8]. See its documentation for more.
+#[derive(Debug, Clone)]
+pub struct EncodeUtf8<I>
+where
+    I: Iterator<Item = char>,
+{
+    iter: I,
+    buf: [u8; 4],
+    idx: u8,
+    len: u8,
+}
+
+impl<I> EncodeUtf8<I>
+where
+    I: Iterator<Item = char>,
+{
+    pub(crate) fn new(iter: I) -> Self {
+        Self {
+            iter,
+            buf: [0; 4],
+            idx: 0,
+            len: 0,
+        }
+    }
+}
+
+impl<I> Iterator for EncodeUtf8<I>
+where
+    I: Iterator<Item = char>,
+{
+    type Item = u8;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.idx >= self.len {
+            let c = self.iter.next()?;
+            self.idx = 0;
+            self.len = c.encode_utf8(&mut self.buf).len() as u8;
+        }
+        self.idx += 1;
+        let idx = (self.idx - 1) as usize;
+        Some(self.buf[idx])
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (lower, upper) = self.iter.size_hint();
+        (lower, upper.and_then(|len| len.checked_mul(4))) // Max 4 UTF-8 bytes per char
+    }
+}
+
+impl<I> FusedIterator for EncodeUtf8<I> where I: Iterator<Item = char> + FusedIterator {}
+
+/// An iterator that encodes an iterator of [`char`][prim@char]s into UTF-16 [`u16`] code units.
+///
+/// This struct is created by [`encode_utf16`][crate::encode_utf16]. See its documentation for more.
+#[derive(Debug, Clone)]
+pub struct EncodeUtf16<I>
+where
+    I: Iterator<Item = char>,
+{
+    iter: I,
+    buf: Option<u16>,
+}
+
+impl<I> EncodeUtf16<I>
+where
+    I: Iterator<Item = char>,
+{
+    pub(crate) fn new(iter: I) -> Self {
+        Self { iter, buf: None }
+    }
+}
+
+impl<I> Iterator for EncodeUtf16<I>
+where
+    I: Iterator<Item = char>,
+{
+    type Item = u16;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.buf.take().or_else(|| {
+            let c = self.iter.next()?;
+            let mut buf = [0; 2];
+            let buf = c.encode_utf16(&mut buf);
+            if buf.len() > 1 {
+                self.buf = Some(buf[1]);
+            }
+            Some(buf[0])
+        })
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (lower, upper) = self.iter.size_hint();
+        (lower, upper.and_then(|len| len.checked_mul(2))) // Max 2 UTF-16 code units per char
+    }
+}
+
+impl<I> FusedIterator for EncodeUtf16<I> where I: Iterator<Item = char> + FusedIterator {}
+
+/// An iterator that encodes an iterator of [`char`][prim@char]s into UTF-32 [`u32`] values.
+///
+/// This struct is created by [`encode_utf32`][crate::encode_utf32]. See its documentation for more.
+#[derive(Debug, Clone)]
+pub struct EncodeUtf32<I>
+where
+    I: Iterator<Item = char>,
+{
+    iter: I,
+}
+
+impl<I> EncodeUtf32<I>
+where
+    I: Iterator<Item = char>,
+{
+    pub(crate) fn new(iter: I) -> Self {
+        Self { iter }
+    }
+}
+
+impl<I> Iterator for EncodeUtf32<I>
+where
+    I: Iterator<Item = char>,
+{
+    type Item = u32;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next().map(|c| c as u32)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl<I> FusedIterator for EncodeUtf32<I> where I: Iterator<Item = char> + FusedIterator {}
+
+impl<I> ExactSizeIterator for EncodeUtf32<I>
+where
+    I: Iterator<Item = char> + ExactSizeIterator,
+{
+    #[inline]
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+}
+
+impl<I> DoubleEndedIterator for EncodeUtf32<I>
+where
+    I: Iterator<Item = char> + DoubleEndedIterator,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter.next_back().map(|c| c as u32)
     }
 }

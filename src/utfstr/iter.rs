@@ -350,7 +350,9 @@ macro_rules! escape_impls {
 
             #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
-                self.iter.size_hint()
+                let (lower, upper) = self.iter.size_hint();
+                // Worst case, every char has to be unicode escaped as \u{NNNNNN}
+                (lower, upper.and_then(|len| len.checked_mul(10)))
             }
         }
 
@@ -359,3 +361,50 @@ macro_rules! escape_impls {
 }
 
 escape_impls!(EscapeDebug, EscapeDefault, EscapeUnicode);
+
+/// An iterator over the [`u16`] code units of a UTF-16 string slice
+///
+/// This struct is created by the [`code_units`][crate::Utf16Str::code_units] method on
+/// [`Utf16Str`][crate::Utf16Str]. See its documentation for more.
+#[derive(Debug, Clone)]
+pub struct CodeUnits<'a> {
+    iter: Copied<Iter<'a, u16>>,
+}
+
+impl<'a> CodeUnits<'a> {
+    pub(super) fn new(s: &'a [u16]) -> Self {
+        Self {
+            iter: s.iter().copied(),
+        }
+    }
+}
+
+impl<'a> Iterator for CodeUnits<'a> {
+    type Item = u16;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl<'a> FusedIterator for CodeUnits<'a> {}
+
+impl<'a> DoubleEndedIterator for CodeUnits<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.iter.next_back()
+    }
+}
+
+impl<'a> ExactSizeIterator for CodeUnits<'a> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+}
