@@ -637,7 +637,7 @@ fn validate_utf32_vec(v: Vec<u32>) -> Result<Vec<u32>, crate::error::Utf32Error>
 /// Copy of unstable core::slice::range to soundly handle ranges
 /// TODO: Replace with core::slice::range when it is stabilized
 #[track_caller]
-#[allow(dead_code)]
+#[allow(dead_code, clippy::redundant_closure)]
 fn range<R>(range: R, bounds: core::ops::RangeTo<usize>) -> core::ops::Range<usize>
 where
     R: core::ops::RangeBounds<usize>,
