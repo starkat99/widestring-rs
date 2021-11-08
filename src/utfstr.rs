@@ -2065,6 +2065,13 @@ impl PartialEq<[char]> for Utf32Str {
     }
 }
 
+impl PartialEq<Utf32Str> for [char] {
+    #[inline]
+    fn eq(&self, other: &Utf32Str) -> bool {
+        self == other.as_char_slice()
+    }
+}
+
 impl PartialEq<Utf16Str> for Utf32Str {
     #[inline]
     fn eq(&self, other: &Utf16Str) -> bool {

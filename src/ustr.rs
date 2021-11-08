@@ -330,6 +330,18 @@ macro_rules! ustr_common_impl {
                 let split = self.inner.split_at_mut(mid);
                 (Self::from_slice_mut(split.0), Self::from_slice_mut(split.1))
             }
+
+            /// Creates a new owned string by repeating this string `n` times.
+            ///
+            /// # Panics
+            ///
+            /// This function will panic if the capacity would overflow.
+            #[inline]
+            #[cfg(feature = "alloc")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+            pub fn repeat(&self, n: usize) -> $ustring {
+                $ustring::from_vec(self.as_slice().repeat(n))
+            }
         }
 
         impl AsMut<$ustr> for $ustr {
@@ -392,6 +404,20 @@ macro_rules! ustr_common_impl {
             #[inline]
             fn from(value: &'a mut [$uchar]) -> Self {
                 $ustr::from_slice_mut(value)
+            }
+        }
+
+        impl<'a> From<&'a $ustr> for &'a [$uchar] {
+            #[inline]
+            fn from(value: &'a $ustr) -> Self {
+                value.as_slice()
+            }
+        }
+
+        impl<'a> From<&'a mut $ustr> for &'a mut [$uchar] {
+            #[inline]
+            fn from(value: &'a mut $ustr) -> Self {
+                value.as_mut_slice()
             }
         }
 
@@ -1093,6 +1119,20 @@ impl core::fmt::Debug for U32Str {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         crate::debug_fmt_u32(self.as_slice(), f)
+    }
+}
+
+impl<'a> From<&'a [char]> for &'a U32Str {
+    #[inline]
+    fn from(value: &'a [char]) -> Self {
+        U32Str::from_char_slice(value)
+    }
+}
+
+impl<'a> From<&'a mut [char]> for &'a mut U32Str {
+    #[inline]
+    fn from(value: &'a mut [char]) -> Self {
+        U32Str::from_char_slice_mut(value)
     }
 }
 

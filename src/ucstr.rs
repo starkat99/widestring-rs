@@ -8,7 +8,11 @@ use crate::{
 };
 #[cfg(feature = "alloc")]
 use alloc::{borrow::ToOwned, boxed::Box, string::String};
-use core::{fmt::Write, ops::Range, slice};
+use core::{
+    fmt::Write,
+    ops::{Index, Range},
+    slice::{self, SliceIndex},
+};
 
 #[doc(inline)]
 pub use crate::ustr::{
@@ -593,8 +597,13 @@ macro_rules! ucstr_common_impl {
             ///
             /// This function is useful for interacting with foreign interfaces which use two
             /// pointers to refer to a range of elements in memory, as is common in C++.
+            ///
+            /// # Safety
+            ///
+            /// This method is unsafe because you can violate the invariants of this type when
+            /// mutating the memory the pointer points to (i.e. by adding interior nul values).
             #[inline]
-            pub fn as_mut_ptr_range(&mut self) -> Range<*mut $uchar> {
+            pub unsafe fn as_mut_ptr_range(&mut self) -> Range<*mut $uchar> {
                 self.inner.as_mut_ptr_range()
             }
 
@@ -667,6 +676,124 @@ macro_rules! ucstr_common_impl {
             pub fn display(&self) -> Display<'_, $ucstr> {
                 Display { str: self }
             }
+
+            /// Returns a subslice of the string.
+            ///
+            /// This is the non-panicking alternative to indexing the string. Returns [`None`]
+            /// whenever equivalent indexing operation would panic.
+            #[inline]
+            pub fn get<I>(&self, i: I) -> Option<&$ustr>
+            where
+                I: SliceIndex<[$uchar], Output = [$uchar]>,
+            {
+                self.as_slice().get(i).map($ustr::from_slice)
+            }
+
+            /// Returns a mutable subslice of the string.
+            ///
+            /// This is the non-panicking alternative to indexing the string. Returns [`None`]
+            /// whenever equivalent indexing operation would panic.
+            ///
+            /// # Safety
+            ///
+            /// This method is unsafe because you can violate the invariants of this type when
+            /// mutating the memory the pointer points to (i.e. by adding interior nul values).
+            #[inline]
+            pub unsafe fn get_mut<I>(&mut self, i: I) -> Option<&mut $ustr>
+            where
+                I: SliceIndex<[$uchar], Output = [$uchar]>,
+            {
+                self.as_mut_slice().get_mut(i).map($ustr::from_slice_mut)
+            }
+
+            /// Returns an unchecked subslice of the string.
+            ///
+            /// This is the unchecked alternative to indexing the string.
+            ///
+            /// # Safety
+            ///
+            /// Callers of this function are responsible that these preconditions are satisfied:
+            ///
+            /// - The starting index must not exceed the ending index;
+            /// - Indexes must be within bounds of the original slice.
+            ///
+            /// Failing that, the returned string slice may reference invalid memory.
+            #[inline]
+            pub unsafe fn get_unchecked<I>(&self, i: I) -> &$ustr
+            where
+                I: SliceIndex<[$uchar], Output = [$uchar]>,
+            {
+                $ustr::from_slice(self.as_slice().get_unchecked(i))
+            }
+
+            /// Returns aa mutable, unchecked subslice of the string.
+            ///
+            /// This is the unchecked alternative to indexing the string.
+            ///
+            /// # Safety
+            ///
+            /// Callers of this function are responsible that these preconditions are satisfied:
+            ///
+            /// - The starting index must not exceed the ending index;
+            /// - Indexes must be within bounds of the original slice.
+            ///
+            /// Failing that, the returned string slice may reference invalid memory.
+            ///
+            /// This method is unsafe because you can violate the invariants of this type when
+            /// mutating the memory the pointer points to (i.e. by adding interior nul values).
+            #[inline]
+            pub unsafe fn get_unchecked_mut<I>(&mut self, i: I) -> &mut $ustr
+            where
+                I: SliceIndex<[$uchar], Output = [$uchar]>,
+            {
+                $ustr::from_slice_mut(self.as_mut_slice().get_unchecked_mut(i))
+            }
+
+            /// Divide one string slice into two at an index.
+            ///
+            /// The argument, `mid`, should be an offset from the start of the string.
+            ///
+            /// The two slices returned go from the start of the string slice to `mid`, and from
+            /// `mid` to the end of the string slice.
+            ///
+            /// To get mutable string slices instead, see the [`split_at_mut`][Self::split_at_mut]
+            /// method.
+            #[inline]
+            pub fn split_at(&self, mid: usize) -> (&$ustr, &$ustr) {
+                let split = self.as_slice().split_at(mid);
+                ($ustr::from_slice(split.0), $ustr::from_slice(split.1))
+            }
+
+            /// Divide one mutable string slice into two at an index.
+            ///
+            /// The argument, `mid`, should be an offset from the start of the string.
+            ///
+            /// The two slices returned go from the start of the string slice to `mid`, and from
+            /// `mid` to the end of the string slice.
+            ///
+            /// To get immutable string slices instead, see the [`split_at`][Self::split_at] method.
+            ///
+            /// # Safety
+            ///
+            /// This method is unsafe because you can violate the invariants of this type when
+            /// mutating the memory the pointer points to (i.e. by adding interior nul values).
+            #[inline]
+            pub unsafe fn split_at_mut(&mut self, mid: usize) -> (&mut $ustr, &mut $ustr) {
+                let split = self.as_mut_slice().split_at_mut(mid);
+                ($ustr::from_slice_mut(split.0), $ustr::from_slice_mut(split.1))
+            }
+
+            /// Creates a new owned string by repeating this string `n` times.
+            ///
+            /// # Panics
+            ///
+            /// This function will panic if the capacity would overflow.
+            #[inline]
+            #[cfg(feature = "alloc")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+            pub fn repeat(&self, n: usize) -> crate::$ucstring {
+                unsafe { crate::$ucstring::from_vec_unchecked(self.as_slice().repeat(n)) }
+            }
         }
 
         impl AsMut<$ucstr> for $ucstr {
@@ -720,6 +847,18 @@ macro_rules! ucstr_common_impl {
             fn from(s: &'a $ucstr) -> Box<$ucstr> {
                 let boxed: Box<[$uchar]> = Box::from(s.as_slice_with_nul());
                 unsafe { Box::from_raw(Box::into_raw(boxed) as *mut $ucstr) }
+            }
+        }
+
+        impl<I> Index<I> for $ucstr
+        where
+            I: SliceIndex<[$uchar], Output = [$uchar]>,
+        {
+            type Output = $ustr;
+
+            #[inline]
+            fn index(&self, index: I) -> &Self::Output {
+                $ustr::from_slice(&self.as_slice()[index])
             }
         }
 

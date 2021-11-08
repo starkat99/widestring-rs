@@ -11,8 +11,9 @@ use alloc::{
 use core::{
     borrow::{Borrow, BorrowMut},
     cmp, mem,
-    ops::{Deref, DerefMut, Index, IndexMut, RangeFull},
-    ptr, slice,
+    ops::{Deref, DerefMut, Index},
+    ptr,
+    slice::{self, SliceIndex},
 };
 
 macro_rules! ucstring_common_impl {
@@ -491,19 +492,15 @@ macro_rules! ucstring_common_impl {
             }
         }
 
-        impl Index<RangeFull> for $ucstring {
-            type Output = $ucstr;
+        impl<I> Index<I> for $ucstring
+        where
+            I: SliceIndex<[$uchar], Output = [$uchar]>,
+        {
+            type Output = $ustr;
 
             #[inline]
-            fn index(&self, _index: RangeFull) -> &$ucstr {
-                self.as_ucstr()
-            }
-        }
-
-        impl IndexMut<RangeFull> for $ucstring {
-            #[inline]
-            fn index_mut(&mut self, _index: RangeFull) -> &mut Self::Output {
-                self.as_mut_ucstr()
+            fn index(&self, index: I) -> &Self::Output {
+                &self.as_ucstr()[index]
             }
         }
 

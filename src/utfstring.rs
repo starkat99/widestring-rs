@@ -2485,10 +2485,8 @@ impl Utf32String {
     where
         R: RangeBounds<usize>,
     {
-        self.inner.splice(
-            (range.start_bound(), range.end_bound()),
-            replace_with.as_slice().iter().copied(),
-        );
+        self.inner
+            .splice(range, replace_with.as_slice().iter().copied());
     }
 }
 

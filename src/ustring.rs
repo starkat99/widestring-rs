@@ -16,10 +16,14 @@ use core::{
     fmt::Write,
     iter::FromIterator,
     mem,
-    ops::{Add, AddAssign, Deref, DerefMut, Index, IndexMut},
+    ops::{Add, AddAssign, Deref, DerefMut, Index, IndexMut, RangeBounds},
     slice::{self, SliceIndex},
     str::FromStr,
 };
+
+mod iter;
+
+pub use iter::*;
 
 macro_rules! ustring_common_impl {
     {
@@ -28,6 +32,8 @@ macro_rules! ustring_common_impl {
         type UStr = $ustr:ident;
         type UCString = $ucstring:ident;
         type UCStr = $ucstr:ident;
+        type UtfStr = $utfstr:ident;
+        type UtfString = $utfstring:ident;
         $(#[$push_meta:meta])*
         fn push() -> {}
         $(#[$push_slice_meta:meta])*
@@ -178,7 +184,7 @@ macro_rules! ustring_common_impl {
             $(#[$push_meta])*
             #[inline]
             pub fn push(&mut self, s: impl AsRef<$ustr>) {
-                self.inner.extend_from_slice(&s.as_ref().inner)
+                self.inner.extend_from_slice(&s.as_ref().as_slice())
             }
 
             $(#[$push_slice_meta])*
@@ -191,6 +197,17 @@ macro_rules! ustring_common_impl {
             #[inline]
             pub fn shrink_to_fit(&mut self) {
                 self.inner.shrink_to_fit();
+            }
+
+            /// Shrinks the capacity of this string with a lower bound.
+            ///
+            /// The capacity will remain at least as large as both the length and the supplied
+            /// value.
+            ///
+            /// If the current capacity is less than the lower limit, this is a no-op.
+            #[inline]
+            pub fn shrink_to(&mut self, min_capacity: usize) {
+                self.inner.shrink_to(min_capacity)
             }
 
             $(#[$into_boxed_ustr_meta])*
@@ -238,6 +255,49 @@ macro_rules! ustring_common_impl {
             pub fn split_off(&mut self, at: usize) -> $ustring {
                 Self::from_vec(self.inner.split_off(at))
             }
+
+            /// Retains only the elements specified by the predicate.
+            ///
+            /// In other words, remove all elements `e` such that `f(e)` returns `false`. This
+            /// method operates in place, visiting each element exactly once in the original order,
+            /// and preserves the order of the retained elements.
+            pub fn retain<F>(&mut self, mut f: F)
+            where
+                F: FnMut($uchar) -> bool,
+            {
+                self.inner.retain(|e| f(*e))
+            }
+
+            /// Creates a draining iterator that removes the specified range in the string and
+            /// yields the removed elements.
+            ///
+            /// Note: The element range is removed even if the iterator is not consumed until the
+            /// end.
+            ///
+            /// # Panics
+            ///
+            /// Panics if the starting point or end point are out of bounds.
+            pub fn drain<R>(&mut self, range: R) -> Drain<'_, $uchar>
+            where
+                R: RangeBounds<usize>,
+            {
+                Drain { inner: self.inner.drain(range) }
+            }
+
+            /// Removes the specified range in the string, and replaces it with the given string.
+            ///
+            /// The given string doesn't need to be the same length as the range.
+            ///
+            /// # Panics
+            ///
+            /// Panics if the starting point or end point are out of bounds.
+            pub fn replace_range<R>(&mut self, range: R, replace_with: impl AsRef<$ustr>)
+            where
+                R: RangeBounds<usize>,
+            {
+                self.inner
+                    .splice(range, replace_with.as_ref().as_slice().iter().copied());
+            }
         }
 
         impl Add<&$ustr> for $ustring {
@@ -255,6 +315,16 @@ macro_rules! ustring_common_impl {
 
             #[inline]
             fn add(mut self, rhs: &$ucstr) -> Self::Output {
+                self.push(rhs);
+                self
+            }
+        }
+
+        impl Add<&crate::$utfstr> for $ustring {
+            type Output = $ustring;
+
+            #[inline]
+            fn add(mut self, rhs: &crate::$utfstr) -> Self::Output {
                 self.push(rhs);
                 self
             }
@@ -280,6 +350,13 @@ macro_rules! ustring_common_impl {
         impl AddAssign<&$ucstr> for $ustring {
             #[inline]
             fn add_assign(&mut self, rhs: &$ucstr) {
+                self.push(rhs)
+            }
+        }
+
+        impl AddAssign<&crate::$utfstr> for $ustring {
+            #[inline]
+            fn add_assign(&mut self, rhs: &crate::$utfstr) {
                 self.push(rhs)
             }
         }
@@ -372,6 +449,13 @@ macro_rules! ustring_common_impl {
             }
         }
 
+        impl<'a> Extend<&'a crate::$utfstr> for $ustring {
+            #[inline]
+            fn extend<T: IntoIterator<Item = &'a crate::$utfstr>>(&mut self, iter: T) {
+                iter.into_iter().for_each(|s| self.push(s))
+            }
+        }
+
         impl<'a> Extend<&'a str> for $ustring {
             #[inline]
             fn extend<T: IntoIterator<Item = &'a str>>(&mut self, iter: T) {
@@ -390,6 +474,13 @@ macro_rules! ustring_common_impl {
             #[inline]
             fn extend<T: IntoIterator<Item = $ucstring>>(&mut self, iter: T) {
                 iter.into_iter().for_each(|s| self.push(s.as_ucstr()))
+            }
+        }
+
+        impl Extend<crate::$utfstring> for $ustring {
+            #[inline]
+            fn extend<T: IntoIterator<Item = crate::$utfstring>>(&mut self, iter: T) {
+                iter.into_iter().for_each(|s| self.push(s.as_ustr()))
             }
         }
 
@@ -536,6 +627,15 @@ macro_rules! ustring_common_impl {
             }
         }
 
+        impl<'a> FromIterator<&'a crate::$utfstr> for $ustring {
+            #[inline]
+            fn from_iter<T: IntoIterator<Item = &'a crate::$utfstr>>(iter: T) -> Self {
+                let mut string = Self::new();
+                string.extend(iter);
+                string
+            }
+        }
+
         impl<'a> FromIterator<&'a str> for $ustring {
             #[inline]
             fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {
@@ -557,6 +657,15 @@ macro_rules! ustring_common_impl {
         impl FromIterator<$ucstring> for $ustring {
             #[inline]
             fn from_iter<T: IntoIterator<Item = $ucstring>>(iter: T) -> Self {
+                let mut string = Self::new();
+                string.extend(iter);
+                string
+            }
+        }
+
+        impl FromIterator<crate::$utfstring> for $ustring {
+            #[inline]
+            fn from_iter<T: IntoIterator<Item = crate::$utfstring>>(iter: T) -> Self {
                 let mut string = Self::new();
                 string.extend(iter);
                 string
@@ -859,6 +968,8 @@ ustring_common_impl! {
     type UStr = U16Str;
     type UCString = U16CString;
     type UCStr = U16CStr;
+    type UtfStr = Utf16Str;
+    type UtfString = Utf16String;
 
     /// Extends the string with the given string slice.
     ///
@@ -984,6 +1095,8 @@ ustring_common_impl! {
     type UStr = U32Str;
     type UCString = U32CString;
     type UCStr = U32CStr;
+    type UtfStr = Utf32Str;
+    type UtfString = Utf32String;
 
     /// Extends the string with the given string slice.
     ///
@@ -1417,6 +1530,13 @@ impl From<Vec<char>> for U32String {
     #[inline]
     fn from(value: Vec<char>) -> Self {
         Self::from_chars(value)
+    }
+}
+
+impl From<&[char]> for U32String {
+    #[inline]
+    fn from(value: &[char]) -> Self {
+        U32String::from_chars(value)
     }
 }
 

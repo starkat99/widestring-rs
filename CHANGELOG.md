@@ -58,6 +58,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - `encode_utf8`
   - `encode_utf16`
   - `encode_utf32`
+- Added various methods:
+  - `repeat` on `U16Str`, `U32Str`, `U16CStr`, and `U32CStr`
+  - `shrink_to` on `U16String` and `U32String`
+  - `retain` on `U16String` and `U32String`
+  - `drain` on `U16String` and `U32String`
+  - `replace_range` on `U16String` and `U32String`
+  - `get`, `get_mut`, `get_unchecked`, and `get_unchecked_mut` on `U16CStr` and `U32CStr`
+  - `split_at` and `split_at_mut` on `U16CStr` and `U32CStr`
+- Added more trait implementations.
 
 ### Removed
 - **Breaking Change** Functions and types deprecated in 0.5 have been removed.
@@ -68,6 +77,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   - `UCStr`
   - `UString`
   - `UCString`
+- **Breaking Change** Removed `IndexMut<RangeFull>` trait implementation of `U16CString` and
+  `U32CString`. Use the unsafe `get_mut` method instead, which also supports more ranges.
 
 ## Fixed
 - **Breaking Change** The iterator returned by `U16Str::char_indices` and `U16CStr::char_indices`
