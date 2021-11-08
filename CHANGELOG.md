@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - The following methods on `U16String` and `U32String` are now `const`:
   - `new`
 
-## Added
+### Added
 - Added new UTF-encoded string types and associated types:
   - `Utf16Str`
   - `Utf32Str`
@@ -82,7 +82,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - **Breaking Change** Removed `IndexMut<RangeFull>` trait implementation of `U16CString` and
   `U32CString`. Use the unsafe `get_mut` method instead, which also supports more ranges.
 
-## Fixed
+### Fixed
 - **Breaking Change** The iterator returned by `U16Str::char_indices` and `U16CStr::char_indices`
   is now over `(usize, Result<char, DecodeUtf16Error>)` tuples instead of the reverse order, to
   better match standard library string iterators. The same is true of `U16Str::char_indices_lossy`
