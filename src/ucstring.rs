@@ -41,6 +41,12 @@ macro_rules! ucstring_common_impl {
             /// The nul terminator character value.
             pub const NUL_TERMINATOR: $uchar = 0;
 
+            /// Constructs a new empty wide C string.
+            #[inline]
+            pub fn new() -> Self {
+                unsafe { Self::from_vec_unchecked(Vec::new()) }
+            }
+
             $(#[$from_vec_meta])*
             pub fn from_vec(v: impl Into<Vec<$uchar>>) -> Result<Self, ContainsNul<$uchar>> {
                 let v = v.into();

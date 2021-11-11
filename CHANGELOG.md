@@ -4,6 +4,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Added `new` function that creates and empty string to `U16CString` and `U32CString` to match other
+  string types.
 
 ## [1.0.0-beta.1] - 2021-11-08 <a name="1.0.0-beta.1"></a>
 ### Changed
