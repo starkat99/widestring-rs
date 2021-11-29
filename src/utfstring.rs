@@ -497,6 +497,14 @@ macro_rules! utfstring_common_impl {
             }
         }
 
+        #[cfg(feature = "std")]
+        impl From<$utfstring> for std::ffi::OsString {
+            #[inline]
+            fn from(value: $utfstring) -> std::ffi::OsString {
+                value.as_ustr().to_os_string()
+            }
+        }
+
         impl FromIterator<char> for $utfstring {
             #[inline]
             fn from_iter<T: IntoIterator<Item = char>>(iter: T) -> Self {

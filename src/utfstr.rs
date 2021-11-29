@@ -322,6 +322,14 @@ macro_rules! utfstr_common_impl {
             }
         }
 
+        #[cfg(feature = "std")]
+        impl From<&$utfstr> for std::ffi::OsString {
+            #[inline]
+            fn from(value: &$utfstr) -> std::ffi::OsString {
+                value.as_ustr().to_os_string()
+            }
+        }
+
         impl PartialEq<$utfstr> for &$utfstr {
             #[inline]
             fn eq(&self, other: &$utfstr) -> bool {

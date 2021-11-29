@@ -850,6 +850,14 @@ macro_rules! ucstr_common_impl {
             }
         }
 
+        #[cfg(feature = "std")]
+        impl From<&$ucstr> for std::ffi::OsString {
+            #[inline]
+            fn from(s: &$ucstr) -> std::ffi::OsString {
+                s.to_os_string()
+            }
+        }
+
         impl<I> Index<I> for $ucstr
         where
             I: SliceIndex<[$uchar], Output = [$uchar]>,
