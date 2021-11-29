@@ -1964,7 +1964,6 @@ impl Utf32Str {
     /// Since some characters can expand into multiple characters when changing the case, this
     /// function returns a [`Utf32String`] instead of modifying the parameter in-place.
     #[inline]
-    #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub fn to_uppercase(&self) -> Utf32String {
