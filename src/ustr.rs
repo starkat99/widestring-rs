@@ -113,7 +113,8 @@ macro_rules! ustr_common_impl {
             /// invalid or malformed data for that encoding.
             #[inline]
             pub const fn from_slice(slice: &[$uchar]) -> &Self {
-                unsafe { core::mem::transmute(slice) }
+                let ptr: *const [$uchar] = slice;
+                unsafe { &*(ptr as *const $ustr) }
             }
 
             /// Constructs a mutable wide string slice from a mutable slice of character data.

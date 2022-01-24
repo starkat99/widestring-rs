@@ -15,7 +15,6 @@ use alloc::{borrow::Cow, boxed::Box, string::String};
 use core::{
     convert::{AsMut, AsRef, TryFrom},
     fmt::Write,
-    mem,
     ops::{Index, IndexMut, RangeBounds},
     slice::SliceIndex,
 };
@@ -57,7 +56,7 @@ macro_rules! utfstr_common_impl {
             #[allow(trivial_casts)]
             #[inline]
             pub const unsafe fn from_slice_unchecked(s: &[$uchar]) -> &Self {
-                mem::transmute(s)
+                &*(s as *const [$uchar] as *const Self)
             }
 
             $(#[$from_slice_unchecked_mut_meta])*
@@ -1704,7 +1703,7 @@ impl Utf32Str {
     #[inline]
     pub const fn from_char_slice(s: &[char]) -> &Self {
         // SAFETY: char slice is always valid UTF-32
-        unsafe { Self::from_slice_unchecked(mem::transmute(s)) }
+        unsafe { Self::from_slice_unchecked(&*(s as *const [char] as *const [u32])) }
     }
 
     /// Converts a mutable slice of [`char`]s to a string slice.
@@ -1735,7 +1734,7 @@ impl Utf32Str {
     #[inline]
     pub const fn as_char_slice(&self) -> &[char] {
         // SAFETY: Self should be valid UTF-32 so chars will be in range
-        unsafe { mem::transmute(&self.inner) }
+        unsafe { &*(self.as_slice() as *const [u32] as *const [char]) }
     }
 
     /// Converts a mutable string slice into a mutable slice of [`char`]s.

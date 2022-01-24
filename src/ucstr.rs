@@ -472,7 +472,8 @@ macro_rules! ucstr_common_impl {
             /// values in the slice. In particular, an empty slice will result in an invalid
             /// string slice.
             pub const unsafe fn from_slice_unchecked(slice: &[$uchar]) -> &Self {
-                core::mem::transmute(slice)
+                let ptr: *const [$uchar] = slice;
+                &*(ptr as *const Self)
             }
 
             /// Constructs a mutable wide C string slice from a mutable slice of values without

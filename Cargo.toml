@@ -9,7 +9,7 @@ keywords = ["wide", "string", "win32", "utf-16", "utf-32"]
 categories = ["text-processing", "encoding", "development-tools::ffi", "no-std"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
-rust-version = "1.56"
+rust-version = "1.58"
 exclude = [".git*", ".editorconfig"]
 
 [features]
