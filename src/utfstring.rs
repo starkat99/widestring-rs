@@ -64,6 +64,7 @@ macro_rules! utfstring_common_impl {
             /// string will hold, consider [`with_capacity`][Self::with_capacity] instead to
             /// prevent excessive re-allocation.
             #[inline]
+            #[must_use]
             pub const fn new() -> Self {
                 Self { inner: Vec::new() }
             }
@@ -79,6 +80,7 @@ macro_rules! utfstring_common_impl {
             /// If the given capacity is `0`, no allocation will occur, and this method is identical
             /// to the [`new`][Self::new] method.
             #[inline]
+            #[must_use]
             pub fn with_capacity(capacity: usize) -> Self {
                 Self {
                     inner: Vec::with_capacity(capacity),
@@ -87,6 +89,7 @@ macro_rules! utfstring_common_impl {
 
             $(#[$from_vec_unchecked_meta])*
             #[inline]
+            #[must_use]
             pub unsafe fn from_vec_unchecked(v: impl Into<Vec<$uchar>>) -> Self {
                 Self { inner: v.into() }
             }
@@ -94,6 +97,7 @@ macro_rules! utfstring_common_impl {
             $(#[$from_str_meta])*
             #[inline]
             #[allow(clippy::should_implement_trait)]
+            #[must_use]
             pub fn from_str<S: AsRef<str> + ?Sized>(s: &S) -> Self {
                 let s = s.as_ref();
                 let mut string = Self::new();
@@ -103,18 +107,21 @@ macro_rules! utfstring_common_impl {
 
             /// Converts a string into a string slice.
             #[inline]
+            #[must_use]
             pub fn as_utfstr(&self) -> &$utfstr {
                 unsafe { $utfstr::from_slice_unchecked(self.inner.as_slice()) }
             }
 
             /// Converts a string into a mutable string slice.
             #[inline]
+            #[must_use]
             pub fn as_mut_utfstr(&mut self) -> &mut $utfstr {
                 unsafe { $utfstr::from_slice_unchecked_mut(&mut self.inner) }
             }
 
             /// Converts this string into a wide string of undefined encoding.
             #[inline]
+            #[must_use]
             pub fn as_ustr(&self) -> &crate::$ustr {
                 crate::$ustr::from_slice(self.as_slice())
             }
@@ -123,6 +130,7 @@ macro_rules! utfstring_common_impl {
             ///
             /// This consumes the string without copying its contents.
             #[inline]
+            #[must_use]
             pub fn into_vec(self) -> Vec<$uchar> {
                 self.inner
             }
@@ -135,6 +143,7 @@ macro_rules! utfstring_common_impl {
 
             /// Returns this string's capacity, in number of elements.
             #[inline]
+            #[must_use]
             pub fn capacity(&self) -> usize {
                 self.inner.capacity()
             }
@@ -188,6 +197,7 @@ macro_rules! utfstring_common_impl {
 
             /// Returns a slice of this string's contents.
             #[inline]
+            #[must_use]
             pub fn as_slice(&self) -> &[$uchar] {
                 self.inner.as_slice()
             }
@@ -208,6 +218,7 @@ macro_rules! utfstring_common_impl {
 
             $(#[$as_mut_vec_meta])*
             #[inline]
+            #[must_use]
             pub unsafe fn as_mut_vec(&mut self) -> &mut Vec<$uchar> {
                 &mut self.inner
             }
@@ -217,12 +228,14 @@ macro_rules! utfstring_common_impl {
             ///
             /// In other words, it might not be what a human considers the length of the string.
             #[inline]
+            #[must_use]
             pub fn len(&self) -> usize {
                 self.inner.len()
             }
 
             /// Returns `true` if this string has a length of zero, and `false` otherwise.
             #[inline]
+            #[must_use]
             pub fn is_empty(&self) -> bool {
                 self.inner.is_empty()
             }
@@ -240,6 +253,7 @@ macro_rules! utfstring_common_impl {
             ///
             /// This will drop excess capacity.
             #[inline]
+            #[must_use]
             pub fn into_boxed_utfstr(self) -> Box<$utfstr> {
                 let slice = self.inner.into_boxed_slice();
                 // SAFETY: Already valid UTF-16
@@ -1179,6 +1193,7 @@ impl Utf16String {
     ///
     /// assert_eq!(utf16str!("\u{fffd}\u{0000}"), sparkle_heart);
     /// ```
+    #[must_use]
     pub fn from_slice_lossy(s: &[u16]) -> Cow<'_, Utf16Str> {
         match validate_utf16(s) {
             // SAFETY: validated as UTF-16
@@ -1241,6 +1256,7 @@ impl Utf16String {
     /// assert_eq!("💖", sparkle_heart);
     /// ```
     #[inline]
+    #[must_use]
     pub unsafe fn from_ustring_unchecked(s: impl Into<crate::U16String>) -> Self {
         Self::from_vec_unchecked(s.into().into_vec())
     }
@@ -1334,6 +1350,7 @@ impl Utf16String {
     /// assert_eq!(utf16str!("\u{fffd}\u{0000}"), sparkle_heart);
     /// ```
     #[inline]
+    #[must_use]
     pub fn from_ustr_lossy(s: &crate::U16Str) -> Cow<'_, Utf16Str> {
         Self::from_slice_lossy(s.as_slice())
     }
@@ -1363,6 +1380,7 @@ impl Utf16String {
     /// assert_eq!("💖", sparkle_heart);
     /// ```
     #[inline]
+    #[must_use]
     pub unsafe fn from_ucstring_unchecked(s: impl Into<crate::U16CString>) -> Self {
         Self::from_vec_unchecked(s.into().into_vec())
     }
@@ -1459,6 +1477,7 @@ impl Utf16String {
     /// assert_eq!(utf16str!("\u{fffd}"), sparkle_heart);
     /// ```
     #[inline]
+    #[must_use]
     pub fn from_ucstr_lossy(s: &crate::U16CStr) -> Cow<'_, Utf16Str> {
         Self::from_slice_lossy(s.as_slice())
     }
@@ -1707,6 +1726,7 @@ impl Utf16String {
     /// assert_eq!(world, "World!");
     /// ```
     #[inline]
+    #[must_use]
     pub fn split_off(&mut self, at: usize) -> Self {
         assert!(self.is_char_boundary(at));
         unsafe { Self::from_vec_unchecked(self.inner.split_off(at)) }
@@ -1902,6 +1922,7 @@ impl Utf32String {
     ///
     /// assert_eq!(utf32str!("\u{fffd}\u{fffd}"), sparkle_heart);
     /// ```
+    #[must_use]
     pub fn from_slice_lossy(s: &[u32]) -> Cow<'_, Utf32Str> {
         match validate_utf32(s) {
             // SAFETY: validated as UTF-32
@@ -1946,6 +1967,7 @@ impl Utf32String {
     /// assert_eq!("💖", sparkle_heart);
     /// ```
     #[inline]
+    #[must_use]
     pub unsafe fn from_ustring_unchecked(s: impl Into<crate::U32String>) -> Self {
         Self::from_vec_unchecked(s.into().into_vec())
     }
@@ -2039,6 +2061,7 @@ impl Utf32String {
     /// assert_eq!(utf32str!("\u{fffd}\u{fffd}"), sparkle_heart);
     /// ```
     #[inline]
+    #[must_use]
     pub fn from_ustr_lossy(s: &crate::U32Str) -> Cow<'_, Utf32Str> {
         Self::from_slice_lossy(s.as_slice())
     }
@@ -2068,6 +2091,7 @@ impl Utf32String {
     /// assert_eq!("💖", sparkle_heart);
     /// ```
     #[inline]
+    #[must_use]
     pub unsafe fn from_ucstring_unchecked(s: impl Into<crate::U32CString>) -> Self {
         Self::from_vec_unchecked(s.into().into_vec())
     }
@@ -2164,6 +2188,7 @@ impl Utf32String {
     /// assert_eq!(utf32str!("\u{fffd}\u{fffd}"), sparkle_heart);
     /// ```
     #[inline]
+    #[must_use]
     pub fn from_ucstr_lossy(s: &crate::U32CStr) -> Cow<'_, Utf32Str> {
         Self::from_slice_lossy(s.as_slice())
     }
@@ -2185,6 +2210,7 @@ impl Utf32String {
     /// assert_eq!("💖", sparkle_heart);
     /// ```
     #[inline]
+    #[must_use]
     pub fn from_chars(s: impl Into<Vec<char>>) -> Self {
         // SAFETY: Char slices are always valid UTF-32
         // TODO: replace mem:transmute when Vec::into_raw_parts is stabilized
@@ -2414,6 +2440,7 @@ impl Utf32String {
     /// assert_eq!(world, "World!");
     /// ```
     #[inline]
+    #[must_use]
     pub fn split_off(&mut self, at: usize) -> Self {
         unsafe { Self::from_vec_unchecked(self.inner.split_off(at)) }
     }

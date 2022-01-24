@@ -47,6 +47,7 @@ macro_rules! ucstr_common_impl {
 
             /// Coerces a value into a wide C string slice.
             #[inline]
+            #[must_use]
             pub fn new<S: AsRef<$ucstr> + ?Sized>(s: &S) -> &Self {
                 s.as_ref()
             }
@@ -77,6 +78,7 @@ macro_rules! ucstr_common_impl {
             /// accidental misuse, it's suggested to tie the lifetime to whichever source lifetime
             /// is safe in the context, such as by providing a helper function taking the lifetime
             /// of a host value for the string, or by explicit annotation.
+            #[must_use]
             pub unsafe fn from_ptr_str<'a>(p: *const $uchar) -> &'a Self {
                 assert!(!p.is_null());
                 let mut i = 0;
@@ -111,6 +113,7 @@ macro_rules! ucstr_common_impl {
             /// accidental misuse, it's suggested to tie the lifetime to whichever source lifetime
             /// is safe in the context, such as by providing a helper function taking the lifetime
             /// of a host value for the string, or by explicit annotation.
+            #[must_use]
             pub unsafe fn from_ptr_str_mut<'a>(p: *mut $uchar) -> &'a mut Self {
                 assert!(!p.is_null());
                 let mut i = 0;
@@ -337,6 +340,7 @@ macro_rules! ucstr_common_impl {
             /// accidental misuse, it's suggested to tie the lifetime to whichever source lifetime
             /// is safe in the context, such as by providing a helper function taking the lifetime
             /// of a host value for the string, or by explicit annotation.
+            #[must_use]
             pub unsafe fn from_ptr_unchecked<'a>(p: *const $uchar, len: usize) -> &'a Self {
                 assert!(!p.is_null());
                 let ptr: *const [$uchar] = slice::from_raw_parts(p, len + 1);
@@ -372,6 +376,7 @@ macro_rules! ucstr_common_impl {
             /// accidental misuse, it's suggested to tie the lifetime to whichever source lifetime
             /// is safe in the context, such as by providing a helper function taking the lifetime
             /// of a host value for the string, or by explicit annotation.
+            #[must_use]
             pub unsafe fn from_ptr_unchecked_mut<'a>(p: *mut $uchar, len: usize) -> &'a mut Self {
                 assert!(!p.is_null());
                 let ptr: *mut [$uchar] = slice::from_raw_parts_mut(p, len + 1);
@@ -471,6 +476,7 @@ macro_rules! ucstr_common_impl {
             /// slice is missing a terminating nul value or there are non-terminating interior nul
             /// values in the slice. In particular, an empty slice will result in an invalid
             /// string slice.
+            #[must_use]
             pub const unsafe fn from_slice_unchecked(slice: &[$uchar]) -> &Self {
                 let ptr: *const [$uchar] = slice;
                 &*(ptr as *const Self)
@@ -485,6 +491,7 @@ macro_rules! ucstr_common_impl {
             /// slice is missing a terminating nul value or there are non-terminating interior nul
             /// values in the slice. In particular, an empty slice will result in an invalid
             /// string slice.
+            #[must_use]
             pub unsafe fn from_slice_unchecked_mut(slice: &mut [$uchar]) -> &mut Self {
                 let ptr: *mut [$uchar] = slice;
                 &mut *(ptr as *mut Self)
@@ -494,6 +501,7 @@ macro_rules! ucstr_common_impl {
             #[inline]
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+            #[must_use]
             pub fn to_ucstring(&self) -> crate::$ucstring {
                 unsafe { crate::$ucstring::from_vec_unchecked(self.inner.to_owned()) }
             }
@@ -502,6 +510,7 @@ macro_rules! ucstr_common_impl {
             #[inline]
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+            #[must_use]
             pub fn to_ustring(&self) -> crate::$ustring {
                 crate::$ustring::from_vec(self.as_slice())
             }
@@ -510,6 +519,7 @@ macro_rules! ucstr_common_impl {
             ///
             /// The slice will **not** include the nul terminator.
             #[inline]
+            #[must_use]
             pub fn as_slice(&self) -> &[$uchar] {
                 &self.inner[..self.len()]
             }
@@ -523,6 +533,7 @@ macro_rules! ucstr_common_impl {
             /// This method is unsafe because you can violate the invariants of this type when
             /// mutating the slice (i.e. by adding interior nul values).
             #[inline]
+            #[must_use]
             pub unsafe fn as_mut_slice(&mut self) -> &mut [$uchar] {
                 let len = self.len();
                 &mut self.inner[..len]
@@ -530,6 +541,7 @@ macro_rules! ucstr_common_impl {
 
             /// Converts to a slice of the underlying elements, including the nul terminator.
             #[inline]
+            #[must_use]
             pub const fn as_slice_with_nul(&self) -> &[$uchar] {
                 &self.inner
             }
@@ -547,6 +559,7 @@ macro_rules! ucstr_common_impl {
             /// Modifying the container referenced by this string may cause its buffer to be
             /// reallocated, which would also make any pointers to it invalid.
             #[inline]
+            #[must_use]
             pub const fn as_ptr(&self) -> *const $uchar {
                 self.inner.as_ptr()
             }
@@ -564,6 +577,7 @@ macro_rules! ucstr_common_impl {
             /// This method is unsafe because you can violate the invariants of this type when
             /// mutating the memory the pointer points to (i.e. by adding interior nul values).
             #[inline]
+            #[must_use]
             pub unsafe fn as_mut_ptr(&mut self) -> *mut $uchar {
                 self.inner.as_mut_ptr()
             }
@@ -581,6 +595,7 @@ macro_rules! ucstr_common_impl {
             /// This function is useful for interacting with foreign interfaces which use two
             /// pointers to refer to a range of elements in memory, as is common in C++.
             #[inline]
+            #[must_use]
             pub fn as_ptr_range(&self) -> Range<*const $uchar> {
                 self.inner.as_ptr_range()
             }
@@ -604,6 +619,7 @@ macro_rules! ucstr_common_impl {
             /// This method is unsafe because you can violate the invariants of this type when
             /// mutating the memory the pointer points to (i.e. by adding interior nul values).
             #[inline]
+            #[must_use]
             pub unsafe fn as_mut_ptr_range(&mut self) -> Range<*mut $uchar> {
                 self.inner.as_mut_ptr_range()
             }
@@ -611,12 +627,14 @@ macro_rules! ucstr_common_impl {
             /// Returns the length of the string as number of elements (**not** number of bytes)
             /// **not** including nul terminator.
             #[inline]
+            #[must_use]
             pub const fn len(&self) -> usize {
                 self.inner.len() - 1
             }
 
             /// Returns whether this string contains no data (i.e. is only the nul terminator).
             #[inline]
+            #[must_use]
             pub const fn is_empty(&self) -> bool {
                 self.len() == 0
             }
@@ -624,6 +642,7 @@ macro_rules! ucstr_common_impl {
             $(#[$into_ucstring_meta])*
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+            #[must_use]
             pub fn into_ucstring(self: Box<Self>) -> crate::$ucstring {
                 let raw = Box::into_raw(self) as *mut [$uchar];
                 crate::$ucstring {
@@ -635,6 +654,7 @@ macro_rules! ucstr_common_impl {
             ///
             /// The wide string slice will *not* include the nul-terminator.
             #[inline]
+            #[must_use]
             pub fn as_ustr(&self) -> &$ustr {
                 $ustr::from_slice(self.as_slice())
             }
@@ -643,6 +663,7 @@ macro_rules! ucstr_common_impl {
             ///
             /// The wide string slice will include the nul-terminator.
             #[inline]
+            #[must_use]
             pub fn as_ustr_with_nul(&self) -> &$ustr {
                 $ustr::from_slice(self.as_slice_with_nul())
             }
@@ -656,6 +677,7 @@ macro_rules! ucstr_common_impl {
             /// This method is unsafe because you can violate the invariants of this type when
             /// mutating the string (i.e. by adding interior nul values).
             #[inline]
+            #[must_use]
             pub unsafe fn as_mut_ustr(&mut self) -> &mut $ustr {
                 $ustr::from_slice_mut(self.as_mut_slice())
             }
@@ -674,6 +696,7 @@ macro_rules! ucstr_common_impl {
 
             $(#[$display_meta])*
             #[inline]
+            #[must_use]
             pub fn display(&self) -> Display<'_, $ucstr> {
                 Display { str: self }
             }
@@ -683,6 +706,7 @@ macro_rules! ucstr_common_impl {
             /// This is the non-panicking alternative to indexing the string. Returns [`None`]
             /// whenever equivalent indexing operation would panic.
             #[inline]
+            #[must_use]
             pub fn get<I>(&self, i: I) -> Option<&$ustr>
             where
                 I: SliceIndex<[$uchar], Output = [$uchar]>,
@@ -700,6 +724,7 @@ macro_rules! ucstr_common_impl {
             /// This method is unsafe because you can violate the invariants of this type when
             /// mutating the memory the pointer points to (i.e. by adding interior nul values).
             #[inline]
+            #[must_use]
             pub unsafe fn get_mut<I>(&mut self, i: I) -> Option<&mut $ustr>
             where
                 I: SliceIndex<[$uchar], Output = [$uchar]>,
@@ -720,6 +745,7 @@ macro_rules! ucstr_common_impl {
             ///
             /// Failing that, the returned string slice may reference invalid memory.
             #[inline]
+            #[must_use]
             pub unsafe fn get_unchecked<I>(&self, i: I) -> &$ustr
             where
                 I: SliceIndex<[$uchar], Output = [$uchar]>,
@@ -743,6 +769,7 @@ macro_rules! ucstr_common_impl {
             /// This method is unsafe because you can violate the invariants of this type when
             /// mutating the memory the pointer points to (i.e. by adding interior nul values).
             #[inline]
+            #[must_use]
             pub unsafe fn get_unchecked_mut<I>(&mut self, i: I) -> &mut $ustr
             where
                 I: SliceIndex<[$uchar], Output = [$uchar]>,
@@ -760,6 +787,7 @@ macro_rules! ucstr_common_impl {
             /// To get mutable string slices instead, see the [`split_at_mut`][Self::split_at_mut]
             /// method.
             #[inline]
+            #[must_use]
             pub fn split_at(&self, mid: usize) -> (&$ustr, &$ustr) {
                 let split = self.as_slice().split_at(mid);
                 ($ustr::from_slice(split.0), $ustr::from_slice(split.1))
@@ -779,6 +807,7 @@ macro_rules! ucstr_common_impl {
             /// This method is unsafe because you can violate the invariants of this type when
             /// mutating the memory the pointer points to (i.e. by adding interior nul values).
             #[inline]
+            #[must_use]
             pub unsafe fn split_at_mut(&mut self, mid: usize) -> (&mut $ustr, &mut $ustr) {
                 let split = self.as_mut_slice().split_at_mut(mid);
                 ($ustr::from_slice_mut(split.0), $ustr::from_slice_mut(split.1))
@@ -792,6 +821,7 @@ macro_rules! ucstr_common_impl {
             #[inline]
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+            #[must_use]
             pub fn repeat(&self, n: usize) -> crate::$ucstring {
                 unsafe { crate::$ucstring::from_vec_unchecked(self.as_slice().repeat(n)) }
             }
@@ -1285,6 +1315,7 @@ impl U16CStr {
     #[inline]
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    #[must_use]
     pub fn to_os_string(&self) -> std::ffi::OsString {
         crate::platform::os_from_wide(self.as_slice())
     }
@@ -1339,6 +1370,7 @@ impl U16CStr {
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[must_use]
     pub fn to_string_lossy(&self) -> String {
         String::from_utf16_lossy(self.as_slice())
     }
@@ -1355,6 +1387,7 @@ impl U16CStr {
     /// may not match your idea of what a 'character' is. Iteration over grapheme clusters may be
     /// what you actually want. That functionality is not provided by by this crate.
     #[inline]
+    #[must_use]
     pub fn chars(&self) -> CharsUtf16<'_> {
         CharsUtf16::new(self.as_slice())
     }
@@ -1371,6 +1404,7 @@ impl U16CStr {
     /// may not match your idea of what a 'character' is. Iteration over grapheme clusters may be
     /// what you actually want. That functionality is not provided by by this crate.
     #[inline]
+    #[must_use]
     pub fn chars_lossy(&self) -> CharsLossyUtf16<'_> {
         CharsLossyUtf16::new(self.as_slice())
     }
@@ -1386,6 +1420,7 @@ impl U16CStr {
     ///
     /// The iterator yields tuples. The position is first, the [`char`][prim@char] is second.
     #[inline]
+    #[must_use]
     pub fn char_indices(&self) -> CharIndicesUtf16<'_> {
         CharIndicesUtf16::new(self.as_slice())
     }
@@ -1400,6 +1435,7 @@ impl U16CStr {
     ///
     /// The iterator yields tuples. The position is first, the [`char`][prim@char] is second.
     #[inline]
+    #[must_use]
     pub fn char_indices_lossy(&self) -> CharIndicesLossyUtf16<'_> {
         CharIndicesLossyUtf16::new(self.as_slice())
     }
@@ -1431,6 +1467,7 @@ impl U32CStr {
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
     #[inline]
+    #[must_use]
     pub unsafe fn from_char_ptr_str<'a>(p: *const char) -> &'a Self {
         Self::from_ptr_str(p as *const u32)
     }
@@ -1458,6 +1495,7 @@ impl U32CStr {
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
     #[inline]
+    #[must_use]
     pub unsafe fn from_char_ptr_str_mut<'a>(p: *mut char) -> &'a mut Self {
         Self::from_ptr_str_mut(p as *mut u32)
     }
@@ -1639,6 +1677,7 @@ impl U32CStr {
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
     #[inline]
+    #[must_use]
     pub unsafe fn from_char_ptr_unchecked<'a>(p: *const char, len: usize) -> &'a Self {
         Self::from_ptr_unchecked(p as *const u32, len)
     }
@@ -1671,6 +1710,7 @@ impl U32CStr {
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
     #[inline]
+    #[must_use]
     pub unsafe fn from_char_ptr_unchecked_mut<'a>(p: *mut char, len: usize) -> &'a mut Self {
         Self::from_ptr_unchecked_mut(p as *mut u32, len)
     }
@@ -1746,6 +1786,7 @@ impl U32CStr {
     /// is missing a terminating nul value or there are non-terminating interior nul values
     /// in the slice. In particular, an empty slice will result in an invalid string slice.
     #[inline]
+    #[must_use]
     pub unsafe fn from_char_slice_unchecked(slice: &[char]) -> &Self {
         let ptr: *const [char] = slice;
         Self::from_slice_unchecked(&*(ptr as *const [u32]))
@@ -1760,6 +1801,7 @@ impl U32CStr {
     /// is missing a terminating nul value or there are non-terminating interior nul values
     /// in the slice. In particular, an empty slice will result in an invalid string slice.
     #[inline]
+    #[must_use]
     pub unsafe fn from_char_slice_unchecked_mut(slice: &mut [char]) -> &mut Self {
         let ptr: *mut [char] = slice;
         Self::from_slice_unchecked_mut(&mut *(ptr as *mut [u32]))
@@ -1792,6 +1834,7 @@ impl U32CStr {
     #[inline]
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    #[must_use]
     pub fn to_os_string(&self) -> std::ffi::OsString {
         self.as_ustr().to_os_string()
     }
@@ -1846,6 +1889,7 @@ impl U32CStr {
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[must_use]
     pub fn to_string_lossy(&self) -> String {
         self.as_ustr().to_string_lossy()
     }
@@ -1862,6 +1906,7 @@ impl U32CStr {
     /// may not match your idea of what a 'character' is. Iteration over grapheme clusters may be
     /// what you actually want. That functionality is not provided by by this crate.
     #[inline]
+    #[must_use]
     pub fn chars(&self) -> CharsUtf32<'_> {
         CharsUtf32::new(self.as_slice())
     }
@@ -1878,6 +1923,7 @@ impl U32CStr {
     /// may not match your idea of what a 'character' is. Iteration over grapheme clusters may be
     /// what you actually want. That functionality is not provided by by this crate.
     #[inline]
+    #[must_use]
     pub fn chars_lossy(&self) -> CharsLossyUtf32<'_> {
         CharsLossyUtf32::new(self.as_slice())
     }
@@ -1893,6 +1939,7 @@ impl U32CStr {
     ///
     /// The iterator yields tuples. The position is first, the [`char`][prim@char] is second.
     #[inline]
+    #[must_use]
     pub fn char_indices(&self) -> CharIndicesUtf32<'_> {
         CharIndicesUtf32::new(self.as_slice())
     }
@@ -1907,6 +1954,7 @@ impl U32CStr {
     ///
     /// The iterator yields tuples. The position is first, the [`char`][prim@char] is second.
     #[inline]
+    #[must_use]
     pub fn char_indices_lossy(&self) -> CharIndicesLossyUtf32<'_> {
         CharIndicesLossyUtf32::new(self.as_slice())
     }

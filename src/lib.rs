@@ -323,6 +323,7 @@ pub type WideChar = u16;
 ///     "𝄞mus�ic�"
 /// );
 /// ```
+#[must_use]
 pub fn decode_utf16<I: IntoIterator<Item = u16>>(iter: I) -> iter::DecodeUtf16<I::IntoIter> {
     iter::DecodeUtf16::new(iter.into_iter())
 }
@@ -351,6 +352,7 @@ pub fn decode_utf16<I: IntoIterator<Item = u16>>(iter: I) -> iter::DecodeUtf16<I
 /// );
 /// ```
 #[inline]
+#[must_use]
 pub fn decode_utf16_lossy<I: IntoIterator<Item = u16>>(
     iter: I,
 ) -> iter::DecodeUtf16Lossy<I::IntoIter> {
@@ -386,6 +388,7 @@ pub fn decode_utf16_lossy<I: IntoIterator<Item = u16>>(
 /// );
 /// ```
 #[inline]
+#[must_use]
 pub fn decode_utf32<I: IntoIterator<Item = u32>>(iter: I) -> iter::DecodeUtf32<I::IntoIter> {
     iter::DecodeUtf32 {
         iter: iter.into_iter(),
@@ -415,6 +418,7 @@ pub fn decode_utf32<I: IntoIterator<Item = u32>>(iter: I) -> iter::DecodeUtf32<I
 /// );
 /// ```
 #[inline]
+#[must_use]
 pub fn decode_utf32_lossy<I: IntoIterator<Item = u32>>(
     iter: I,
 ) -> iter::DecodeUtf32Lossy<I::IntoIter> {
@@ -436,6 +440,7 @@ pub fn decode_utf32_lossy<I: IntoIterator<Item = u32>>(
 ///
 /// assert_eq!(encoded, music.as_bytes());
 /// ```
+#[must_use]
 pub fn encode_utf8<I: IntoIterator<Item = char>>(iter: I) -> iter::EncodeUtf8<I::IntoIter> {
     iter::EncodeUtf8::new(iter.into_iter())
 }
@@ -455,6 +460,7 @@ pub fn encode_utf8<I: IntoIterator<Item = char>>(iter: I) -> iter::EncodeUtf8<I:
 ///
 /// assert_eq!(encoded, v);
 /// ```
+#[must_use]
 pub fn encode_utf16<I: IntoIterator<Item = char>>(iter: I) -> iter::EncodeUtf16<I::IntoIter> {
     iter::EncodeUtf16::new(iter.into_iter())
 }
@@ -477,6 +483,7 @@ pub fn encode_utf16<I: IntoIterator<Item = char>>(iter: I) -> iter::EncodeUtf16<
 ///
 /// assert_eq!(encoded, v);
 /// ```
+#[must_use]
 pub fn encode_utf32<I: IntoIterator<Item = char>>(iter: I) -> iter::EncodeUtf32<I::IntoIter> {
     iter::EncodeUtf32::new(iter.into_iter())
 }

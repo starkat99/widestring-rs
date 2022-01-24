@@ -43,6 +43,7 @@ macro_rules! ucstring_common_impl {
 
             /// Constructs a new empty wide C string.
             #[inline]
+            #[must_use]
             pub fn new() -> Self {
                 unsafe { Self::from_vec_unchecked(Vec::new()) }
             }
@@ -59,6 +60,7 @@ macro_rules! ucstring_common_impl {
             }
 
             $(#[$from_vec_truncate_meta])*
+            #[must_use]
             pub fn from_vec_truncate(v: impl Into<Vec<$uchar>>) -> Self {
                 let mut v = v.into();
                 // Check for nul vals
@@ -79,6 +81,7 @@ macro_rules! ucstring_common_impl {
             /// assertion is made that `v` contains no interior nul values. Providing a vector with
             /// any nul values that are not the last value in the vector will result in an invalid
             /// C string.
+            #[must_use]
             pub unsafe fn from_vec_unchecked(v: impl Into<Vec<$uchar>>) -> Self {
                 let mut v = v.into();
                 match v.last() {
@@ -111,6 +114,7 @@ macro_rules! ucstring_common_impl {
             ///
             /// The string will be truncated at the first nul value in the string.
             #[inline]
+            #[must_use]
             pub fn from_ustr_truncate(s: impl AsRef<$ustr>) -> Self {
                 Self::from_vec_truncate(s.as_ref().as_slice())
             }
@@ -125,6 +129,7 @@ macro_rules! ucstring_common_impl {
             /// any nul values that are not the last value in the vector will result in an invalid
             /// C string.
             #[inline]
+            #[must_use]
             pub unsafe fn from_ustr_unchecked(s: impl AsRef<$ustr>) -> Self {
                 Self::from_vec_unchecked(s.as_ref().as_slice())
             }
@@ -157,6 +162,7 @@ macro_rules! ucstring_common_impl {
             /// is safe in the context, such as by providing a helper function taking the lifetime
             /// of a host value for the string, or by explicit annotation.
             #[inline]
+            #[must_use]
             pub unsafe fn from_ptr_str(p: *const $uchar) -> Self {
                 $ucstr::from_ptr_str(p).to_ucstring()
             }
@@ -221,6 +227,7 @@ macro_rules! ucstring_common_impl {
             /// # Panics
             ///
             /// Panics if `len` is greater than 0 but `p` is a null pointer.
+            #[must_use]
             pub unsafe fn from_ptr_truncate(p: *const $uchar, len: usize) -> Self {
                 if len == 0 {
                     return Self::default();
@@ -253,6 +260,7 @@ macro_rules! ucstring_common_impl {
             /// # Panics
             ///
             /// Panics if `len` is greater than 0 but `p` is a null pointer.
+            #[must_use]
             pub unsafe fn from_ptr_unchecked(p: *const $uchar, len: usize) -> Self {
                 if len == 0 {
                     return Self::default();
@@ -264,12 +272,14 @@ macro_rules! ucstring_common_impl {
 
             /// Converts to a wide C string slice.
             #[inline]
+            #[must_use]
             pub fn as_ucstr(&self) -> &$ucstr {
                 $ucstr::from_inner(&self.inner)
             }
 
             /// Converts to a mutable wide C string slice.
             #[inline]
+            #[must_use]
             pub fn as_mut_ucstr(&mut self) -> &mut $ucstr {
                 $ucstr::from_inner_mut(&mut self.inner)
             }
@@ -279,6 +289,7 @@ macro_rules! ucstring_common_impl {
             /// The resulting string will **not** contain a nul-terminator, and will contain no
             /// other nul values.
             #[inline]
+            #[must_use]
             pub fn into_ustring(self) -> $ustring {
                 $ustring::from_vec(self.into_vec())
             }
@@ -287,6 +298,7 @@ macro_rules! ucstring_common_impl {
             ///
             /// The resulting vector will contain a nul-terminator and no interior nul values.
             #[inline]
+            #[must_use]
             pub fn into_ustring_with_nul(self) -> $ustring {
                 $ustring::from_vec(self.into_vec_with_nul())
             }
@@ -297,6 +309,7 @@ macro_rules! ucstring_common_impl {
             /// The resulting vector will **not** contain a nul-terminator, and will contain no
             /// other nul values.
             #[inline]
+            #[must_use]
             pub fn into_vec(self) -> Vec<$uchar> {
                 let mut v = self.into_inner().into_vec();
                 v.pop();
@@ -307,6 +320,7 @@ macro_rules! ucstring_common_impl {
             ///
             /// The resulting vector will contain a nul-terminator and no interior nul values.
             #[inline]
+            #[must_use]
             pub fn into_vec_with_nul(self) -> Vec<$uchar> {
                 self.into_inner().into_vec()
             }
@@ -320,6 +334,7 @@ macro_rules! ucstring_common_impl {
             /// _not_ use the standard C `free` function to deallocate this string. Failure to call
             /// [`from_raw`][Self::from_raw] will lead to a memory leak.
             #[inline]
+            #[must_use]
             pub fn into_raw(self) -> *mut $uchar {
                 Box::into_raw(self.into_inner()) as *mut $uchar
             }
@@ -339,6 +354,7 @@ macro_rules! ucstring_common_impl {
             /// # Panics
             ///
             /// Panics if `p` is a null pointer.
+            #[must_use]
             pub unsafe fn from_raw(p: *mut $uchar) -> Self {
                 assert!(!p.is_null());
                 let mut i: isize = 0;
@@ -353,6 +369,7 @@ macro_rules! ucstring_common_impl {
 
             $(#[$into_boxed_ucstr_meta])*
             #[inline]
+            #[must_use]
             pub fn into_boxed_ucstr(self) -> Box<$ucstr> {
                 unsafe { Box::from_raw(Box::into_raw(self.into_inner()) as *mut $ucstr) }
             }
@@ -1040,6 +1057,7 @@ impl U16CString {
     /// # assert_eq!(wcstr.to_string_lossy(), s);
     /// ```
     #[inline]
+    #[must_use]
     pub unsafe fn from_str_unchecked(s: impl AsRef<str>) -> Self {
         let v: Vec<u16> = s.as_ref().encode_utf16().collect();
         Self::from_vec_unchecked(v)
@@ -1064,6 +1082,7 @@ impl U16CString {
     /// assert_eq!(wcstr.to_string_lossy(), "My");
     /// ```
     #[inline]
+    #[must_use]
     pub fn from_str_truncate(s: impl AsRef<str>) -> Self {
         let v: Vec<u16> = s.as_ref().encode_utf16().collect();
         Self::from_vec_truncate(v)
@@ -1147,6 +1166,7 @@ impl U16CString {
     /// ```
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    #[must_use]
     pub unsafe fn from_os_str_unchecked(s: impl AsRef<std::ffi::OsStr>) -> Self {
         let v = crate::platform::os_to_wide(s.as_ref());
         Self::from_vec_unchecked(v)
@@ -1178,6 +1198,7 @@ impl U16CString {
     #[inline]
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    #[must_use]
     pub fn from_os_str_truncate(s: impl AsRef<std::ffi::OsStr>) -> Self {
         let v = crate::platform::os_to_wide(s.as_ref());
         Self::from_vec_truncate(v)
@@ -1249,6 +1270,7 @@ impl U32CString {
     /// let wcstr = U32CString::from_chars_truncate(v);
     /// # assert_eq!(wcstr.into_vec(), cloned);
     /// ```
+    #[must_use]
     pub fn from_chars_truncate(v: impl Into<Vec<char>>) -> Self {
         let mut chars = v.into();
         let v: Vec<u32> = unsafe {
@@ -1271,6 +1293,7 @@ impl U32CString {
     /// This method is equivalent to [`from_chars`][Self::from_chars] except that no runtime
     /// assertion is made that `v` contains no interior nul values. Providing a vector with nul
     /// values anywhere but the last character will result in an invalid [`U32CString`].
+    #[must_use]
     pub unsafe fn from_chars_unchecked(v: impl Into<Vec<char>>) -> Self {
         let mut chars = v.into();
         let v: Vec<u32> = {
@@ -1350,6 +1373,7 @@ impl U32CString {
     /// # assert_eq!(wcstr.to_string_lossy(), s);
     /// ```
     #[inline]
+    #[must_use]
     pub unsafe fn from_str_unchecked(s: impl AsRef<str>) -> Self {
         let v: Vec<char> = s.as_ref().chars().collect();
         Self::from_chars_unchecked(v)
@@ -1374,6 +1398,7 @@ impl U32CString {
     /// assert_eq!(wcstr.to_string_lossy(), "My");
     /// ```
     #[inline]
+    #[must_use]
     pub fn from_str_truncate(s: impl AsRef<str>) -> Self {
         let v: Vec<char> = s.as_ref().chars().collect();
         Self::from_chars_truncate(v)
@@ -1404,6 +1429,7 @@ impl U32CString {
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
     #[inline]
+    #[must_use]
     pub unsafe fn from_char_ptr_str(p: *const char) -> Self {
         Self::from_ptr_str(p as *const u32)
     }
@@ -1459,6 +1485,7 @@ impl U32CString {
     ///
     /// Panics if `len` is greater than 0 but `p` is a null pointer.
     #[inline]
+    #[must_use]
     pub unsafe fn from_char_ptr_truncate(p: *const char, len: usize) -> Self {
         Self::from_ptr_truncate(p as *const u32, len)
     }
@@ -1485,6 +1512,7 @@ impl U32CString {
     /// # Panics
     ///
     /// Panics if `len` is greater than 0 but `p` is a null pointer.
+    #[must_use]
     pub unsafe fn from_char_ptr_unchecked(p: *const char, len: usize) -> Self {
         Self::from_ptr_unchecked(p as *const u32, len)
     }
@@ -1569,6 +1597,7 @@ impl U32CString {
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     #[inline]
+    #[must_use]
     pub unsafe fn from_os_str_unchecked(s: impl AsRef<std::ffi::OsStr>) -> Self {
         let v: Vec<char> = s.as_ref().to_string_lossy().chars().collect();
         Self::from_chars_unchecked(v)
@@ -1600,6 +1629,7 @@ impl U32CString {
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     #[inline]
+    #[must_use]
     pub fn from_os_str_truncate(s: impl AsRef<std::ffi::OsStr>) -> Self {
         let v: Vec<char> = s.as_ref().to_string_lossy().chars().collect();
         Self::from_chars_truncate(v)

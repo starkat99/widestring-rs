@@ -21,6 +21,7 @@ impl<C> NulError<C> {
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[must_use]
     pub fn into_vec(self) -> Option<Vec<C>> {
         match self {
             Self::MissingNulTerminator(_) => None,
@@ -126,6 +127,7 @@ impl<C> ContainsNul<C> {
 
     /// Returns the index of the invalid nul value in the slice.
     #[inline]
+    #[must_use]
     pub fn nul_position(&self) -> usize {
         self.index
     }
@@ -138,6 +140,7 @@ impl<C> ContainsNul<C> {
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[must_use]
     pub fn into_vec(self) -> Option<Vec<C>> {
         self.inner
     }
@@ -166,6 +169,7 @@ impl DecodeUtf16Error {
     }
 
     /// Returns the unpaired surrogate which caused this error.
+    #[must_use]
     pub fn unpaired_surrogate(&self) -> u16 {
         self.unpaired_surrogate
     }
@@ -195,6 +199,7 @@ impl DecodeUtf32Error {
     }
 
     /// Returns the invalid code point value which caused the error.
+    #[must_use]
     pub fn invalid_code_point(&self) -> u32 {
         self.code
     }
@@ -243,6 +248,7 @@ impl Utf16Error {
     }
 
     /// Returns the index in the given string at which the invalid UTF-16 value occurred.
+    #[must_use]
     pub fn index(&self) -> usize {
         self.index
     }
@@ -255,6 +261,7 @@ impl Utf16Error {
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[must_use]
     pub fn into_vec(self) -> Option<Vec<u16>> {
         self.inner
     }
@@ -312,6 +319,7 @@ impl Utf32Error {
     }
 
     /// Returns the index in the given string at which the invalid UTF-32 value occurred.
+    #[must_use]
     pub fn index(&self) -> usize {
         self.index
     }
@@ -324,6 +332,7 @@ impl Utf32Error {
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[must_use]
     pub fn into_vec(self) -> Option<Vec<u32>> {
         self.inner
     }

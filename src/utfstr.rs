@@ -55,6 +55,7 @@ macro_rules! utfstr_common_impl {
             $(#[$from_slice_unchecked_meta])*
             #[allow(trivial_casts)]
             #[inline]
+            #[must_use]
             pub const unsafe fn from_slice_unchecked(s: &[$uchar]) -> &Self {
                 &*(s as *const [$uchar] as *const Self)
             }
@@ -62,6 +63,7 @@ macro_rules! utfstr_common_impl {
             $(#[$from_slice_unchecked_mut_meta])*
             #[allow(trivial_casts)]
             #[inline]
+            #[must_use]
             pub unsafe fn from_slice_unchecked_mut(s: &mut [$uchar]) -> &mut Self {
                 &mut *(s as *mut [$uchar] as *mut Self)
             }
@@ -70,12 +72,14 @@ macro_rules! utfstr_common_impl {
             #[inline]
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+            #[must_use]
             pub unsafe fn from_boxed_slice_unchecked(s: Box<[$uchar]>) -> Box<Self> {
                 Box::from_raw(Box::into_raw(s) as *mut Self)
             }
 
             $(#[$get_unchecked_meta])*
             #[inline]
+            #[must_use]
             pub unsafe fn get_unchecked<I>(&self, index: I) -> &Self
             where
                 I: SliceIndex<[$uchar], Output = [$uchar]>,
@@ -85,6 +89,7 @@ macro_rules! utfstr_common_impl {
 
             $(#[$get_unchecked_mut_meta])*
             #[inline]
+            #[must_use]
             pub unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut Self
             where
                 I: SliceIndex<[$uchar], Output = [$uchar]>,
@@ -94,12 +99,14 @@ macro_rules! utfstr_common_impl {
 
             $(#[$len_meta])*
             #[inline]
+            #[must_use]
             pub const fn len(&self) -> usize {
                 self.inner.len()
             }
 
             /// Returns `true` if the string has a length of zero.
             #[inline]
+            #[must_use]
             pub const fn is_empty(&self) -> bool {
                 self.inner.is_empty()
             }
@@ -109,6 +116,7 @@ macro_rules! utfstr_common_impl {
             /// To convert the slice back into a string slice, use the
             /// [`from_slice`][Self::from_slice] function.
             #[inline]
+            #[must_use]
             pub const fn as_slice(&self) -> &[$uchar] {
                 &self.inner
             }
@@ -124,6 +132,7 @@ macro_rules! utfstr_common_impl {
             /// Use of this string type whose contents have been mutated to invalid UTF is
             /// undefined behavior.
             #[inline]
+            #[must_use]
             pub unsafe fn as_mut_slice(&mut self) -> &mut [$uchar] {
                 &mut self.inner
             }
@@ -135,6 +144,7 @@ macro_rules! utfstr_common_impl {
             /// The caller must ensure that the returned pointer is never written to. If you need to
             /// mutate the contents of the string slice, use [`as_mut_ptr`][Self::as_mut_ptr].
             #[inline]
+            #[must_use]
             pub const fn as_ptr(&self) -> *const $uchar {
                 self.inner.as_ptr()
             }
@@ -152,12 +162,14 @@ macro_rules! utfstr_common_impl {
             /// Use of this string type whose contents have been mutated to invalid UTF is
             /// undefined behavior.
             #[inline]
+            #[must_use]
             pub unsafe fn as_mut_ptr(&mut self) -> *mut $uchar {
                 self.inner.as_mut_ptr()
             }
 
             /// Returns this string as a wide string slice of undefined encoding.
             #[inline]
+            #[must_use]
             pub const fn as_ustr(&self) -> &$ustr {
                 $ustr::from_slice(self.as_slice())
             }
@@ -166,6 +178,7 @@ macro_rules! utfstr_common_impl {
             ///
             /// 'Whitespace' is defined according to the terms of the Unicode Derived Core Property
             /// `White_Space`.
+            #[must_use]
             pub fn trim(&self) -> &Self {
                 self.trim_start().trim_end()
             }
@@ -181,6 +194,7 @@ macro_rules! utfstr_common_impl {
             /// of that sequence; for a left-to-right language like English or Russian, this will be
             /// left side, and for right-to-left languages like Arabic or Hebrew, this will be the
             /// right side.
+            #[must_use]
             pub fn trim_start(&self) -> &Self {
                 if let Some((index, _)) = self.char_indices().find(|(_, c)| !c.is_whitespace()) {
                     &self[index..]
@@ -200,6 +214,7 @@ macro_rules! utfstr_common_impl {
             /// that sequence; for a left-to-right language like English or Russian, this will be
             /// right side, and for right-to-left languages like Arabic or Hebrew, this will be the
             /// left side.
+            #[must_use]
             pub fn trim_end(&self) -> &Self {
                 if let Some((index, _)) = self.char_indices().rfind(|(_, c)| !c.is_whitespace()) {
                     &self[..=index]
@@ -212,6 +227,7 @@ macro_rules! utfstr_common_impl {
             #[inline]
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+            #[must_use]
             pub fn into_boxed_slice(self: Box<Self>) -> Box<[$uchar]> {
                 // SAFETY: from_raw pointer is from into_raw
                 unsafe { Box::from_raw(Box::into_raw(self) as *mut [$uchar]) }
@@ -222,6 +238,7 @@ macro_rules! utfstr_common_impl {
             #[inline]
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+            #[must_use]
             pub fn into_utfstring(self: Box<Self>) -> $utfstring {
                 unsafe { $utfstring::from_vec_unchecked(self.into_boxed_slice().into_vec()) }
             }
@@ -234,6 +251,7 @@ macro_rules! utfstr_common_impl {
             #[inline]
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+            #[must_use]
             pub fn repeat(&self, n: usize) -> $utfstring {
                 unsafe { $utfstring::from_vec_unchecked(self.as_slice().repeat(n)) }
             }
@@ -933,6 +951,7 @@ impl Utf16Str {
     ///
     /// assert_eq!("💖", sparkle_heart);
     /// ```
+    #[must_use]
     pub const unsafe fn from_ustr_unchecked(s: &U16Str) -> &Self {
         Self::from_slice_unchecked(s.as_slice())
     }
@@ -947,6 +966,7 @@ impl Utf16Str {
     /// This function is unsafe because it does not check that the string slice passed to it is
     /// valid UTF-16. If this constraint is violated, undefined behavior results as it is assumed
     /// the [`Utf16Str`] is always valid UTF-16.
+    #[must_use]
     pub unsafe fn from_ustr_unchecked_mut(s: &mut U16Str) -> &mut Self {
         Self::from_slice_unchecked_mut(s.as_mut_slice())
     }
@@ -1024,6 +1044,7 @@ impl Utf16Str {
     /// assert_eq!("💖", sparkle_heart);
     /// ```
     #[inline]
+    #[must_use]
     pub unsafe fn from_ucstr_unchecked(s: &crate::U16CStr) -> &Self {
         Self::from_slice_unchecked(s.as_slice())
     }
@@ -1041,6 +1062,7 @@ impl Utf16Str {
     /// valid UTF-16. If this constraint is violated, undefined behavior results as it is assumed
     /// the [`Utf16Str`] is always valid UTF-16.
     #[inline]
+    #[must_use]
     pub unsafe fn from_ucstr_unchecked_mut(s: &mut crate::U16CStr) -> &mut Self {
         Self::from_slice_unchecked_mut(s.as_mut_slice())
     }
@@ -1110,6 +1132,7 @@ impl Utf16Str {
     #[allow(clippy::inherent_to_string_shadow_display)]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[must_use]
     pub fn to_string(&self) -> String {
         String::from_utf16(self.as_slice()).unwrap()
     }
@@ -1141,6 +1164,7 @@ impl Utf16Str {
     /// assert!(s.is_char_boundary(s.len()));
     /// ```
     #[inline]
+    #[must_use]
     pub const fn is_char_boundary(&self, index: usize) -> bool {
         if index > self.len() {
             false
@@ -1170,6 +1194,7 @@ impl Utf16Str {
     /// assert!(v.get(3..4).is_none());
     /// ```
     #[inline]
+    #[must_use]
     pub fn get<I>(&self, index: I) -> Option<&Self>
     where
         I: RangeBounds<usize> + SliceIndex<[u16], Output = [u16]>,
@@ -1205,6 +1230,7 @@ impl Utf16Str {
     /// # }
     /// ```
     #[inline]
+    #[must_use]
     pub fn get_mut<I>(&mut self, index: I) -> Option<&mut Self>
     where
         I: RangeBounds<usize> + SliceIndex<[u16], Output = [u16]>,
@@ -1246,6 +1272,7 @@ impl Utf16Str {
     /// assert_eq!(" Martin-Löf", last);
     /// ```
     #[inline]
+    #[must_use]
     pub fn split_at(&self, mid: usize) -> (&Self, &Self) {
         assert!(self.is_char_boundary(mid));
         let (a, b) = self.inner.split_at(mid);
@@ -1281,6 +1308,7 @@ impl Utf16Str {
     /// # }
     /// ```
     #[inline]
+    #[must_use]
     pub fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self) {
         assert!(self.is_char_boundary(mid));
         let (a, b) = self.inner.split_at_mut(mid);
@@ -1301,6 +1329,7 @@ impl Utf16Str {
     /// match your idea of what a 'character' is. Iteration over grapheme clusters may be what you
     /// actually want. This functionality is not provided by this crate.
     #[inline]
+    #[must_use]
     pub fn chars(&self) -> CharsUtf16<'_> {
         CharsUtf16::new(self.as_slice())
     }
@@ -1312,6 +1341,7 @@ impl Utf16Str {
     ///
     /// The iterator yields tuples. The position is first, the [`char`] is second.
     #[inline]
+    #[must_use]
     pub fn char_indices(&self) -> CharIndicesUtf16<'_> {
         CharIndicesUtf16::new(self.as_slice())
     }
@@ -1320,34 +1350,40 @@ impl Utf16Str {
     ///
     /// As a UTF-16 string slice consists of a sequence of [`u16`] code units, we can iterate
     /// through a string slice by each code unit. This method returns such an iterator.
+    #[must_use]
     pub fn code_units(&self) -> CodeUnits<'_> {
         CodeUnits::new(self.as_slice())
     }
 
     /// Returns an iterator of bytes over the string encoded as UTF-8.
+    #[must_use]
     pub fn encode_utf8(&self) -> EncodeUtf8<CharsUtf16<'_>> {
         crate::encode_utf8(self.chars())
     }
 
     /// Returns an iterator of [`u32`] over the sting encoded as UTF-32.
+    #[must_use]
     pub fn encode_utf32(&self) -> EncodeUtf32<CharsUtf16<'_>> {
         crate::encode_utf32(self.chars())
     }
 
     /// Returns an iterator that escapes each [`char`] in `self` with [`char::escape_debug`].
     #[inline]
+    #[must_use]
     pub fn escape_debug(&self) -> EscapeDebug<CharsUtf16<'_>> {
         EscapeDebug::<CharsUtf16>::new(self.as_slice())
     }
 
     /// Returns an iterator that escapes each [`char`] in `self` with [`char::escape_default`].
     #[inline]
+    #[must_use]
     pub fn escape_default(&self) -> EscapeDefault<CharsUtf16<'_>> {
         EscapeDefault::<CharsUtf16>::new(self.as_slice())
     }
 
     /// Returns an iterator that escapes each [`char`] in `self` with [`char::escape_unicode`].
     #[inline]
+    #[must_use]
     pub fn escape_unicode(&self) -> EscapeUnicode<CharsUtf16<'_>> {
         EscapeUnicode::<CharsUtf16>::new(self.as_slice())
     }
@@ -1362,6 +1398,7 @@ impl Utf16Str {
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[must_use]
     pub fn to_lowercase(&self) -> Utf16String {
         let mut s = Utf16String::with_capacity(self.len());
         for c in self.chars() {
@@ -1382,6 +1419,7 @@ impl Utf16Str {
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[must_use]
     pub fn to_uppercase(&self) -> Utf16String {
         let mut s = Utf16String::with_capacity(self.len());
         for c in self.chars() {
@@ -1512,6 +1550,7 @@ impl Utf32Str {
     /// assert_eq!("💖", sparkle_heart);
     /// ```
     #[inline]
+    #[must_use]
     pub const unsafe fn from_ustr_unchecked(s: &crate::U32Str) -> &Self {
         Self::from_slice_unchecked(s.as_slice())
     }
@@ -1527,6 +1566,7 @@ impl Utf32Str {
     /// valid UTF-32. If this constraint is violated, undefined behavior results as it is assumed
     /// the [`Utf32Str`] is always valid UTF-32.
     #[inline]
+    #[must_use]
     pub unsafe fn from_ustr_unchecked_mut(s: &mut crate::U32Str) -> &mut Self {
         Self::from_slice_unchecked_mut(s.as_mut_slice())
     }
@@ -1604,6 +1644,7 @@ impl Utf32Str {
     /// assert_eq!("💖", sparkle_heart);
     /// ```
     #[inline]
+    #[must_use]
     pub unsafe fn from_ucstr_unchecked(s: &crate::U32CStr) -> &Self {
         Self::from_slice_unchecked(s.as_slice())
     }
@@ -1621,6 +1662,7 @@ impl Utf32Str {
     /// valid UTF-32. If this constraint is violated, undefined behavior results as it is assumed
     /// the [`Utf32Str`] is always valid UTF-32.
     #[inline]
+    #[must_use]
     pub unsafe fn from_ucstr_unchecked_mut(s: &mut crate::U32CStr) -> &mut Self {
         Self::from_slice_unchecked_mut(s.as_mut_slice())
     }
@@ -1701,6 +1743,7 @@ impl Utf32Str {
     /// ```
     #[allow(trivial_casts)]
     #[inline]
+    #[must_use]
     pub const fn from_char_slice(s: &[char]) -> &Self {
         // SAFETY: char slice is always valid UTF-32
         unsafe { Self::from_slice_unchecked(&*(s as *const [char] as *const [u32])) }
@@ -1724,6 +1767,7 @@ impl Utf32Str {
     /// ```
     #[allow(trivial_casts)]
     #[inline]
+    #[must_use]
     pub fn from_char_slice_mut(s: &mut [char]) -> &mut Self {
         // SAFETY: char slice is always valid UTF-32
         unsafe { Self::from_slice_unchecked_mut(&mut *(s as *mut [char] as *mut [u32])) }
@@ -1732,6 +1776,7 @@ impl Utf32Str {
     /// Converts a string slice into a slice of [`char`]s.
     #[allow(trivial_casts)]
     #[inline]
+    #[must_use]
     pub const fn as_char_slice(&self) -> &[char] {
         // SAFETY: Self should be valid UTF-32 so chars will be in range
         unsafe { &*(self.as_slice() as *const [u32] as *const [char]) }
@@ -1740,6 +1785,7 @@ impl Utf32Str {
     /// Converts a mutable string slice into a mutable slice of [`char`]s.
     #[allow(trivial_casts)]
     #[inline]
+    #[must_use]
     pub fn as_char_slice_mut(&mut self) -> &mut [char] {
         // SAFETY: Self should be valid UTF-32 so chars will be in range
         unsafe { &mut *(self.as_mut_slice() as *mut [u32] as *mut [char]) }
@@ -1752,6 +1798,7 @@ impl Utf32Str {
     #[allow(clippy::inherent_to_string_shadow_display)]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[must_use]
     pub fn to_string(&self) -> String {
         let mut s = String::with_capacity(self.len());
         s.extend(self.as_char_slice());
@@ -1775,6 +1822,7 @@ impl Utf32Str {
     /// assert_eq!(Some(utf32str!("s")), v.get(9..));
     /// ```
     #[inline]
+    #[must_use]
     pub fn get<I>(&self, index: I) -> Option<&Self>
     where
         I: SliceIndex<[u32], Output = [u32]>,
@@ -1805,6 +1853,7 @@ impl Utf32Str {
     /// # }
     /// ```
     #[inline]
+    #[must_use]
     pub fn get_mut<I>(&mut self, index: I) -> Option<&mut Self>
     where
         I: SliceIndex<[u32], Output = [u32]>,
@@ -1841,6 +1890,7 @@ impl Utf32Str {
     /// assert_eq!(" Martin-Löf", last);
     /// ```
     #[inline]
+    #[must_use]
     pub fn split_at(&self, mid: usize) -> (&Self, &Self) {
         let (a, b) = self.inner.split_at(mid);
         unsafe { (Self::from_slice_unchecked(a), Self::from_slice_unchecked(b)) }
@@ -1873,6 +1923,7 @@ impl Utf32Str {
     /// # }
     /// ```
     #[inline]
+    #[must_use]
     pub fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self) {
         let (a, b) = self.inner.split_at_mut(mid);
         unsafe {
@@ -1892,6 +1943,7 @@ impl Utf32Str {
     /// match your idea of what a 'character' is. Iteration over grapheme clusters may be what you
     /// actually want. This functionality is not provided by this crate.
     #[inline]
+    #[must_use]
     pub fn chars(&self) -> CharsUtf32<'_> {
         CharsUtf32::new(self.as_slice())
     }
@@ -1903,34 +1955,40 @@ impl Utf32Str {
     ///
     /// The iterator yields tuples. The position is first, the [`char`] is second.
     #[inline]
+    #[must_use]
     pub fn char_indices(&self) -> CharIndicesUtf32<'_> {
         CharIndicesUtf32::new(self.as_slice())
     }
 
     /// Returns an iterator of bytes over the string encoded as UTF-8.
+    #[must_use]
     pub fn encode_utf8(&self) -> EncodeUtf8<CharsUtf32<'_>> {
         crate::encode_utf8(self.chars())
     }
 
     /// Returns an iterator of [`u16`] over the sting encoded as UTF-16.
+    #[must_use]
     pub fn encode_utf16(&self) -> EncodeUtf16<CharsUtf32<'_>> {
         crate::encode_utf16(self.chars())
     }
 
     /// Returns an iterator that escapes each [`char`] in `self` with [`char::escape_debug`].
     #[inline]
+    #[must_use]
     pub fn escape_debug(&self) -> EscapeDebug<CharsUtf32<'_>> {
         EscapeDebug::<CharsUtf32>::new(self.as_slice())
     }
 
     /// Returns an iterator that escapes each [`char`] in `self` with [`char::escape_default`].
     #[inline]
+    #[must_use]
     pub fn escape_default(&self) -> EscapeDefault<CharsUtf32<'_>> {
         EscapeDefault::<CharsUtf32>::new(self.as_slice())
     }
 
     /// Returns an iterator that escapes each [`char`] in `self` with [`char::escape_unicode`].
     #[inline]
+    #[must_use]
     pub fn escape_unicode(&self) -> EscapeUnicode<CharsUtf32<'_>> {
         EscapeUnicode::<CharsUtf32>::new(self.as_slice())
     }
@@ -1945,6 +2003,7 @@ impl Utf32Str {
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[must_use]
     pub fn to_lowercase(&self) -> Utf32String {
         let mut s = Utf32String::with_capacity(self.len());
         for c in self.chars() {
@@ -1965,6 +2024,7 @@ impl Utf32Str {
     #[inline]
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[must_use]
     pub fn to_uppercase(&self) -> Utf32String {
         let mut s = Utf32String::with_capacity(self.len());
         for c in self.chars() {

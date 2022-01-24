@@ -39,6 +39,7 @@ macro_rules! ustr_common_impl {
         impl $ustr {
             /// Coerces a value into a wide string slice.
             #[inline]
+            #[must_use]
             pub fn new<S: AsRef<Self> + ?Sized>(s: &S) -> &Self {
                 s.as_ref()
             }
@@ -70,6 +71,7 @@ macro_rules! ustr_common_impl {
             /// is safe in the context, such as by providing a helper function taking the lifetime
             /// of a host value for the string, or by explicit annotation.
             #[inline]
+            #[must_use]
             pub unsafe fn from_ptr<'a>(p: *const $uchar, len: usize) -> &'a Self {
                 assert!(!p.is_null());
                 let slice: *const [$uchar] = slice::from_raw_parts(p, len);
@@ -101,6 +103,7 @@ macro_rules! ustr_common_impl {
             /// is safe in the context, such as by providing a helper function taking the lifetime
             /// of a host value for the string, or by explicit annotation.
             #[inline]
+            #[must_use]
             pub unsafe fn from_ptr_mut<'a>(p: *mut $uchar, len: usize) -> &'a mut Self {
                 assert!(!p.is_null());
                 let slice: *mut [$uchar] = slice::from_raw_parts_mut(p, len);
@@ -112,6 +115,7 @@ macro_rules! ustr_common_impl {
             /// No checks are performed on the slice. It may be of any encoding and may contain
             /// invalid or malformed data for that encoding.
             #[inline]
+            #[must_use]
             pub const fn from_slice(slice: &[$uchar]) -> &Self {
                 let ptr: *const [$uchar] = slice;
                 unsafe { &*(ptr as *const $ustr) }
@@ -122,6 +126,7 @@ macro_rules! ustr_common_impl {
             /// No checks are performed on the slice. It may be of any encoding and may contain
             /// invalid or malformed data for that encoding.
             #[inline]
+            #[must_use]
             pub fn from_slice_mut(slice: &mut [$uchar]) -> &mut Self {
                 let ptr: *mut [$uchar] = slice;
                 unsafe { &mut *(ptr as *mut $ustr) }
@@ -131,17 +136,20 @@ macro_rules! ustr_common_impl {
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
             #[inline]
+            #[must_use]
             pub fn to_ustring(&self) -> $ustring {
                 $ustring::from_vec(&self.inner)
             }
 
             /// Converts to a slice of the underlying elements of the string.
             #[inline]
+            #[must_use]
             pub const fn as_slice(&self) -> &[$uchar] {
                 &self.inner
             }
 
             /// Converts to a mutable slice of the underlying elements of the string.
+            #[must_use]
             pub fn as_mut_slice(&mut self) -> &mut [$uchar] {
                 &mut self.inner
             }
@@ -159,6 +167,7 @@ macro_rules! ustr_common_impl {
             /// Modifying the container referenced by this string may cause its buffer to be
             /// reallocated, which would also make any pointers to it invalid.
             #[inline]
+            #[must_use]
             pub const fn as_ptr(&self) -> *const $uchar {
                 self.inner.as_ptr()
             }
@@ -171,6 +180,7 @@ macro_rules! ustr_common_impl {
             /// Modifying the container referenced by this string may cause its buffer to be
             /// reallocated, which would also make any pointers to it invalid.
             #[inline]
+            #[must_use]
             pub fn as_mut_ptr(&mut self) -> *mut $uchar {
                 self.inner.as_mut_ptr()
             }
@@ -188,6 +198,7 @@ macro_rules! ustr_common_impl {
             /// This function is useful for interacting with foreign interfaces which use two
             /// pointers to refer to a range of elements in memory, as is common in C++.
             #[inline]
+            #[must_use]
             pub fn as_ptr_range(&self) -> Range<*const $uchar> {
                 self.inner.as_ptr_range()
             }
@@ -206,18 +217,21 @@ macro_rules! ustr_common_impl {
             /// This function is useful for interacting with foreign interfaces which use two
             /// pointers to refer to a range of elements in memory, as is common in C++.
             #[inline]
+            #[must_use]
             pub fn as_mut_ptr_range(&mut self) -> Range<*mut $uchar> {
                 self.inner.as_mut_ptr_range()
             }
 
             /// Returns the length of the string as number of elements (**not** number of bytes).
             #[inline]
+            #[must_use]
             pub const fn len(&self) -> usize {
                 self.inner.len()
             }
 
             /// Returns whether this string contains no data.
             #[inline]
+            #[must_use]
             pub const fn is_empty(&self) -> bool {
                 self.inner.is_empty()
             }
@@ -226,6 +240,7 @@ macro_rules! ustr_common_impl {
             /// allocating.
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+            #[must_use]
             pub fn into_ustring(self: Box<Self>) -> $ustring {
                 let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut [$uchar]) };
                 $ustring {
@@ -235,6 +250,7 @@ macro_rules! ustr_common_impl {
 
             $(#[$display_meta])*
             #[inline]
+            #[must_use]
             pub fn display(&self) -> Display<'_, $ustr> {
                 Display { str: self }
             }
@@ -244,6 +260,7 @@ macro_rules! ustr_common_impl {
             /// This is the non-panicking alternative to indexing the string. Returns [`None`]
             /// whenever equivalent indexing operation would panic.
             #[inline]
+            #[must_use]
             pub fn get<I>(&self, i: I) -> Option<&Self>
             where
                 I: SliceIndex<[$uchar], Output = [$uchar]>,
@@ -256,6 +273,7 @@ macro_rules! ustr_common_impl {
             /// This is the non-panicking alternative to indexing the string. Returns [`None`]
             /// whenever equivalent indexing operation would panic.
             #[inline]
+            #[must_use]
             pub fn get_mut<I>(&mut self, i: I) -> Option<&mut Self>
             where
                 I: SliceIndex<[$uchar], Output = [$uchar]>,
@@ -276,6 +294,7 @@ macro_rules! ustr_common_impl {
             ///
             /// Failing that, the returned string slice may reference invalid memory.
             #[inline]
+            #[must_use]
             pub unsafe fn get_unchecked<I>(&self, i: I) -> &Self
             where
                 I: SliceIndex<[$uchar], Output = [$uchar]>,
@@ -296,6 +315,7 @@ macro_rules! ustr_common_impl {
             ///
             /// Failing that, the returned string slice may reference invalid memory.
             #[inline]
+            #[must_use]
             pub unsafe fn get_unchecked_mut<I>(&mut self, i: I) -> &mut Self
             where
                 I: SliceIndex<[$uchar], Output = [$uchar]>,
@@ -313,6 +333,7 @@ macro_rules! ustr_common_impl {
             /// To get mutable string slices instead, see the [`split_at_mut`][Self::split_at_mut]
             /// method.
             #[inline]
+            #[must_use]
             pub fn split_at(&self, mid: usize) -> (&Self, &Self) {
                 let split = self.inner.split_at(mid);
                 (Self::from_slice(split.0), Self::from_slice(split.1))
@@ -327,6 +348,7 @@ macro_rules! ustr_common_impl {
             ///
             /// To get immutable string slices instead, see the [`split_at`][Self::split_at] method.
             #[inline]
+            #[must_use]
             pub fn split_at_mut(&mut self, mid: usize) -> (&mut Self, &mut Self) {
                 let split = self.inner.split_at_mut(mid);
                 (Self::from_slice_mut(split.0), Self::from_slice_mut(split.1))
@@ -340,6 +362,7 @@ macro_rules! ustr_common_impl {
             #[inline]
             #[cfg(feature = "alloc")]
             #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+            #[must_use]
             pub fn repeat(&self, n: usize) -> $ustring {
                 $ustring::from_vec(self.as_slice().repeat(n))
             }
@@ -757,6 +780,7 @@ impl U16Str {
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     #[inline]
+    #[must_use]
     pub fn to_os_string(&self) -> std::ffi::OsString {
         crate::platform::os_from_wide(&self.inner)
     }
@@ -816,6 +840,7 @@ impl U16Str {
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     #[inline]
+    #[must_use]
     pub fn to_string_lossy(&self) -> String {
         String::from_utf16_lossy(&self.inner)
     }
@@ -832,6 +857,7 @@ impl U16Str {
     /// may not match your idea of what a 'character' is. Iteration over grapheme clusters may be
     /// what you actually want. That functionality is not provided by by this crate.
     #[inline]
+    #[must_use]
     pub fn chars(&self) -> CharsUtf16<'_> {
         CharsUtf16::new(self.as_slice())
     }
@@ -848,6 +874,7 @@ impl U16Str {
     /// may not match your idea of what a 'character' is. Iteration over grapheme clusters may be
     /// what you actually want. That functionality is not provided by by this crate.
     #[inline]
+    #[must_use]
     pub fn chars_lossy(&self) -> CharsLossyUtf16<'_> {
         CharsLossyUtf16::new(self.as_slice())
     }
@@ -863,6 +890,7 @@ impl U16Str {
     ///
     /// The iterator yields tuples. The position is first, the [`char`][prim@char] is second.
     #[inline]
+    #[must_use]
     pub fn char_indices(&self) -> CharIndicesUtf16<'_> {
         CharIndicesUtf16::new(self.as_slice())
     }
@@ -877,6 +905,7 @@ impl U16Str {
     ///
     /// The iterator yields tuples. The position is first, the [`char`][prim@char] is second.
     #[inline]
+    #[must_use]
     pub fn char_indices_lossy(&self) -> CharIndicesLossyUtf16<'_> {
         CharIndicesLossyUtf16::new(self.as_slice())
     }
@@ -908,6 +937,7 @@ impl U32Str {
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
     #[inline]
+    #[must_use]
     pub unsafe fn from_char_ptr<'a>(p: *const char, len: usize) -> &'a Self {
         Self::from_ptr(p as *const u32, len)
     }
@@ -935,6 +965,7 @@ impl U32Str {
     /// context, such as by providing a helper function taking the lifetime of a host value for the
     /// string, or by explicit annotation.
     #[inline]
+    #[must_use]
     pub unsafe fn from_char_ptr_mut<'a>(p: *mut char, len: usize) -> &'a mut Self {
         Self::from_ptr_mut(p as *mut u32, len)
     }
@@ -943,6 +974,7 @@ impl U32Str {
     ///
     /// No checks are performed on the slice.
     #[inline]
+    #[must_use]
     pub fn from_char_slice(slice: &[char]) -> &Self {
         let ptr: *const [char] = slice;
         unsafe { &*(ptr as *const Self) }
@@ -952,6 +984,7 @@ impl U32Str {
     ///
     /// No checks are performed on the slice.
     #[inline]
+    #[must_use]
     pub fn from_char_slice_mut(slice: &mut [char]) -> &mut Self {
         let ptr: *mut [char] = slice;
         unsafe { &mut *(ptr as *mut Self) }
@@ -983,6 +1016,7 @@ impl U32Str {
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     #[inline]
+    #[must_use]
     pub fn to_os_string(&self) -> std::ffi::OsString {
         self.to_string_lossy().into()
     }
@@ -1039,6 +1073,7 @@ impl U32Str {
     /// ```
     #[cfg(feature = "alloc")]
     #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[must_use]
     pub fn to_string_lossy(&self) -> String {
         let chars: Vec<char> = self
             .inner
@@ -1067,6 +1102,7 @@ impl U32Str {
     /// may not match your idea of what a 'character' is. Iteration over grapheme clusters may be
     /// what you actually want. That functionality is not provided by by this crate.
     #[inline]
+    #[must_use]
     pub fn chars(&self) -> CharsUtf32<'_> {
         CharsUtf32::new(self.as_slice())
     }
@@ -1083,6 +1119,7 @@ impl U32Str {
     /// may not match your idea of what a 'character' is. Iteration over grapheme clusters may be
     /// what you actually want. That functionality is not provided by by this crate.
     #[inline]
+    #[must_use]
     pub fn chars_lossy(&self) -> CharsLossyUtf32<'_> {
         CharsLossyUtf32::new(self.as_slice())
     }
@@ -1098,6 +1135,7 @@ impl U32Str {
     ///
     /// The iterator yields tuples. The position is first, the [`char`][prim@char] is second.
     #[inline]
+    #[must_use]
     pub fn char_indices(&self) -> CharIndicesUtf32<'_> {
         CharIndicesUtf32::new(self.as_slice())
     }
@@ -1112,6 +1150,7 @@ impl U32Str {
     ///
     /// The iterator yields tuples. The position is first, the [`char`][prim@char] is second.
     #[inline]
+    #[must_use]
     pub fn char_indices_lossy(&self) -> CharIndicesLossyUtf32<'_> {
         CharIndicesLossyUtf32::new(self.as_slice())
     }

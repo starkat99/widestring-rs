@@ -51,6 +51,7 @@ macro_rules! ustring_common_impl {
         impl $ustring {
             /// Constructs a new empty wide string.
             #[inline]
+            #[must_use]
             pub const fn new() -> Self {
                 Self { inner: Vec::new() }
             }
@@ -80,6 +81,7 @@ macro_rules! ustring_common_impl {
             /// # assert_eq!(wstr.into_vec(), cloned);
             /// ```
             #[inline]
+            #[must_use]
             pub fn from_vec(raw: impl Into<Vec<$uchar>>) -> Self {
                 Self { inner: raw.into() }
             }
@@ -99,6 +101,7 @@ macro_rules! ustring_common_impl {
             /// # Panics
             ///
             /// Panics if `len` is greater than 0 but `p` is a null pointer.
+            #[must_use]
             pub unsafe fn from_ptr(p: *const $uchar, len: usize) -> Self {
                 if len == 0 {
                     return Self::new();
@@ -113,6 +116,7 @@ macro_rules! ustring_common_impl {
             /// The string will be able to hold exactly `capacity` elements without reallocating.
             /// If `capacity` is set to 0, the string will not initially allocate.
             #[inline]
+            #[must_use]
             pub fn with_capacity(capacity: usize) -> Self {
                 Self {
                     inner: Vec::with_capacity(capacity),
@@ -121,6 +125,7 @@ macro_rules! ustring_common_impl {
 
             /// Returns the capacity this wide string can hold without reallocating.
             #[inline]
+            #[must_use]
             pub fn capacity(&self) -> usize {
                 self.inner.capacity()
             }
@@ -153,30 +158,35 @@ macro_rules! ustring_common_impl {
 
             /// Converts the string into a [`Vec`], consuming the string in the process.
             #[inline]
+            #[must_use]
             pub fn into_vec(self) -> Vec<$uchar> {
                 self.inner
             }
 
             /// Converts to a wide string slice.
             #[inline]
+            #[must_use]
             pub fn as_ustr(&self) -> &$ustr {
                 $ustr::from_slice(&self.inner)
             }
 
             /// Converts to a mutable wide string slice.
             #[inline]
+            #[must_use]
             pub fn as_mut_ustr(&mut self) -> &mut $ustr {
                 $ustr::from_slice_mut(&mut self.inner)
             }
 
             /// Returns a [`Vec`] reference to the contents of this string.
             #[inline]
+            #[must_use]
             pub fn as_vec(&self) -> &Vec<$uchar> {
                 &self.inner
             }
 
             /// Returns a mutable reference to the contents of this string.
             #[inline]
+            #[must_use]
             pub fn as_mut_vec(&mut self) -> &mut Vec<$uchar> {
                 &mut self.inner
             }
@@ -211,6 +221,7 @@ macro_rules! ustring_common_impl {
             }
 
             $(#[$into_boxed_ustr_meta])*
+            #[must_use]
             pub fn into_boxed_ustr(self) -> Box<$ustr> {
                 let rw = Box::into_raw(self.inner.into_boxed_slice()) as *mut $ustr;
                 unsafe { Box::from_raw(rw) }
@@ -252,6 +263,7 @@ macro_rules! ustring_common_impl {
             ///
             /// Panics if `at` is equal to or greater than the length of the string.
             #[inline]
+            #[must_use]
             pub fn split_off(&mut self, at: usize) -> $ustring {
                 Self::from_vec(self.inner.split_off(at))
             }
@@ -1170,6 +1182,7 @@ impl U16String {
     /// ```
     #[allow(clippy::should_implement_trait)]
     #[inline]
+    #[must_use]
     pub fn from_str<S: AsRef<str> + ?Sized>(s: &S) -> Self {
         Self {
             inner: s.as_ref().encode_utf16().collect(),
@@ -1199,6 +1212,7 @@ impl U16String {
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     #[inline]
+    #[must_use]
     pub fn from_os_str<S: AsRef<std::ffi::OsStr> + ?Sized>(s: &S) -> Self {
         Self {
             inner: crate::platform::os_to_wide(s.as_ref()),
@@ -1343,6 +1357,7 @@ impl U32String {
     /// let wstr = U32String::from_chars(v);
     /// # assert_eq!(wstr.into_vec(), cloned);
     /// ```
+    #[must_use]
     pub fn from_chars(raw: impl Into<Vec<char>>) -> Self {
         let mut chars = raw.into();
         Self {
@@ -1373,6 +1388,7 @@ impl U32String {
     /// ```
     #[allow(clippy::should_implement_trait)]
     #[inline]
+    #[must_use]
     pub fn from_str<S: AsRef<str> + ?Sized>(s: &S) -> Self {
         let v: Vec<char> = s.as_ref().chars().collect();
         Self::from_chars(v)
@@ -1400,6 +1416,7 @@ impl U32String {
     /// ```
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    #[must_use]
     pub fn from_os_str<S: AsRef<std::ffi::OsStr> + ?Sized>(s: &S) -> Self {
         let v: Vec<char> = s.as_ref().to_string_lossy().chars().collect();
         Self::from_chars(v)
@@ -1420,6 +1437,7 @@ impl U32String {
     ///
     /// Panics if `len` is greater than 0 but `p` is a null pointer.
     #[inline]
+    #[must_use]
     pub unsafe fn from_char_ptr(p: *const char, len: usize) -> Self {
         Self::from_ptr(p as *const u32, len)
     }

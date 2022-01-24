@@ -4,6 +4,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Added `#[must_use]` attributes to many crate functions, as appropriate.
+
 ### Added
 - Added `new` function that creates and empty string to `U16CString` and `U32CString` to match other
   string types.
