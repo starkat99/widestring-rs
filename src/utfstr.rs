@@ -152,18 +152,9 @@ macro_rules! utfstr_common_impl {
             /// Converts a mutable string slice to a mutable pointer.
             ///
             /// This pointer will be pointing to the first element of the string slice.
-            ///
-            /// # Safety
-            ///
-            /// This function is unsafe because you can violate the invariants of this type when
-            /// mutating the slice. The caller must ensure that the contents of the slice is valid
-            /// UTF before the borrow ends and the underlying string is used.
-            ///
-            /// Use of this string type whose contents have been mutated to invalid UTF is
-            /// undefined behavior.
             #[inline]
             #[must_use]
-            pub unsafe fn as_mut_ptr(&mut self) -> *mut $uchar {
+            pub fn as_mut_ptr(&mut self) -> *mut $uchar {
                 self.inner.as_mut_ptr()
             }
 
