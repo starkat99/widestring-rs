@@ -571,14 +571,9 @@ macro_rules! ucstr_common_impl {
             ///
             /// Modifying the container referenced by this string may cause its buffer to be
             /// reallocated, which would also make any pointers to it invalid.
-            ///
-            /// # Safety
-            ///
-            /// This method is unsafe because you can violate the invariants of this type when
-            /// mutating the memory the pointer points to (i.e. by adding interior nul values).
             #[inline]
             #[must_use]
-            pub unsafe fn as_mut_ptr(&mut self) -> *mut $uchar {
+            pub fn as_mut_ptr(&mut self) -> *mut $uchar {
                 self.inner.as_mut_ptr()
             }
 
@@ -613,14 +608,9 @@ macro_rules! ucstr_common_impl {
             ///
             /// This function is useful for interacting with foreign interfaces which use two
             /// pointers to refer to a range of elements in memory, as is common in C++.
-            ///
-            /// # Safety
-            ///
-            /// This method is unsafe because you can violate the invariants of this type when
-            /// mutating the memory the pointer points to (i.e. by adding interior nul values).
             #[inline]
             #[must_use]
-            pub unsafe fn as_mut_ptr_range(&mut self) -> Range<*mut $uchar> {
+            pub fn as_mut_ptr_range(&mut self) -> Range<*mut $uchar> {
                 self.inner.as_mut_ptr_range()
             }
 
