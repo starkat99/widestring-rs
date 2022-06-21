@@ -4,8 +4,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.0.0] - 2022-06-21 <a name="1.0.0"></a>
 ### Changed
+- **Breaking Change** Minimum supported Rust version is now 1.58.
 - Added `#[must_use]` attributes to many crate functions, as appropriate.
+- Remove `unsafe` qualifiers from `as_mut_ptr` and `as_mut_ptr_range` to match standard library. By
+  [@yescallop].
 
 ### Added
 - Added `new` function that creates and empty string to `U16CString` and `U32CString` to match other
@@ -316,8 +321,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 [@nicbn]: https://github.com/nicbn
 [@joshwd36]: https://github.com/joshwb36
+[@yescallop]: https://github.com/yescallop
 
-[Unreleased]: https://github.com/starkat99/widestring-rs/compare/v1.0.0-beta.1...HEAD
+[Unreleased]: https://github.com/starkat99/widestring-rs/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/starkat99/widestring-rs/compare/v1.0.0-beta.1...v1.0.0
 [1.0.0-beta.1]: https://github.com/starkat99/widestring-rs/compare/v0.5.1...v1.0.0-beta.1
 [0.5.1]: https://github.com/starkat99/widestring-rs/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/starkat99/widestring-rs/compare/v0.4.3...v0.5.0

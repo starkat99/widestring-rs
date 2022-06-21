@@ -8,6 +8,9 @@ provided, including support for UTF-16 and UTF-32, malformed encoding, C-style s
 Macros for converting string literals to UTF-16 and UTF-32 strings at compile time are also 
 included.
 
+*Requires Rust 1.58 or greater.* If you need support for older versions of Rust, use 0.x versions of
+this crate.
+
 ## Documentation
 
 - [Crate API Reference](https://docs.rs/widestring/)
