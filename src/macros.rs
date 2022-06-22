@@ -9,10 +9,10 @@ macro_rules! implement_utf16_macro {
                     $crate::internals::length_as_utf16(_WIDESTRING_U16_MACRO_UTF8) + $extra_len;
                 const _WIDESTRING_U16_MACRO_UTF16: [$crate::internals::core::primitive::u16;
                         _WIDESTRING_U16_MACRO_LEN] = {
-                    let mut buffer = [0u16; _WIDESTRING_U16_MACRO_LEN];
+                    let mut buffer: [$crate::internals::core::primitive::u16; _WIDESTRING_U16_MACRO_LEN] = [0; _WIDESTRING_U16_MACRO_LEN];
                     let mut bytes = _WIDESTRING_U16_MACRO_UTF8.as_bytes();
                     let mut i = 0;
-                    while let Some((ch, rest)) = $crate::internals::next_code_point(bytes) {
+                    while let $crate::internals::core::option::Option::Some((ch, rest)) = $crate::internals::next_code_point(bytes) {
                         bytes = rest;
                         // https://doc.rust-lang.org/std/primitive.char.html#method.encode_utf16
                         if ch & 0xFFFF == ch {
@@ -100,10 +100,10 @@ macro_rules! implement_utf32_macro {
                     $crate::internals::length_as_utf32(_WIDESTRING_U32_MACRO_UTF8) + $extra_len;
                 const _WIDESTRING_U32_MACRO_UTF32: [$crate::internals::core::primitive::u32;
                         _WIDESTRING_U32_MACRO_LEN] = {
-                    let mut buffer = [0u32; _WIDESTRING_U32_MACRO_LEN];
+                    let mut buffer: [$crate::internals::core::primitive::u32; _WIDESTRING_U32_MACRO_LEN] = [0; _WIDESTRING_U32_MACRO_LEN];
                     let mut bytes = _WIDESTRING_U32_MACRO_UTF8.as_bytes();
                     let mut i = 0;
-                    while let Some((ch, rest)) = $crate::internals::next_code_point(bytes) {
+                    while let $crate::internals::core::option::Option::Some((ch, rest)) = $crate::internals::next_code_point(bytes) {
                         bytes = rest;
                         buffer[i] = ch;
                         i += 1;
