@@ -9,23 +9,23 @@ macro_rules! implement_utf16_macro {
                     $crate::internals::length_as_utf16(_WIDESTRING_U16_MACRO_UTF8) + $extra_len;
                 const _WIDESTRING_U16_MACRO_UTF16: [$crate::internals::core::primitive::u16;
                         _WIDESTRING_U16_MACRO_LEN] = {
-                    let mut buffer: [$crate::internals::core::primitive::u16; _WIDESTRING_U16_MACRO_LEN] = [0; _WIDESTRING_U16_MACRO_LEN];
-                    let mut bytes = _WIDESTRING_U16_MACRO_UTF8.as_bytes();
-                    let mut i = 0;
-                    while let $crate::internals::core::option::Option::Some((ch, rest)) = $crate::internals::next_code_point(bytes) {
-                        bytes = rest;
+                    let mut _widestring_buffer: [$crate::internals::core::primitive::u16; _WIDESTRING_U16_MACRO_LEN] = [0; _WIDESTRING_U16_MACRO_LEN];
+                    let mut _widestring_bytes = _WIDESTRING_U16_MACRO_UTF8.as_bytes();
+                    let mut _widestring_i = 0;
+                    while let $crate::internals::core::option::Option::Some((_widestring_ch, _widestring_rest)) = $crate::internals::next_code_point(_widestring_bytes) {
+                        _widestring_bytes = _widestring_rest;
                         // https://doc.rust-lang.org/std/primitive.char.html#method.encode_utf16
-                        if ch & 0xFFFF == ch {
-                            buffer[i] = ch as $crate::internals::core::primitive::u16;
-                            i += 1;
+                        if _widestring_ch & 0xFFFF == _widestring_ch {
+                            _widestring_buffer[_widestring_i] = _widestring_ch as $crate::internals::core::primitive::u16;
+                            _widestring_i += 1;
                         } else {
-                            let code = ch - 0x1_0000;
-                            buffer[i] = 0xD800 | ((code >> 10) as $crate::internals::core::primitive::u16);
-                            buffer[i + 1] = 0xDC00 | ((code as $crate::internals::core::primitive::u16) & 0x3FF);
-                            i += 2;
+                            let _widestring_code = _widestring_ch - 0x1_0000;
+                            _widestring_buffer[_widestring_i] = 0xD800 | ((_widestring_code >> 10) as $crate::internals::core::primitive::u16);
+                            _widestring_buffer[_widestring_i + 1] = 0xDC00 | ((_widestring_code as $crate::internals::core::primitive::u16) & 0x3FF);
+                            _widestring_i += 2;
                         }
                     }
-                    buffer
+                    _widestring_buffer
                 };
                 #[allow(unused_unsafe)]
                 unsafe { $crate::$str::$fn(&_WIDESTRING_U16_MACRO_UTF16) }
@@ -100,15 +100,15 @@ macro_rules! implement_utf32_macro {
                     $crate::internals::length_as_utf32(_WIDESTRING_U32_MACRO_UTF8) + $extra_len;
                 const _WIDESTRING_U32_MACRO_UTF32: [$crate::internals::core::primitive::u32;
                         _WIDESTRING_U32_MACRO_LEN] = {
-                    let mut buffer: [$crate::internals::core::primitive::u32; _WIDESTRING_U32_MACRO_LEN] = [0; _WIDESTRING_U32_MACRO_LEN];
-                    let mut bytes = _WIDESTRING_U32_MACRO_UTF8.as_bytes();
-                    let mut i = 0;
-                    while let $crate::internals::core::option::Option::Some((ch, rest)) = $crate::internals::next_code_point(bytes) {
-                        bytes = rest;
-                        buffer[i] = ch;
-                        i += 1;
+                    let mut _widestring_buffer: [$crate::internals::core::primitive::u32; _WIDESTRING_U32_MACRO_LEN] = [0; _WIDESTRING_U32_MACRO_LEN];
+                    let mut _widestring_bytes = _WIDESTRING_U32_MACRO_UTF8.as_bytes();
+                    let mut _widestring_i = 0;
+                    while let $crate::internals::core::option::Option::Some((_widestring_ch, _widestring_rest)) = $crate::internals::next_code_point(_widestring_bytes) {
+                        _widestring_bytes = _widestring_rest;
+                        _widestring_buffer[_widestring_i] = _widestring_ch;
+                        _widestring_i += 1;
                     }
-                    buffer
+                    _widestring_buffer
                 };
                 #[allow(unused_unsafe)]
                 unsafe { $crate::$str::$fn(&_WIDESTRING_U32_MACRO_UTF32) }
