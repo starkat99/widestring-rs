@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.0.1] - 2022-06-24 <a name="1.0.1"></a>
+### Fixed
+- Reduce collision potential for macros. By [@OpenByteDev].
+
 ## [1.0.0] - 2022-06-21 <a name="1.0.0"></a>
 ### Changed
 - **Breaking Change** Minimum supported Rust version is now 1.58.
@@ -322,8 +326,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [@nicbn]: https://github.com/nicbn
 [@joshwd36]: https://github.com/joshwb36
 [@yescallop]: https://github.com/yescallop
+[@OpenByteDev]: https://github.com/OpenByteDev
 
-[Unreleased]: https://github.com/starkat99/widestring-rs/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/starkat99/widestring-rs/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/starkat99/widestring-rs/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/starkat99/widestring-rs/compare/v1.0.0-beta.1...v1.0.0
 [1.0.0-beta.1]: https://github.com/starkat99/widestring-rs/compare/v0.5.1...v1.0.0-beta.1
 [0.5.1]: https://github.com/starkat99/widestring-rs/compare/v0.5.0...v0.5.1
