@@ -14,6 +14,9 @@ macro_rules! implement_utf16_macro {
                     let mut _widestring_i = 0;
                     while let $crate::internals::core::option::Option::Some((_widestring_ch, _widestring_rest)) = $crate::internals::next_code_point(_widestring_bytes) {
                         _widestring_bytes = _widestring_rest;
+                        if $extra_len > 0 && _widestring_ch == 0 {
+                            panic!("invalid NUL value found in string literal");
+                        }
                         // https://doc.rust-lang.org/std/primitive.char.html#method.encode_utf16
                         if _widestring_ch & 0xFFFF == _widestring_ch {
                             _widestring_buffer[_widestring_i] = _widestring_ch as $crate::internals::core::primitive::u16;
@@ -104,6 +107,9 @@ macro_rules! implement_utf32_macro {
                     let mut _widestring_bytes = _WIDESTRING_U32_MACRO_UTF8.as_bytes();
                     let mut _widestring_i = 0;
                     while let $crate::internals::core::option::Option::Some((_widestring_ch, _widestring_rest)) = $crate::internals::next_code_point(_widestring_bytes) {
+                        if $extra_len > 0 && _widestring_ch == 0 {
+                            panic!("invalid NUL value found in string literal");
+                        }
                         _widestring_bytes = _widestring_rest;
                         _widestring_buffer[_widestring_i] = _widestring_ch;
                         _widestring_i += 1;
