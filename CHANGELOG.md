@@ -4,6 +4,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.0.2] - 2022-07-15 <a name="1.0.2"></a>
 ### Fixed
 - Correctly check for and error on nul values in C-string macros `u16cstr!`, `u32cstr!`, and
   `widecstr!`. Fixes [#28].
@@ -332,7 +334,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [@yescallop]: https://github.com/yescallop
 [@OpenByteDev]: https://github.com/OpenByteDev
 
-[Unreleased]: https://github.com/starkat99/widestring-rs/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/starkat99/widestring-rs/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/starkat99/widestring-rs/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/starkat99/widestring-rs/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/starkat99/widestring-rs/compare/v1.0.0-beta.1...v1.0.0
 [1.0.0-beta.1]: https://github.com/starkat99/widestring-rs/compare/v0.5.1...v1.0.0-beta.1
