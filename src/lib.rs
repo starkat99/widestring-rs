@@ -224,6 +224,11 @@
 #![doc(html_root_url = "https://docs.rs/widestring/1.0.2")]
 #![doc(test(attr(deny(warnings), allow(unused))))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(
+    feature = "debugger_visualizer",
+    feature(debugger_visualizer),
+    debugger_visualizer(natvis_file = "../debug_metadata/widestring.natvis")
+)]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
