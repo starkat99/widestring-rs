@@ -73,4 +73,4 @@ jobs:
           command: miri
           args: test
         env:
-          MIRIFLAGS: -Zmiri-strict-provenance
+          MIRIFLAGS: -Zmiri-strict-provenance -Zmiri-retag-fields
