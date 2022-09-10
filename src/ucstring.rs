@@ -10,7 +10,8 @@ use alloc::{
 };
 use core::{
     borrow::{Borrow, BorrowMut},
-    cmp, mem::{self, ManuallyDrop},
+    cmp,
+    mem::{self, ManuallyDrop},
     ops::{Deref, DerefMut, Index},
     ptr,
     slice::{self, SliceIndex},
