@@ -10,7 +10,8 @@ use alloc::{
 };
 use core::{
     borrow::{Borrow, BorrowMut},
-    cmp, mem,
+    cmp,
+    mem::{self, ManuallyDrop},
     ops::{Deref, DerefMut, Index},
     ptr,
     slice::{self, SliceIndex},
@@ -376,9 +377,10 @@ macro_rules! ucstring_common_impl {
 
             /// Bypass "move out of struct which implements [`Drop`] trait" restriction.
             fn into_inner(self) -> Box<[$uchar]> {
-                let result = unsafe { ptr::read(&self.inner) };
-                mem::forget(self);
-                result
+                let v = ManuallyDrop::new(self);
+                unsafe {
+                    ptr::read(&v.inner)
+                }
             }
         }
 
