@@ -1381,7 +1381,7 @@ impl U32CString {
         Self::from_chars_unchecked(v)
     }
 
-    /// Constructs a [`U16CString`] copy from a [`str`], encoding it as UTF-32, truncating at the
+    /// Constructs a [`U32CString`] copy from a [`str`], encoding it as UTF-32, truncating at the
     /// first nul terminator.
     ///
     /// This makes a string copy of the [`str`]. Since [`str`] will always be valid UTF-8, the
@@ -1538,7 +1538,7 @@ impl U32CString {
     ///
     /// This function will return an error if the data contains a nul value anywhere except the
     /// last character.
-    /// The returned error will contain a [`Vec<u16>`] as well as the position of the nul value.
+    /// The returned error will contain a [`Vec<u32>`] as well as the position of the nul value.
     ///
     /// # Examples
     ///
