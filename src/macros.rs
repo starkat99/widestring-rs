@@ -244,7 +244,98 @@ macro_rules! widecstr {
     }};
 }
 
+/// Includes a UTF-16 encoded file as a [`Utf16Str`][crate::Utf16Str].
+///
+/// This uses [`include_bytes`](core::include_bytes) to accomplish this.
+///
+/// # Examples
+///
+/// ```
+/// # #[cfg(feature = "alloc")] {
+/// use widestring::{include_utf16str, Utf16Str, Utf16String};
+///
+/// const STRING: &Utf16Str = include_utf16str!("example.txt");
+/// assert_eq!(Utf16String::from_str("My string"), STRING);
+/// # }
+/// ```
+#[macro_export]
+macro_rules! include_utf16str {
+    ($text:expr) => {{
+        const _WIDESTRING_U16_INCLUDE_MACRO_U8: &[$crate::internals::core::primitive::u8] =
+            $crate::internals::core::include_bytes!($text);
+        const _WIDESTRING_U16_INCLUDE_MACRO_LEN: $crate::internals::core::primitive::usize = {
+            let _widestring_len =
+                <[$crate::internals::core::primitive::u8]>::len(_WIDESTRING_U16_INCLUDE_MACRO_U8);
+            if _widestring_len % $crate::internals::core::mem::size_of::<u16>() != 0 {
+                panic!("file not encoded as UTF-16")
+            }
+            _widestring_len / 2
+        };
+        const _WIDESTRING_U16_INCLUDE_MACRO_UTF16: (
+            [$crate::internals::core::primitive::u16; _WIDESTRING_U16_INCLUDE_MACRO_LEN],
+            bool,
+            bool,
+        ) = {
+            let mut _widestring_buffer: [$crate::internals::core::primitive::u16;
+                _WIDESTRING_U16_INCLUDE_MACRO_LEN] = [0; _WIDESTRING_U16_INCLUDE_MACRO_LEN];
+            let mut _widestring_bytes = _WIDESTRING_U16_INCLUDE_MACRO_U8;
+            let mut _widestring_i = 0;
+            let mut _widestring_decode = $crate::internals::DecodeUtf16 {
+                bom: $crate::internals::core::option::Option::None,
+                eof: false,
+                next: $crate::internals::core::option::Option::None,
+                forward_buf: $crate::internals::core::option::Option::None,
+                back_buf: $crate::internals::core::option::Option::None,
+            };
+
+            loop {
+                match $crate::internals::DecodeUtf16::next_code_point(
+                    _widestring_decode,
+                    _widestring_bytes,
+                ) {
+                    Ok((_widestring_new_decode, _widestring_ch, _widestring_rest)) => {
+                        _widestring_decode = _widestring_new_decode;
+
+                        _widestring_bytes = _widestring_rest;
+                        _widestring_buffer[_widestring_i] = _widestring_ch;
+                        _widestring_i += 1;
+                    }
+                    Err(_widestring_new_decode) => {
+                        _widestring_decode = _widestring_new_decode;
+                        break;
+                    }
+                }
+            }
+
+            (
+                _widestring_buffer,
+                if let Some(Some(_)) = _widestring_decode.bom {
+                    true
+                } else {
+                    false
+                },
+                _widestring_decode.eof,
+            )
+        };
+        const _WIDESTRING_U16_INCLUDE_MACRO_UTF16_TRIMMED:
+            &[$crate::internals::core::primitive::u16] = {
+            match &_WIDESTRING_U16_INCLUDE_MACRO_UTF16 {
+                (buffer, false, false) => buffer,
+                ([_bom, rest @ ..], true, false) => rest,
+                ([rest @ .., _eof], false, true) => rest,
+                ([_bom, rest @ .., _eof], true, true) => rest,
+            }
+        };
+
+        #[allow(unused_unsafe)]
+        unsafe {
+            $crate::Utf16Str::from_slice_unchecked(_WIDESTRING_U16_INCLUDE_MACRO_UTF16_TRIMMED)
+        }
+    }};
+}
+
 #[doc(hidden)]
+#[allow(missing_debug_implementations)]
 pub mod internals {
     pub use core;
 
@@ -272,6 +363,94 @@ pub mod internals {
                 rest,
             )),
             [..] => None,
+        }
+    }
+
+    pub enum BoM {
+        Little,
+        Big,
+    }
+
+    pub struct DecodeUtf16 {
+        pub bom: Option<Option<BoM>>,
+        pub eof: bool,
+        pub next: Option<u16>,
+        pub forward_buf: Option<u16>,
+        pub back_buf: Option<u16>,
+    }
+
+    impl DecodeUtf16 {
+        pub const fn next_code_point(
+            mut self,
+            mut utf16: &[u8],
+        ) -> Result<(Self, u16, &[u8]), Self> {
+            if let [one, two] = utf16 {
+                if u16::from_le_bytes([*one, *two]) == 0x0000 {
+                    self.eof = true;
+                }
+            }
+
+            if self.bom.is_none() {
+                if let [one, two, ..] = utf16 {
+                    let ch = u16::from_le_bytes([*one, *two]);
+                    if ch == 0xfeff {
+                        self.bom = Some(Some(BoM::Little));
+                    } else if ch == 0xfffe {
+                        self.bom = Some(Some(BoM::Big));
+                    } else {
+                        self.bom = Some(None);
+                    }
+                }
+            }
+
+            // Copied from `DecodeUtf16`
+            if let Some(u) = self.next {
+                self.next = None;
+                return Ok((self, u, utf16));
+            }
+
+            let u = if let Some(u) = self.forward_buf {
+                self.forward_buf = None;
+                u
+            } else if let [one, two, rest @ ..] = utf16 {
+                utf16 = rest;
+                match self.bom {
+                    Some(Some(BoM::Big)) => u16::from_be_bytes([*one, *two]),
+                    _ => u16::from_le_bytes([*one, *two]),
+                }
+            } else if let Some(u) = self.back_buf {
+                self.back_buf = None;
+                u
+            } else {
+                return Err(self);
+            };
+
+            if !crate::is_utf16_surrogate(u) {
+                Ok((self, u, utf16))
+            } else if crate::is_utf16_low_surrogate(u) {
+                panic!("unpaired surrogate found")
+            } else {
+                let u2 = if let [one, two, rest @ ..] = utf16 {
+                    utf16 = rest;
+                    match self.bom {
+                        Some(Some(BoM::Big)) => u16::from_be_bytes([*one, *two]),
+                        _ => u16::from_le_bytes([*one, *two]),
+                    }
+                } else if let Some(u) = self.back_buf {
+                    self.back_buf = None;
+                    u
+                } else {
+                    panic!("unpaired surrogate found")
+                };
+
+                if !crate::is_utf16_low_surrogate(u2) {
+                    panic!("unpaired surrogate found")
+                }
+
+                self.next = Some(u2);
+
+                Ok((self, u, utf16))
+            }
         }
     }
 
@@ -306,6 +485,8 @@ mod test {
     };
 
     const UTF16STR_TEST: &Utf16Str = utf16str!("⚧️🏳️‍⚧️➡️s");
+    const UTF16STR_INCLUDE_LE_TEST: &Utf16Str = include_utf16str!("test_le.txt");
+    const UTF16STR_INCLUDE_BE_TEST: &Utf16Str = include_utf16str!("test_be.txt");
     const U16STR_TEST: &U16Str = u16str!("⚧️🏳️‍⚧️➡️s");
     const U16CSTR_TEST: &U16CStr = u16cstr!("⚧️🏳️‍⚧️➡️s");
     const UTF32STR_TEST: &Utf32Str = utf32str!("⚧️🏳️‍⚧️➡️s");
@@ -318,6 +499,8 @@ mod test {
     fn str_macros() {
         let str = Utf16String::from_str("⚧️🏳️‍⚧️➡️s");
         assert_eq!(&str, UTF16STR_TEST);
+        assert_eq!(&str, UTF16STR_INCLUDE_LE_TEST);
+        assert_eq!(&str, UTF16STR_INCLUDE_BE_TEST);
         assert_eq!(&str, U16STR_TEST);
         assert_eq!(&str, U16CSTR_TEST);
         assert!(matches!(U16CSTR_TEST.as_slice_with_nul().last(), Some(&0)));
