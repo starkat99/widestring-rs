@@ -15,6 +15,7 @@ use alloc::{
     string::String,
     vec::Vec,
 };
+#[allow(unused_imports)]
 use core::{
     borrow::{Borrow, BorrowMut},
     convert::{AsMut, AsRef, From, Infallible, TryFrom},
