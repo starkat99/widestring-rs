@@ -1,6 +1,7 @@
 //! Errors returned by functions in this crate.
 
 #[cfg(feature = "alloc")]
+#[allow(unused_imports)]
 use alloc::vec::Vec;
 
 /// An error returned to indicate a problem with nul values occurred.

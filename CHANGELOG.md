@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 - `U16String::pop_char` panics with surrogate string. Fixes [#38].
+- Various import and new clippy warnings.
 
 ## [1.0.2] - 2022-07-15 <a name="1.0.2"></a>
 ### Fixed

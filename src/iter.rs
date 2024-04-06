@@ -5,6 +5,7 @@ use crate::{
     error::{DecodeUtf16Error, DecodeUtf32Error},
     is_utf16_high_surrogate, is_utf16_low_surrogate, is_utf16_surrogate,
 };
+#[allow(unused_imports)]
 use core::{
     char,
     iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator},

@@ -3,6 +3,7 @@
 //! This module contains wide C strings and related types.
 
 use crate::{error::ContainsNul, U16CStr, U16Str, U16String, U32CStr, U32Str, U32String};
+#[allow(unused_imports)]
 use alloc::{
     borrow::{Cow, ToOwned},
     boxed::Box,

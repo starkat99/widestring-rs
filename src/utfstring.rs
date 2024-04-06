@@ -8,6 +8,7 @@ use crate::{
     is_utf16_low_surrogate, is_utf16_surrogate, validate_utf16, validate_utf16_vec, validate_utf32,
     validate_utf32_vec, Utf16Str, Utf32Str,
 };
+#[allow(unused_imports)]
 use alloc::{
     borrow::{Cow, ToOwned},
     boxed::Box,

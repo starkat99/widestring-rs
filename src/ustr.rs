@@ -8,6 +8,7 @@ use crate::{
     U16String, U32String,
 };
 #[cfg(feature = "alloc")]
+#[allow(unused_imports)]
 use alloc::{boxed::Box, string::String, vec::Vec};
 use core::{
     char,

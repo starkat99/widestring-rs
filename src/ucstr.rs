@@ -7,6 +7,7 @@ use crate::{
     U16Str, U32Str,
 };
 #[cfg(feature = "alloc")]
+#[allow(unused_imports)]
 use alloc::{borrow::ToOwned, boxed::Box, string::String};
 use core::{
     fmt::Write,

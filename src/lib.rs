@@ -236,6 +236,7 @@ extern crate alloc;
 
 use crate::error::{DecodeUtf16Error, DecodeUtf32Error};
 #[cfg(feature = "alloc")]
+#[allow(unused_imports)]
 use alloc::vec::Vec;
 use core::fmt::Write;
 
