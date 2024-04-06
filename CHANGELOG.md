@@ -4,6 +4,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- `U16String::pop_char` panics with surrogate string. Fixes [#38].
 
 ## [1.0.2] - 2022-07-15 <a name="1.0.2"></a>
 ### Fixed
@@ -328,6 +330,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [#20]: https://github.com/starkat99/widestring-rs/issues/20
 [#22]: https://github.com/starkat99/widestring-rs/issues/22
 [#28]: https://github.com/starkat99/widestring-rs/issues/28
+[#38]: https://github.com/starkat99/widestring-rs/issues/38
 
 [@nicbn]: https://github.com/nicbn
 [@joshwd36]: https://github.com/joshwb36
