@@ -1,5 +1,6 @@
 use super::{Utf16String, Utf32String};
 use crate::utfstr::{CharsUtf16, CharsUtf32};
+#[allow(unused_imports)]
 use core::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator};
 
 /// A draining iterator for [`Utf16String`].

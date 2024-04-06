@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use core::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator};
 
 /// A draining iterator for string data with unknown encoding.

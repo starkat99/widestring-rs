@@ -2,6 +2,7 @@ use crate::{
     debug_fmt_char_iter, decode_utf16, decode_utf32,
     iter::{DecodeUtf16, DecodeUtf32},
 };
+#[allow(unused_imports)]
 use core::{
     fmt::Write,
     iter::{Copied, DoubleEndedIterator, ExactSizeIterator, FlatMap, FusedIterator},
