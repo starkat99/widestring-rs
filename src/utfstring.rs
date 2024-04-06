@@ -2523,6 +2523,19 @@ impl Utf32String {
         self.inner
             .splice(range, replace_with.as_slice().iter().copied());
     }
+
+    /// Converts string into a [`Vec`] of [`char`]s.
+    ///
+    /// This consumes the string without copying its contents.
+    #[allow(trivial_casts)]
+    #[inline]
+    #[must_use]
+    pub fn into_char_vec(self) -> Vec<char> {
+        let mut v = mem::ManuallyDrop::new(self.into_vec());
+        let (ptr, len, cap) = (v.as_mut_ptr(), v.len(), v.capacity());
+        // SAFETY: Self should be valid UTF-32 so chars will be in range
+        unsafe { Vec::from_raw_parts(ptr as *mut char, len, cap) }
+    }
 }
 
 impl AsMut<[char]> for Utf32String {
@@ -2550,6 +2563,13 @@ impl From<&[char]> for Utf32String {
     #[inline]
     fn from(value: &[char]) -> Self {
         Utf32String::from_chars(value)
+    }
+}
+
+impl From<Utf32String> for Vec<char> {
+    #[inline]
+    fn from(value: Utf32String) -> Self {
+        value.into_char_vec()
     }
 }
 

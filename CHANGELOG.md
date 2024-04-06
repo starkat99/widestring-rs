@@ -4,6 +4,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- `Utf32String::into_char_vec` and missing conversion to `Vec<char>` for `Utf32String`. Fixes [#37].
+
 ### Fixed
 - `U16String::pop_char` panics with surrogate string. Fixes [#38].
 
@@ -330,6 +333,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [#20]: https://github.com/starkat99/widestring-rs/issues/20
 [#22]: https://github.com/starkat99/widestring-rs/issues/22
 [#28]: https://github.com/starkat99/widestring-rs/issues/28
+[#37]: https://github.com/starkat99/widestring-rs/issues/37
 [#38]: https://github.com/starkat99/widestring-rs/issues/38
 
 [@nicbn]: https://github.com/nicbn
