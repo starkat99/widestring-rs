@@ -26,6 +26,9 @@ this crate.
 - **`std`** - Enabled by default. Enable features that depend on the Rust `std` library, including
   everything in the `alloc` feature.
 
+- **`debugger_visualizer`** Add debugger visualizer data for crate types. _Requires Rust 1.71 or
+  newer_
+
 ## License
 
 This library is distributed under the terms of either of:

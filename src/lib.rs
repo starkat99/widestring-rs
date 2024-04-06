@@ -220,7 +220,7 @@
     trivial_numeric_casts,
     future_incompatible
 )]
-#![allow(renamed_and_removed_lints)] // Until min version gets bumped to after rename
+#![allow(renamed_and_removed_lints, stable_features)] // Until min version gets bumped
 #![cfg_attr(not(feature = "std"), no_std)]
 #![doc(html_root_url = "https://docs.rs/widestring/1.0.2")]
 #![doc(test(attr(deny(warnings), allow(unused))))]

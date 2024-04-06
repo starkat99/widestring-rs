@@ -17,8 +17,7 @@ default = ["std"]
 std = ["alloc"]
 alloc = []
 
-# UNSTABLE FEATURES (requires Rust nightly)
-# Enable to use the #[debugger_visualizer] attribute.
+# Enable to use the #[debugger_visualizer] attribute. Requires Rust 1.71+
 debugger_visualizer = ["alloc"]
 
 [dev-dependencies]
