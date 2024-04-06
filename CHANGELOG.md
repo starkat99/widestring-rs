@@ -4,12 +4,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.1.0] - 2022-04-06 <a name="1.1.0"></a>
 ### Added
 - `Utf32String::into_char_vec` and missing conversion to `Vec<char>` for `Utf32String`. Fixes [#37].
+- `include_utf16str!` macro to include UTF-16 file at compile-time as `Utf16Str`. By [@daxpedda].
 
 ### Fixed
 - `U16String::pop_char` panics with surrogate string. Fixes [#38].
-- Various import and new clippy warnings.
+- Various import warnings and new clippy warnings, plus stabilized debugger visulaizer warnings.
 
 ## [1.0.2] - 2022-07-15 <a name="1.0.2"></a>
 ### Fixed
@@ -341,8 +344,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [@joshwd36]: https://github.com/joshwb36
 [@yescallop]: https://github.com/yescallop
 [@OpenByteDev]: https://github.com/OpenByteDev
+[@daxpedda]: https://github.com/daxpedda
 
-[Unreleased]: https://github.com/starkat99/widestring-rs/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/starkat99/widestring-rs/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/starkat99/widestring-rs/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/starkat99/widestring-rs/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/starkat99/widestring-rs/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/starkat99/widestring-rs/compare/v1.0.0-beta.1...v1.0.0
