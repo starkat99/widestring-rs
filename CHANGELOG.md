@@ -4,6 +4,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Minor restructing of included license file locations to be more consistent with crates ecosystem.
+
+### Added
+- Added `.lines()` method on various string slices. Fixes [#33]. By [@mr-adult].
 
 ## [1.1.0] - 2022-04-06 <a name="1.1.0"></a>
 ### Added
@@ -339,12 +344,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [#28]: https://github.com/starkat99/widestring-rs/issues/28
 [#37]: https://github.com/starkat99/widestring-rs/issues/37
 [#38]: https://github.com/starkat99/widestring-rs/issues/38
+[#33]: https://github.com/starkat99/widestring-rs/issues/33
 
 [@nicbn]: https://github.com/nicbn
 [@joshwd36]: https://github.com/joshwb36
 [@yescallop]: https://github.com/yescallop
 [@OpenByteDev]: https://github.com/OpenByteDev
 [@daxpedda]: https://github.com/daxpedda
+[@mr-adult]: https://github.com/mr-adult
 
 [Unreleased]: https://github.com/starkat99/widestring-rs/compare/v1.1.0...HEAD
 [1.1.0]: https://github.com/starkat99/widestring-rs/compare/v1.0.2...v1.1.0
