@@ -2,6 +2,9 @@ use crate::{
     debug_fmt_char_iter, decode_utf16, decode_utf32,
     iter::{DecodeUtf16, DecodeUtf32},
 };
+use core::{
+    borrow::Borrow, iter::Peekable, marker::PhantomData, ops::{Index, Range}, usize
+};
 #[allow(unused_imports)]
 use core::{
     fmt::Write,
@@ -408,4 +411,95 @@ impl<'a> ExactSizeIterator for CodeUnits<'a> {
     fn len(&self) -> usize {
         self.iter.len()
     }
+}
+
+/// An iterator over the lines of a [`Utf16Str`], [`Utf32Str`], or other wide string
+/// that has the char_indices method. Returns string slices.
+///
+/// This struct is created with one of: 
+/// 1. The [`lines`][crate::Utf16Str::lines] method on [`Utf16Str`]
+/// 2. The [`lines`][crate::Utf32Str::lines] method on [`Utf32Str`]
+/// 3. etc.
+/// 
+/// See their documentation for more.
+#[derive(Debug, Clone)]
+pub struct Lines<'a, Str, CharIndices>
+where
+    Str: Borrow<Str> + Index<Range<usize>, Output = Str> + ?Sized,
+    CharIndices: IntoIterator<Item = (usize, char)>,
+{
+    str: &'a Str,
+    str_len: usize,
+    char_indices: Peekable<CharIndices::IntoIter>,
+}
+
+impl<'a, Str, CharIndices> Lines<'a, Str, CharIndices>
+where
+    Str: Borrow<Str> + Index<Range<usize>, Output = Str> + ?Sized,
+    CharIndices: IntoIterator<Item = (usize, char)>,
+{
+    pub(crate) fn new(str: &'a Str, str_len: usize, char_indices: CharIndices) -> Self {
+        Self {
+            str,
+            str_len,
+            char_indices: char_indices.into_iter().peekable(),
+        }
+    }
+}
+
+impl<'a, Str, CharIndices> Iterator for Lines<'a, Str, CharIndices>
+where
+    Str: Borrow<Str> + Index<Range<usize>, Output = Str> + ?Sized,
+    CharIndices: IntoIterator<Item = (usize, char)>,
+{
+    type Item = &'a Str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut current_char_index = if let Some(ch_index) = self.char_indices.next(){
+            ch_index
+        } else {
+            return None;
+        };
+
+        let line_start = current_char_index.0;
+        let mut line_end = current_char_index.0;
+        let mut previous_was_carriage_return;
+
+        loop {
+            if current_char_index.1 == '\n' {
+                break;
+            }
+
+            if current_char_index.1 == '\r' {
+                line_end = current_char_index.0;
+                previous_was_carriage_return = true;
+            } else {
+                line_end = self.char_indices.peek()
+                    .map(|ch_index| ch_index.0)
+                    .unwrap_or(self.str_len);
+                previous_was_carriage_return = false;
+            }
+
+            if let Some(current) = self.char_indices.next() {
+                current_char_index = current;
+            } else {
+                line_end = if previous_was_carriage_return {
+                    self.str_len
+                } else {
+                    line_end
+                };
+                break;
+            }
+        }
+
+        Some(&self.str[line_start..line_end])
+    }
+}
+
+// Since CharIndicesUtf16 is a FusedIterator, so is Lines
+impl<'a, Str, CharIndices> FusedIterator for Lines<'a, Str, CharIndices>
+where
+    Str: Borrow<Str> + Index<Range<usize>, Output = Str>,
+    CharIndices: IntoIterator<Item = (usize, char)>,
+{
 }

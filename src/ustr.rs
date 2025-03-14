@@ -2,6 +2,7 @@
 //!
 //! This module contains wide string slices and related types.
 
+use crate::utfstr::Lines;
 #[cfg(feature = "alloc")]
 use crate::{
     error::{Utf16Error, Utf32Error},
@@ -910,6 +911,59 @@ impl U16Str {
     pub fn char_indices_lossy(&self) -> CharIndicesLossyUtf16<'_> {
         CharIndicesLossyUtf16::new(self.as_slice())
     }
+
+    /// Returns an iterator over the lines of a [`U16Str`], as string slices.
+    ///
+    /// Lines are split at line endings that are either newlines (`\n`) or
+    /// sequences of a carriage return followed by a line feed (`\r\n`).
+    ///
+    /// Line terminators are not included in the lines returned by the iterator.
+    ///
+    /// Note that any carriage return (`\r`) not immediately followed by a
+    /// line feed (`\n`) does not split a line. These carriage returns are
+    /// thereby included in the produced lines.
+    ///
+    /// The final line ending is optional. A string that ends with a final line
+    /// ending will return the same lines as an otherwise identical string
+    /// without a final line ending.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use widestring::{u16str};
+    /// 
+    /// let text = u16str!("foo\r\nbar\n\nbaz\r");
+    /// let mut lines = text.lines_lossy();
+    ///
+    /// assert_eq!(Some(u16str!("foo")), lines.next());
+    /// assert_eq!(Some(u16str!("bar")), lines.next());
+    /// assert_eq!(Some(u16str!("")), lines.next());
+    /// // Trailing carriage return is included in the last line
+    /// assert_eq!(Some(u16str!("baz\r")), lines.next());
+    ///
+    /// assert_eq!(None, lines.next());
+    /// ```
+    ///
+    /// The final line does not require any ending:
+    ///
+    /// ```
+    /// use widestring::{u16str};
+    /// 
+    /// let text = u16str!("foo\nbar\n\r\nbaz");
+    /// let mut lines = text.lines_lossy();
+    ///
+    /// assert_eq!(Some(u16str!("foo")), lines.next());
+    /// assert_eq!(Some(u16str!("bar")), lines.next());
+    /// assert_eq!(Some(u16str!("")), lines.next());
+    /// assert_eq!(Some(u16str!("baz")), lines.next());
+    ///
+    /// assert_eq!(None, lines.next());
+    /// ```
+    pub fn lines_lossy(&self) -> Lines<'_, Self, CharIndicesLossyUtf16<'_>> {
+        Lines::new(self, self.len(), self.char_indices_lossy())
+    }
 }
 
 impl U32Str {
@@ -1154,6 +1208,59 @@ impl U32Str {
     #[must_use]
     pub fn char_indices_lossy(&self) -> CharIndicesLossyUtf32<'_> {
         CharIndicesLossyUtf32::new(self.as_slice())
+    }
+
+    /// Returns an iterator over the lines of a [`U32Str`], as string slices.
+    ///
+    /// Lines are split at line endings that are either newlines (`\n`) or
+    /// sequences of a carriage return followed by a line feed (`\r\n`).
+    ///
+    /// Line terminators are not included in the lines returned by the iterator.
+    ///
+    /// Note that any carriage return (`\r`) not immediately followed by a
+    /// line feed (`\n`) does not split a line. These carriage returns are
+    /// thereby included in the produced lines.
+    ///
+    /// The final line ending is optional. A string that ends with a final line
+    /// ending will return the same lines as an otherwise identical string
+    /// without a final line ending.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use widestring::{u32str};
+    /// 
+    /// let text = u32str!("foo\r\nbar\n\nbaz\r");
+    /// let mut lines = text.lines_lossy();
+    ///
+    /// assert_eq!(Some(u32str!("foo")), lines.next());
+    /// assert_eq!(Some(u32str!("bar")), lines.next());
+    /// assert_eq!(Some(u32str!("")), lines.next());
+    /// // Trailing carriage return is included in the last line
+    /// assert_eq!(Some(u32str!("baz\r")), lines.next());
+    ///
+    /// assert_eq!(None, lines.next());
+    /// ```
+    ///
+    /// The final line does not require any ending:
+    ///
+    /// ```
+    /// use widestring::{u32str};
+    /// 
+    /// let text = u32str!("foo\nbar\n\r\nbaz");
+    /// let mut lines = text.lines_lossy();
+    ///
+    /// assert_eq!(Some(u32str!("foo")), lines.next());
+    /// assert_eq!(Some(u32str!("bar")), lines.next());
+    /// assert_eq!(Some(u32str!("")), lines.next());
+    /// assert_eq!(Some(u32str!("baz")), lines.next());
+    ///
+    /// assert_eq!(None, lines.next());
+    /// ```
+    pub fn lines_lossy(&self) -> Lines<'_, Self, CharIndicesLossyUtf32<'_>> {
+        Lines::new(self, self.len(), self.char_indices_lossy())
     }
 }
 

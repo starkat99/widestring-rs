@@ -1422,6 +1422,59 @@ impl Utf16Str {
         }
         s
     }
+
+    /// Returns an iterator over the lines of a [`Utf16Str`], as string slices.
+    ///
+    /// Lines are split at line endings that are either newlines (`\n`) or
+    /// sequences of a carriage return followed by a line feed (`\r\n`).
+    ///
+    /// Line terminators are not included in the lines returned by the iterator.
+    ///
+    /// Note that any carriage return (`\r`) not immediately followed by a
+    /// line feed (`\n`) does not split a line. These carriage returns are
+    /// thereby included in the produced lines.
+    ///
+    /// The final line ending is optional. A string that ends with a final line
+    /// ending will return the same lines as an otherwise identical string
+    /// without a final line ending.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use widestring::{Utf16String, utf16str};
+    /// 
+    /// let text = utf16str!("foo\r\nbar\n\nbaz\r");
+    /// let mut lines = text.lines();
+    ///
+    /// assert_eq!(Some(utf16str!("foo")), lines.next());
+    /// assert_eq!(Some(utf16str!("bar")), lines.next());
+    /// assert_eq!(Some(utf16str!("")), lines.next());
+    /// // Trailing carriage return is included in the last line
+    /// assert_eq!(Some(utf16str!("baz\r")), lines.next());
+    ///
+    /// assert_eq!(None, lines.next());
+    /// ```
+    ///
+    /// The final line does not require any ending:
+    ///
+    /// ```
+    /// use widestring::{Utf16String, utf16str};
+    /// 
+    /// let text = utf16str!("foo\nbar\n\r\nbaz");
+    /// let mut lines = text.lines();
+    ///
+    /// assert_eq!(Some(utf16str!("foo")), lines.next());
+    /// assert_eq!(Some(utf16str!("bar")), lines.next());
+    /// assert_eq!(Some(utf16str!("")), lines.next());
+    /// assert_eq!(Some(utf16str!("baz")), lines.next());
+    ///
+    /// assert_eq!(None, lines.next());
+    /// ```
+    pub fn lines(&self) -> Lines<'_, Utf16Str, CharIndicesUtf16<'_>> {
+        Lines::new(self, self.len(), self.char_indices())
+    }
 }
 
 impl Utf32Str {
@@ -2026,6 +2079,59 @@ impl Utf32Str {
             }
         }
         s
+    }
+
+    /// Returns an iterator over the lines of a [`Utf32Str`], as string slices.
+    ///
+    /// Lines are split at line endings that are either newlines (`\n`) or
+    /// sequences of a carriage return followed by a line feed (`\r\n`).
+    ///
+    /// Line terminators are not included in the lines returned by the iterator.
+    ///
+    /// Note that any carriage return (`\r`) not immediately followed by a
+    /// line feed (`\n`) does not split a line. These carriage returns are
+    /// thereby included in the produced lines.
+    ///
+    /// The final line ending is optional. A string that ends with a final line
+    /// ending will return the same lines as an otherwise identical string
+    /// without a final line ending.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use widestring::{Utf32String, utf32str};
+    /// 
+    /// let text = utf32str!("foo\r\nbar\n\nbaz\r");
+    /// let mut lines = text.lines();
+    ///
+    /// assert_eq!(Some(utf32str!("foo")), lines.next());
+    /// assert_eq!(Some(utf32str!("bar")), lines.next());
+    /// assert_eq!(Some(utf32str!("")), lines.next());
+    /// // Trailing carriage return is included in the last line
+    /// assert_eq!(Some(utf32str!("baz\r")), lines.next());
+    ///
+    /// assert_eq!(None, lines.next());
+    /// ```
+    ///
+    /// The final line does not require any ending:
+    ///
+    /// ```
+    /// use widestring::{Utf32String, utf32str};
+    /// 
+    /// let text = utf32str!("foo\nbar\n\r\nbaz");
+    /// let mut lines = text.lines();
+    ///
+    /// assert_eq!(Some(utf32str!("foo")), lines.next());
+    /// assert_eq!(Some(utf32str!("bar")), lines.next());
+    /// assert_eq!(Some(utf32str!("")), lines.next());
+    /// assert_eq!(Some(utf32str!("baz")), lines.next());
+    ///
+    /// assert_eq!(None, lines.next());
+    /// ```
+    pub fn lines(&self) -> Lines<'_, Utf32Str, CharIndicesUtf32<'_>> {
+        Lines::new(self, self.len(), self.char_indices())
     }
 }
 
