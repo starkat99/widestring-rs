@@ -1524,8 +1524,10 @@ impl Utf16String {
     /// ```
     #[inline]
     pub fn truncate(&mut self, new_len: usize) {
-        assert!(self.is_char_boundary(new_len));
-        self.inner.truncate(new_len)
+        if new_len <= self.len() {
+            assert!(self.is_char_boundary(new_len));
+            self.inner.truncate(new_len)
+        }
     }
 
     /// Removes the last character from the string buffer and returns it.
@@ -2669,3 +2671,21 @@ pub type WideUtfString = Utf32String;
 /// `wchar_t` size on platform.
 #[cfg(windows)]
 pub type WideUtfString = Utf16String;
+
+#[cfg(test)]
+mod test {
+    use crate::*;
+
+    #[test]
+    fn uft16_truncate() {
+        // Bug #39
+        let cs = utf16str!("trunc");
+        let mut s = cs.to_owned();
+        s.truncate(6);
+        assert_eq!(s.len(), 5);
+        s.truncate(5);
+        assert_eq!(s.len(), 5);
+        s.truncate(2);
+        assert_eq!(s.len(), 2);
+    }
+}

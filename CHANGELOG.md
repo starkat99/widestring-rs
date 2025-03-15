@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added `.lines()` method on various string slices. Fixes [#33]. By [@mr-adult].
 
 ### Fixed
+- Removed panic in `Utf16String::truncate` when `new_len` greater than string length. Fixes [#39].
 - Fixed various clippy warnings.
 - Fixed debugger visualizer for Rust 1.82+ due to changes in `core` library structures.
 
@@ -350,6 +351,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [#37]: https://github.com/starkat99/widestring-rs/issues/37
 [#38]: https://github.com/starkat99/widestring-rs/issues/38
 [#33]: https://github.com/starkat99/widestring-rs/issues/33
+[#39]: https://github.com/starkat99/widestring-rs/issues/39
 [#40]: https://github.com/starkat99/widestring-rs/issues/40
 
 [@nicbn]: https://github.com/nicbn
