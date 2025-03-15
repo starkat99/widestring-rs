@@ -597,7 +597,7 @@ const fn is_utf16_low_surrogate(u: u16) -> bool {
 /// Convert a UTF-16 surrogate pair to a `char`. Does not validate if the surrogates are valid.
 #[inline(always)]
 unsafe fn decode_utf16_surrogate_pair(high: u16, low: u16) -> char {
-    let c: u32 = (((high - 0xD800) as u32) << 10 | ((low) - 0xDC00) as u32) + 0x1_0000;
+    let c: u32 = ((((high - 0xD800) as u32) << 10) | ((low) - 0xDC00) as u32) + 0x1_0000;
     // SAFETY: we checked that it's a legal unicode value
     core::char::from_u32_unchecked(c)
 }

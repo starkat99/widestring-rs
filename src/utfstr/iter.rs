@@ -5,9 +5,7 @@ use crate::{
 use core::{
     borrow::Borrow,
     iter::Peekable,
-    marker::PhantomData,
     ops::{Index, Range},
-    usize,
 };
 #[allow(unused_imports)]
 use core::{
@@ -33,7 +31,7 @@ impl<'a> CharsUtf16<'a> {
     }
 }
 
-impl<'a> Iterator for CharsUtf16<'a> {
+impl Iterator for CharsUtf16<'_> {
     type Item = char;
 
     #[inline]
@@ -48,23 +46,23 @@ impl<'a> Iterator for CharsUtf16<'a> {
     }
 }
 
-impl<'a> FusedIterator for CharsUtf16<'a> {}
+impl FusedIterator for CharsUtf16<'_> {}
 
-impl<'a> DoubleEndedIterator for CharsUtf16<'a> {
+impl DoubleEndedIterator for CharsUtf16<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         self.iter.next_back().map(|r| r.unwrap())
     }
 }
 
-impl<'a> core::fmt::Debug for CharsUtf16<'a> {
+impl core::fmt::Debug for CharsUtf16<'_> {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         debug_fmt_char_iter(self.clone(), f)
     }
 }
 
-impl<'a> core::fmt::Display for CharsUtf16<'a> {
+impl core::fmt::Display for CharsUtf16<'_> {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         self.clone().try_for_each(|c| f.write_char(c))
@@ -88,7 +86,7 @@ impl<'a> CharsUtf32<'a> {
     }
 }
 
-impl<'a> Iterator for CharsUtf32<'a> {
+impl Iterator for CharsUtf32<'_> {
     type Item = char;
 
     #[inline]
@@ -103,7 +101,7 @@ impl<'a> Iterator for CharsUtf32<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator for CharsUtf32<'a> {
+impl DoubleEndedIterator for CharsUtf32<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         // Utf32Str already ensures valid code points
@@ -111,23 +109,23 @@ impl<'a> DoubleEndedIterator for CharsUtf32<'a> {
     }
 }
 
-impl<'a> FusedIterator for CharsUtf32<'a> {}
+impl FusedIterator for CharsUtf32<'_> {}
 
-impl<'a> ExactSizeIterator for CharsUtf32<'a> {
+impl ExactSizeIterator for CharsUtf32<'_> {
     #[inline]
     fn len(&self) -> usize {
         self.iter.len()
     }
 }
 
-impl<'a> core::fmt::Debug for CharsUtf32<'a> {
+impl core::fmt::Debug for CharsUtf32<'_> {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         debug_fmt_char_iter(self.clone(), f)
     }
 }
 
-impl<'a> core::fmt::Display for CharsUtf32<'a> {
+impl core::fmt::Display for CharsUtf32<'_> {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         self.clone().try_for_each(|c| f.write_char(c))
@@ -145,7 +143,7 @@ pub struct CharIndicesUtf16<'a> {
     iter: CharsUtf16<'a>,
 }
 
-impl<'a> CharIndicesUtf16<'a> {
+impl CharIndicesUtf16<'_> {
     /// Returns the position of the next character, or the length of the underlying string if
     /// there are no more characters.
     #[inline]
@@ -164,7 +162,7 @@ impl<'a> CharIndicesUtf16<'a> {
     }
 }
 
-impl<'a> Iterator for CharIndicesUtf16<'a> {
+impl Iterator for CharIndicesUtf16<'_> {
     type Item = (usize, char);
 
     #[inline]
@@ -185,9 +183,9 @@ impl<'a> Iterator for CharIndicesUtf16<'a> {
     }
 }
 
-impl<'a> FusedIterator for CharIndicesUtf16<'a> {}
+impl FusedIterator for CharIndicesUtf16<'_> {}
 
-impl<'a> DoubleEndedIterator for CharIndicesUtf16<'a> {
+impl DoubleEndedIterator for CharIndicesUtf16<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         let result = self.iter.next_back();
@@ -211,7 +209,7 @@ pub struct CharIndicesUtf32<'a> {
     iter: CharsUtf32<'a>,
 }
 
-impl<'a> CharIndicesUtf32<'a> {
+impl CharIndicesUtf32<'_> {
     /// Returns the position of the next character, or the length of the underlying string if
     /// there are no more characters.
     #[inline]
@@ -230,7 +228,7 @@ impl<'a> CharIndicesUtf32<'a> {
     }
 }
 
-impl<'a> Iterator for CharIndicesUtf32<'a> {
+impl Iterator for CharIndicesUtf32<'_> {
     type Item = (usize, char);
 
     #[inline]
@@ -251,9 +249,9 @@ impl<'a> Iterator for CharIndicesUtf32<'a> {
     }
 }
 
-impl<'a> FusedIterator for CharIndicesUtf32<'a> {}
+impl FusedIterator for CharIndicesUtf32<'_> {}
 
-impl<'a> DoubleEndedIterator for CharIndicesUtf32<'a> {
+impl DoubleEndedIterator for CharIndicesUtf32<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         let result = self.iter.next_back();
@@ -266,7 +264,7 @@ impl<'a> DoubleEndedIterator for CharIndicesUtf32<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for CharIndicesUtf32<'a> {
+impl ExactSizeIterator for CharIndicesUtf32<'_> {
     #[inline]
     fn len(&self) -> usize {
         self.iter.len()
@@ -387,7 +385,7 @@ impl<'a> CodeUnits<'a> {
     }
 }
 
-impl<'a> Iterator for CodeUnits<'a> {
+impl Iterator for CodeUnits<'_> {
     type Item = u16;
 
     #[inline]
@@ -401,16 +399,16 @@ impl<'a> Iterator for CodeUnits<'a> {
     }
 }
 
-impl<'a> FusedIterator for CodeUnits<'a> {}
+impl FusedIterator for CodeUnits<'_> {}
 
-impl<'a> DoubleEndedIterator for CodeUnits<'a> {
+impl DoubleEndedIterator for CodeUnits<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         self.iter.next_back()
     }
 }
 
-impl<'a> ExactSizeIterator for CodeUnits<'a> {
+impl ExactSizeIterator for CodeUnits<'_> {
     #[inline]
     fn len(&self) -> usize {
         self.iter.len()
@@ -459,11 +457,7 @@ where
     type Item = &'a Str;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut current_char_index = if let Some(ch_index) = self.char_indices.next() {
-            ch_index
-        } else {
-            return None;
-        };
+        let mut current_char_index = self.char_indices.next()?;
 
         let line_start = current_char_index.0;
         let mut line_end = current_char_index.0;
@@ -503,7 +497,7 @@ where
 }
 
 // Since CharIndicesUtf16 is a FusedIterator, so is Lines
-impl<'a, Str, CharIndices> FusedIterator for Lines<'a, Str, CharIndices>
+impl<Str, CharIndices> FusedIterator for Lines<'_, Str, CharIndices>
 where
     Str: Borrow<Str> + Index<Range<usize>, Output = Str>,
     CharIndices: IntoIterator<Item = (usize, char)>,

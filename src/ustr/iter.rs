@@ -24,7 +24,7 @@ impl<'a> CharsUtf16<'a> {
     }
 }
 
-impl<'a> Iterator for CharsUtf16<'a> {
+impl Iterator for CharsUtf16<'_> {
     type Item = Result<char, DecodeUtf16Error>;
 
     #[inline]
@@ -38,16 +38,16 @@ impl<'a> Iterator for CharsUtf16<'a> {
     }
 }
 
-impl<'a> FusedIterator for CharsUtf16<'a> {}
+impl FusedIterator for CharsUtf16<'_> {}
 
-impl<'a> DoubleEndedIterator for CharsUtf16<'a> {
+impl DoubleEndedIterator for CharsUtf16<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         self.inner.next_back()
     }
 }
 
-impl<'a> core::fmt::Debug for CharsUtf16<'a> {
+impl core::fmt::Debug for CharsUtf16<'_> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         crate::debug_fmt_utf16_iter(self.clone(), f)
     }
@@ -69,7 +69,7 @@ impl<'a> CharsUtf32<'a> {
     }
 }
 
-impl<'a> Iterator for CharsUtf32<'a> {
+impl Iterator for CharsUtf32<'_> {
     type Item = Result<char, DecodeUtf32Error>;
 
     #[inline]
@@ -83,23 +83,23 @@ impl<'a> Iterator for CharsUtf32<'a> {
     }
 }
 
-impl<'a> FusedIterator for CharsUtf32<'a> {}
+impl FusedIterator for CharsUtf32<'_> {}
 
-impl<'a> DoubleEndedIterator for CharsUtf32<'a> {
+impl DoubleEndedIterator for CharsUtf32<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         self.inner.next_back()
     }
 }
 
-impl<'a> ExactSizeIterator for CharsUtf32<'a> {
+impl ExactSizeIterator for CharsUtf32<'_> {
     #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 
-impl<'a> core::fmt::Debug for CharsUtf32<'a> {
+impl core::fmt::Debug for CharsUtf32<'_> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         crate::debug_fmt_utf32_iter(self.clone(), f)
     }
@@ -121,7 +121,7 @@ impl<'a> CharsLossyUtf16<'a> {
     }
 }
 
-impl<'a> Iterator for CharsLossyUtf16<'a> {
+impl Iterator for CharsLossyUtf16<'_> {
     type Item = char;
 
     #[inline]
@@ -135,16 +135,16 @@ impl<'a> Iterator for CharsLossyUtf16<'a> {
     }
 }
 
-impl<'a> FusedIterator for CharsLossyUtf16<'a> {}
+impl FusedIterator for CharsLossyUtf16<'_> {}
 
-impl<'a> DoubleEndedIterator for CharsLossyUtf16<'a> {
+impl DoubleEndedIterator for CharsLossyUtf16<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         self.iter.next_back()
     }
 }
 
-impl<'a> core::fmt::Debug for CharsLossyUtf16<'a> {
+impl core::fmt::Debug for CharsLossyUtf16<'_> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         crate::debug_fmt_char_iter(self.clone(), f)
     }
@@ -166,7 +166,7 @@ impl<'a> CharsLossyUtf32<'a> {
     }
 }
 
-impl<'a> Iterator for CharsLossyUtf32<'a> {
+impl Iterator for CharsLossyUtf32<'_> {
     type Item = char;
 
     #[inline]
@@ -180,23 +180,23 @@ impl<'a> Iterator for CharsLossyUtf32<'a> {
     }
 }
 
-impl<'a> FusedIterator for CharsLossyUtf32<'a> {}
+impl FusedIterator for CharsLossyUtf32<'_> {}
 
-impl<'a> DoubleEndedIterator for CharsLossyUtf32<'a> {
+impl DoubleEndedIterator for CharsLossyUtf32<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         self.iter.next_back()
     }
 }
 
-impl<'a> ExactSizeIterator for CharsLossyUtf32<'a> {
+impl ExactSizeIterator for CharsLossyUtf32<'_> {
     #[inline]
     fn len(&self) -> usize {
         self.iter.len()
     }
 }
 
-impl<'a> core::fmt::Debug for CharsLossyUtf32<'a> {
+impl core::fmt::Debug for CharsLossyUtf32<'_> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         crate::debug_fmt_char_iter(self.clone(), f)
     }
@@ -230,7 +230,7 @@ impl<'a> CharIndicesUtf16<'a> {
     }
 }
 
-impl<'a> Iterator for CharIndicesUtf16<'a> {
+impl Iterator for CharIndicesUtf16<'_> {
     type Item = (usize, Result<char, DecodeUtf16Error>);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -255,9 +255,9 @@ impl<'a> Iterator for CharIndicesUtf16<'a> {
     }
 }
 
-impl<'a> FusedIterator for CharIndicesUtf16<'a> {}
+impl FusedIterator for CharIndicesUtf16<'_> {}
 
-impl<'a> DoubleEndedIterator for CharIndicesUtf16<'a> {
+impl DoubleEndedIterator for CharIndicesUtf16<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         match self.iter.next_back() {
@@ -302,7 +302,7 @@ impl<'a> CharIndicesUtf32<'a> {
     }
 }
 
-impl<'a> Iterator for CharIndicesUtf32<'a> {
+impl Iterator for CharIndicesUtf32<'_> {
     type Item = (usize, Result<char, DecodeUtf32Error>);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -327,9 +327,9 @@ impl<'a> Iterator for CharIndicesUtf32<'a> {
     }
 }
 
-impl<'a> FusedIterator for CharIndicesUtf32<'a> {}
+impl FusedIterator for CharIndicesUtf32<'_> {}
 
-impl<'a> DoubleEndedIterator for CharIndicesUtf32<'a> {
+impl DoubleEndedIterator for CharIndicesUtf32<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         match self.iter.next_back() {
@@ -346,7 +346,7 @@ impl<'a> DoubleEndedIterator for CharIndicesUtf32<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for CharIndicesUtf32<'a> {
+impl ExactSizeIterator for CharIndicesUtf32<'_> {
     #[inline]
     fn len(&self) -> usize {
         self.iter.len()
@@ -381,7 +381,7 @@ impl<'a> CharIndicesLossyUtf16<'a> {
     }
 }
 
-impl<'a> Iterator for CharIndicesLossyUtf16<'a> {
+impl Iterator for CharIndicesLossyUtf16<'_> {
     type Item = (usize, char);
 
     #[inline]
@@ -402,9 +402,9 @@ impl<'a> Iterator for CharIndicesLossyUtf16<'a> {
     }
 }
 
-impl<'a> FusedIterator for CharIndicesLossyUtf16<'a> {}
+impl FusedIterator for CharIndicesLossyUtf16<'_> {}
 
-impl<'a> DoubleEndedIterator for CharIndicesLossyUtf16<'a> {
+impl DoubleEndedIterator for CharIndicesLossyUtf16<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         match self.iter.next_back() {
@@ -445,7 +445,7 @@ impl<'a> CharIndicesLossyUtf32<'a> {
     }
 }
 
-impl<'a> Iterator for CharIndicesLossyUtf32<'a> {
+impl Iterator for CharIndicesLossyUtf32<'_> {
     type Item = (usize, char);
 
     #[inline]
@@ -466,9 +466,9 @@ impl<'a> Iterator for CharIndicesLossyUtf32<'a> {
     }
 }
 
-impl<'a> FusedIterator for CharIndicesLossyUtf32<'a> {}
+impl FusedIterator for CharIndicesLossyUtf32<'_> {}
 
-impl<'a> DoubleEndedIterator for CharIndicesLossyUtf32<'a> {
+impl DoubleEndedIterator for CharIndicesLossyUtf32<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         match self.iter.next_back() {
@@ -481,7 +481,7 @@ impl<'a> DoubleEndedIterator for CharIndicesLossyUtf32<'a> {
     }
 }
 
-impl<'a> ExactSizeIterator for CharIndicesLossyUtf32<'a> {
+impl ExactSizeIterator for CharIndicesLossyUtf32<'_> {
     #[inline]
     fn len(&self) -> usize {
         self.iter.len()

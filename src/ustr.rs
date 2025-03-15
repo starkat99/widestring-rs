@@ -1317,21 +1317,21 @@ pub struct Display<'a, S: ?Sized> {
     str: &'a S,
 }
 
-impl<'a> core::fmt::Debug for Display<'a, U16Str> {
+impl core::fmt::Debug for Display<'_, U16Str> {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::fmt::Debug::fmt(&self.str, f)
     }
 }
 
-impl<'a> core::fmt::Debug for Display<'a, U32Str> {
+impl core::fmt::Debug for Display<'_, U32Str> {
     #[inline]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::fmt::Debug::fmt(&self.str, f)
     }
 }
 
-impl<'a> core::fmt::Display for Display<'a, U16Str> {
+impl core::fmt::Display for Display<'_, U16Str> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for c in crate::decode_utf16_lossy(self.str.as_slice().iter().copied()) {
             // Allow alternate {:#} format which skips replacment chars entirely
@@ -1343,7 +1343,7 @@ impl<'a> core::fmt::Display for Display<'a, U16Str> {
     }
 }
 
-impl<'a> core::fmt::Display for Display<'a, U32Str> {
+impl core::fmt::Display for Display<'_, U32Str> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for c in crate::decode_utf32_lossy(self.str.as_slice().iter().copied()) {
             // Allow alternate {:#} format which skips replacment chars entirely
