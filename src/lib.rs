@@ -218,7 +218,7 @@
 )]
 #![allow(renamed_and_removed_lints, stable_features)] // Until min version gets bumped
 #![cfg_attr(not(feature = "std"), no_std)]
-#![doc(html_root_url = "https://docs.rs/widestring/1.1.0")]
+#![doc(html_root_url = "https://docs.rs/widestring/1.2.0")]
 #![doc(test(attr(deny(warnings), allow(unused))))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(
