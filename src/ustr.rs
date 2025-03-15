@@ -933,7 +933,7 @@ impl U16Str {
     ///
     /// ```
     /// use widestring::{u16str};
-    /// 
+    ///
     /// let text = u16str!("foo\r\nbar\n\nbaz\r");
     /// let mut lines = text.lines_lossy();
     ///
@@ -950,7 +950,7 @@ impl U16Str {
     ///
     /// ```
     /// use widestring::{u16str};
-    /// 
+    ///
     /// let text = u16str!("foo\nbar\n\r\nbaz");
     /// let mut lines = text.lines_lossy();
     ///
@@ -1231,7 +1231,7 @@ impl U32Str {
     ///
     /// ```
     /// use widestring::{u32str};
-    /// 
+    ///
     /// let text = u32str!("foo\r\nbar\n\nbaz\r");
     /// let mut lines = text.lines_lossy();
     ///
@@ -1248,7 +1248,7 @@ impl U32Str {
     ///
     /// ```
     /// use widestring::{u32str};
-    /// 
+    ///
     /// let text = u32str!("foo\nbar\n\r\nbaz");
     /// let mut lines = text.lines_lossy();
     ///
