@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Changed
 - Minor restructing of included license file locations to be more consistent with crates ecosystem.
+- Moved to `windows-sys` for documentation tests instead of legacy `winapi` crate. Fixes [#40].
 
 ### Added
 - Added `.lines()` method on various string slices. Fixes [#33]. By [@mr-adult].
@@ -349,6 +350,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [#37]: https://github.com/starkat99/widestring-rs/issues/37
 [#38]: https://github.com/starkat99/widestring-rs/issues/38
 [#33]: https://github.com/starkat99/widestring-rs/issues/33
+[#40]: https://github.com/starkat99/widestring-rs/issues/40
 
 [@nicbn]: https://github.com/nicbn
 [@joshwd36]: https://github.com/joshwb36

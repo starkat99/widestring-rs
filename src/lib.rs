@@ -125,30 +125,28 @@
 //! ```rust
 //! # #[cfg(any(not(windows), not(feature = "alloc")))]
 //! # fn main() {}
-//! # extern crate winapi;
+//! # extern crate windows_sys;
 //! # extern crate widestring;
 //! # #[cfg(all(windows, feature = "alloc"))]
 //! # fn main() {
-//! use winapi::um::winbase::{FormatMessageW, LocalFree, FORMAT_MESSAGE_FROM_SYSTEM,
-//!                           FORMAT_MESSAGE_ALLOCATE_BUFFER, FORMAT_MESSAGE_IGNORE_INSERTS};
-//! use winapi::shared::ntdef::LPWSTR;
-//! use winapi::shared::minwindef::HLOCAL;
+//! use windows_sys::{Win32::{System::Diagnostics::Debug::{FormatMessageW,
+//!     FORMAT_MESSAGE_FROM_SYSTEM, FORMAT_MESSAGE_ALLOCATE_BUFFER,
+//!     FORMAT_MESSAGE_IGNORE_INSERTS}, Foundation::{LocalFree, HLOCAL}}, core::PWSTR};
 //! use std::ptr;
 //! use widestring::U16String;
-//! # use winapi::shared::minwindef::DWORD;
-//! # let error_code: DWORD = 0;
 //!
+//! let error_code: u32 = 0;
 //! let s: U16String;
 //! unsafe {
 //!     // First, get a string buffer from some windows api such as FormatMessageW...
-//!     let mut buffer: LPWSTR = ptr::null_mut();
+//!     let mut buffer: PWSTR = ptr::null_mut();
 //!     let strlen = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM |
 //!                                 FORMAT_MESSAGE_ALLOCATE_BUFFER |
 //!                                 FORMAT_MESSAGE_IGNORE_INSERTS,
 //!                                 ptr::null(),
 //!                                 error_code, // error code from GetLastError()
 //!                                 0,
-//!                                 (&mut buffer as *mut LPWSTR) as LPWSTR,
+//!                                 (&mut buffer as *mut PWSTR) as PWSTR,
 //!                                 0,
 //!                                 ptr::null_mut());
 //!
@@ -169,30 +167,28 @@
 //! ```rust
 //! # #[cfg(any(not(windows), not(feature = "alloc")))]
 //! # fn main() {}
-//! # extern crate winapi;
+//! # extern crate windows_sys;
 //! # extern crate widestring;
 //! # #[cfg(all(windows, feature = "alloc"))]
 //! # fn main() {
-//! use winapi::um::winbase::{FormatMessageW, LocalFree, FORMAT_MESSAGE_FROM_SYSTEM,
-//!                           FORMAT_MESSAGE_ALLOCATE_BUFFER, FORMAT_MESSAGE_IGNORE_INSERTS};
-//! use winapi::shared::ntdef::LPWSTR;
-//! use winapi::shared::minwindef::HLOCAL;
+//! use windows_sys::{Win32::{System::Diagnostics::Debug::{FormatMessageW,
+//!     FORMAT_MESSAGE_FROM_SYSTEM, FORMAT_MESSAGE_ALLOCATE_BUFFER,
+//!     FORMAT_MESSAGE_IGNORE_INSERTS}, Foundation::{LocalFree, HLOCAL}}, core::PWSTR};
 //! use std::ptr;
 //! use widestring::U16CString;
-//! # use winapi::shared::minwindef::DWORD;
-//! # let error_code: DWORD = 0;
 //!
+//! let error_code: u32 = 0;
 //! let s: U16CString;
 //! unsafe {
 //!     // First, get a string buffer from some windows api such as FormatMessageW...
-//!     let mut buffer: LPWSTR = ptr::null_mut();
+//!     let mut buffer: PWSTR = ptr::null_mut();
 //!     FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM |
 //!                    FORMAT_MESSAGE_ALLOCATE_BUFFER |
 //!                    FORMAT_MESSAGE_IGNORE_INSERTS,
 //!                    ptr::null(),
 //!                    error_code, // error code from GetLastError()
 //!                    0,
-//!                    (&mut buffer as *mut LPWSTR) as LPWSTR,
+//!                    (&mut buffer as *mut PWSTR) as PWSTR,
 //!                    0,
 //!                    ptr::null_mut());
 //!

@@ -23,7 +23,9 @@ debugger_visualizer = ["alloc"]
 [dev-dependencies]
 debugger_test = "0.1"
 debugger_test_parser = "0.1"
-winapi = { version = "0.3", features = ["winbase"] }
+windows-sys = { version = "0.59", features = [
+    "Win32_System_Diagnostics_Debug",
+] }
 
 [package.metadata.docs.rs]
 rustc-args = ["--cfg", "docsrs"]
