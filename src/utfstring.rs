@@ -2680,7 +2680,7 @@ mod test {
     fn uft16_truncate() {
         // Bug #39
         let cs = utf16str!("trunc");
-        let mut s = cs.to_owned();
+        let mut s: Utf16String = cs.into();
         s.truncate(6);
         assert_eq!(s.len(), 5);
         s.truncate(5);
