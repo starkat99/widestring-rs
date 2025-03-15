@@ -1443,7 +1443,7 @@ impl Utf16Str {
     /// Basic usage:
     ///
     /// ```
-    /// use widestring::{Utf16String, utf16str};
+    /// use widestring::utf16str;
     ///
     /// let text = utf16str!("foo\r\nbar\n\nbaz\r");
     /// let mut lines = text.lines();
@@ -1460,7 +1460,7 @@ impl Utf16Str {
     /// The final line does not require any ending:
     ///
     /// ```
-    /// use widestring::{Utf16String, utf16str};
+    /// use widestring::utf16str;
     ///
     /// let text = utf16str!("foo\nbar\n\r\nbaz");
     /// let mut lines = text.lines();
@@ -2101,7 +2101,7 @@ impl Utf32Str {
     /// Basic usage:
     ///
     /// ```
-    /// use widestring::{Utf32String, utf32str};
+    /// use widestring::utf32str;
     ///
     /// let text = utf32str!("foo\r\nbar\n\nbaz\r");
     /// let mut lines = text.lines();
@@ -2118,7 +2118,7 @@ impl Utf32Str {
     /// The final line does not require any ending:
     ///
     /// ```
-    /// use widestring::{Utf32String, utf32str};
+    /// use widestring::utf32str;
     ///
     /// let text = utf32str!("foo\nbar\n\r\nbaz");
     /// let mut lines = text.lines();
