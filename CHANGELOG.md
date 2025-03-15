@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 - Added `.lines()` method on various string slices. Fixes [#33]. By [@mr-adult].
 
+### Fixed
+- Fixed various clippy warnings.
+
 ## [1.1.0] - 2022-04-06 <a name="1.1.0"></a>
 ### Added
 - `Utf32String::into_char_vec` and missing conversion to `Vec<char>` for `Utf32String`. Fixes [#37].

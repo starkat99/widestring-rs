@@ -415,12 +415,12 @@ impl ExactSizeIterator for CodeUnits<'_> {
     }
 }
 
-/// An iterator over the lines of a [`Utf16Str`], [`Utf32Str`], or other wide string
+/// An iterator over the lines of a [`crate::Utf16Str`], [`crate::Utf32Str`], or other wide string
 /// that has the char_indices method. Returns string slices.
 ///
 /// This struct is created with one of:
-/// 1. The [`lines`][crate::Utf16Str::lines] method on [`Utf16Str`]
-/// 2. The [`lines`][crate::Utf32Str::lines] method on [`Utf32Str`]
+/// 1. The [`lines`][crate::Utf16Str::lines] method on [`crate::Utf16Str`]
+/// 2. The [`lines`][crate::Utf32Str::lines] method on [`crate::Utf32Str`]
 /// 3. etc.
 ///
 /// See their documentation for more.
