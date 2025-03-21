@@ -34,14 +34,12 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@master
       with:
-        profile: minimal
         toolchain: ${{ matrix.rust }}
-        override: true
         components: clippy,rustfmt
 
     - name: Cache Dependencies
@@ -50,36 +48,22 @@ jobs:
     - name: Install Cargo Make
       uses: davidB/rust-cargo-make@v1
 
-    - name: cargo-make build
+    - run: cargo make build
       if: ${{ matrix.rust == '1.58.1' }}
-      uses: actions-rs/cargo@v1
-      with:
-        command: make
-        args: build
 
-    - name: cargo-make ci-flow
+    - run : cargo make ci-flow
       if: ${{ matrix.rust != '1.58.1' }}
-      uses: actions-rs/cargo@v1
-      with:
-        command: make
-        args: ci-flow
   miri:
     name: Miri
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: nightly
-          override: true
           components: miri
-      - name: Run Miri
-        uses: actions-rs/cargo@v1
-        with:
-          command: miri
-          args: test
+      - run: cargo miri test
         env:
           MIRIFLAGS: -Zmiri-strict-provenance -Zmiri-retag-fields
